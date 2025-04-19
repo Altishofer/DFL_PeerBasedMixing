@@ -60,7 +60,7 @@ class PeerNode:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
             server.bind(("0.0.0.0", self.port))
             server.listen()
-            logging.info(f"[Node {self.node_id}] Listening on port {self.port}")
+            logging.info(f"Listening on port {self.port}")
             while True:
                 conn, _ = server.accept()
                 threading.Thread(target=self.handle_connection, args=(conn,), daemon=True).start()
@@ -78,7 +78,7 @@ class PeerNode:
                 if routing[0] == Relay_flag:
                     _, next_id = routing
                     host, port = self.peers[next_id]
-                    logging.info(f"[Node {self.node_id}] Relaying to Node {next_id}")
+                    logging.info(f"Forward to {next_id}")
                     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                         sock.connect((host, port))
                         msg_bytes = pack_message(self.params, (header, delta))
@@ -86,10 +86,10 @@ class PeerNode:
 
                 elif routing[0] == Dest_flag:
                     dest, msg = receive_forward(self.params, mac_key, delta)
-                    logging.info(f"[Node {self.node_id}] Received message for {dest.decode()}: {msg.decode()}")
+                    logging.info(f"Received message for {dest.decode()}: {msg.decode()}")
 
             except Exception as e:
-                logging.info(f"[Node {self.node_id}] Error handling connection: {e}")
+                logging.info(f"Error handling connection: {e}")
 
     def send_loop(self):
         while True:
@@ -112,6 +112,6 @@ class PeerNode:
                 sock.connect((host, port))
                 msg_bytes = pack_message(self.params, (header, delta))
                 sock.sendall(msg_bytes)
-            logging.info(f"[Node {self.node_id}] Sent message to path {path}")
+            logging.info(f"Sent message to path {path}")
         except Exception as e:
-            logging.info(f"[Node {self.node_id}] Failed to send message: {e}")
+            logging.info(f"Failed to send message: {e}")
