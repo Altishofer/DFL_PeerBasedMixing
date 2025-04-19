@@ -13,17 +13,15 @@ def load_env(key):
 def node_main():
     node_id = int(load_env("NODE_ID"))
     n_nodes = int(load_env("N_NODES"))
-    port = 5000 + node_id
+    port = int(load_env("PORT"))
 
     setup_logging(node_id)
     logging.info(f"Starting node on port {port}")
 
     peers = {
-        i: (f"node_{i}", 5000 + i)
+        i: (f"node_{i}", port)
         for i in range(n_nodes)
     }
-
-    logging.info(f"Peers: {peers}")
 
     node = PeerNode(node_id=node_id, port=port, peers=peers)
     node.start()

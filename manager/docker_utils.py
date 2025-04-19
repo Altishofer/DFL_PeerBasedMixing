@@ -57,7 +57,7 @@ def start_nodes(n):
             environment={
                 "NODE_ID": str(i),
                 "N_NODES": str(n),
-                "BASE_IP_PREFIX": BASE_IP_PREFIX
+                "PORT": str(5000)
             },
             volumes={
                 os.path.abspath("../secrets"): {
