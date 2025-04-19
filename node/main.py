@@ -1,15 +1,36 @@
 import os
 import time
-import random
+from peer_node import PeerNode
+from logging_config import setup_logging
+import logging
 
-node_id = int(os.getenv("NODE_ID", 0))
-num_nodes = int(os.getenv("NUM_NODES", 1))
+def load_env(key):
+    env = os.environ.get(key)
+    if env is None:
+        raise ValueError(f"Env {key} is not set")
+    return env
 
-def run():
-    peers = [f"node{j}" for j in range(num_nodes) if j != node_id]
+def node_main():
+    node_id = int(load_env("NODE_ID"))
+    n_nodes = int(load_env("N_NODES"))
+    base_ip_prefix = load_env("BASE_IP_PREFIX")
+    port = 5000 + node_id
+
+    setup_logging(node_id)
+    logging.info(f"Starting node on port {port}")
+
+    peers = {
+        i: (f"{base_ip_prefix}.{i}", 5000 + i)
+        for i in range(n_nodes)
+    }
+
+    logging.info(f"Peers: {peers}")
+
+    node = PeerNode(node_id=node_id, port=port, peers=peers)
+    node.start()
+
     while True:
-        print(f"[Node {node_id}] Training... communicating with {random.choice(peers)}")
-        time.sleep(random.uniform(1.0, 2.0))
+        time.sleep(1)
 
 if __name__ == "__main__":
-    run()
+    node_main()
