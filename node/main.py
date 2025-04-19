@@ -13,14 +13,13 @@ def load_env(key):
 def node_main():
     node_id = int(load_env("NODE_ID"))
     n_nodes = int(load_env("N_NODES"))
-    base_ip_prefix = load_env("BASE_IP_PREFIX")
     port = 5000 + node_id
 
     setup_logging(node_id)
     logging.info(f"Starting node on port {port}")
 
     peers = {
-        i: (f"{base_ip_prefix}.{i}", 5000 + i)
+        i: (f"node_{i}", 5000 + i)
         for i in range(n_nodes)
     }
 
