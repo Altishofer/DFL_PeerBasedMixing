@@ -15,6 +15,9 @@ from sphinxmix.SphinxClient import (
 )
 from sphinxmix.SphinxNode import sphinx_process
 
+MAX_HOPS = 3
+
+
 class PeerNode:
     def __init__(self, node_id, port, peers):
         self.node_id = node_id
@@ -97,8 +100,8 @@ class PeerNode:
             self.send_random_message()
 
     def send_random_message(self):
-        path = [nid for nid in self.peers if nid != self.node_id]
-        random.shuffle(path)
+        available_nodes = [nid for nid in self.peers if nid != self.node_id]
+        path = random.sample(available_nodes, k=min(MAX_HOPS, len(available_nodes)))
         path = [self.node_id] + path
         nodes_routing = list(map(Nenc, path))
         keys_nodes = [self.pkiPub[n].y for n in path]
