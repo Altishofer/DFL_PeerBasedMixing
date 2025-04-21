@@ -1,8 +1,11 @@
 import asyncio
 import logging
+from contextlib import suppress
+
+from retry import retry
 
 
-class AsyncTCPPeer:
+class TCP_Server:
     def __init__(self, node_id, port, peers, message_handler, packet_size):
         self.node_id = node_id
         self.port = port
@@ -21,6 +24,7 @@ class AsyncTCPPeer:
         async with self._server:
             await self._server.serve_forever()
 
+    @retry(delay=4, tries=5)
     async def send(self, peer_id, message: bytes):
         host, port = self.peers[peer_id]
         try:

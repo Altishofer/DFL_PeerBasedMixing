@@ -25,7 +25,6 @@ async def node_main():
     port = int(load_env("PORT"))
 
     setup_logging(node_id)
-    logging.info(f"Starting node on port {port}")
 
     peers = {
         i: (f"node_{i}", port)

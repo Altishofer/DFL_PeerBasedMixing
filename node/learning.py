@@ -7,11 +7,21 @@ from collections import defaultdict
 from sklearn.linear_model import LogisticRegression
 from sklearn.datasets import load_digits
 from sklearn.neural_network import MLPClassifier
+from sklearn.exceptions import ConvergenceWarning
+import warnings
+
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 
 class ModelHandler:
     def __init__(self, node_id, total_peers):
-        self._model = MLPClassifier(hidden_layer_sizes=(32,), alpha=1e-4)
+        self._model = MLPClassifier(
+            hidden_layer_sizes=(64,),
+            alpha=1e-4,
+            max_iter=20,
+            random_state=node_id,
+            warm_start=True
+        )
         self._X, self._y = self._load_partition(node_id, total_peers)
 
     def train(self):
@@ -31,7 +41,7 @@ class ModelHandler:
     def aggregate(self, models):
         coefs = [m.coefs_ for m in models]
         intercepts = [m.intercepts_ for m in models]
-        self._model.coefs_ = [np.mean([c[i] for c in coefs], axis=0) for i in range(len(coefs[0]))]
+        self._model.coefs_ = [np.mean([m[i] for m in coefs], axis=0) for i in range(len(coefs[0]))]
         self._model.intercepts_ = [np.mean([b[i] for b in intercepts], axis=0) for i in range(len(intercepts[0]))]
 
     def serialize_model(self):
@@ -47,17 +57,13 @@ class ModelHandler:
         data = load_digits()
         X = data.data
         y = data.target
-        label_indices = defaultdict(list)
-        for i, label in enumerate(y):
-            label_indices[label].append(i)
 
-        selected = []
-        for label, indices in label_indices.items():
-            indices.sort()
-            chunk_size = len(indices) // total_peers
-            start = node_id * chunk_size
-            end = len(indices) if node_id == total_peers - 1 else start + chunk_size
-            selected.extend(indices[start:end])
+        np.random.seed(42)
+        indices = np.random.permutation(len(X))
+        partition_size = len(indices) // total_peers
+        start = node_id * partition_size
+        end = len(indices) if node_id == total_peers - 1 else start + partition_size
+        selected = indices[start:end]
 
         return X[selected], y[selected]
 
@@ -91,7 +97,7 @@ class MessageManager:
                 }
                 await self._transport.send(pickle.dumps(msg), peer_id)
 
-        logging.info(f"📤 Sent model in {len(chunks)} parts")
+        logging.info(f"Sent model in {len(chunks)} parts each")
 
     async def send_ready(self, current_round):
         msg = {

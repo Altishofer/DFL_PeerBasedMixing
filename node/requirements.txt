@@ -7,3 +7,6 @@ sphinxmix
 scikit-learn
 tensorflow
 tensorflow.keras
+retry
+colorlog
+rich

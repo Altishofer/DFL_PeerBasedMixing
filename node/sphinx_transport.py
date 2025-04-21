@@ -10,7 +10,7 @@ from sphinxmix.SphinxParams import SphinxParams
 from sphinxmix.SphinxNode import sphinx_process
 from key_store import KeyStore
 
-from tcp_server import AsyncTCPPeer
+from tcp_server import TCP_Server
 
 class SphinxTransport:
     def __init__(self, node_id, port, peers, max_hops=3):
@@ -29,7 +29,7 @@ class SphinxTransport:
         logging.info(self._packet_size)
         self._key_store = KeyStore()
 
-        self._peer = AsyncTCPPeer(
+        self._peer = TCP_Server(
             node_id=node_id,
             port=port,
             peers=peers,
@@ -43,10 +43,7 @@ class SphinxTransport:
         asyncio.create_task(self._peer.start())
 
     async def send(self, payload: bytes, target_node: int = None):
-        if target_node is not None:
-            path = self.__build_path_to(target_node)
-        else:
-            path = self.__build_random_path()
+        path = self.__build_path_to(target_node)
 
         nodes_routing = list(map(Nenc, path))
         keys_nodes = [self._key_store.get_y(nid) for nid in path]
@@ -58,7 +55,7 @@ class SphinxTransport:
         first_hop = path[0]
         await self._peer.send(first_hop, msg_bytes)
         logging.debug(
-            f"Sent message to Node {target_node if target_node is not None else '(random)'} via path {path}"
+            f"Sent message to Node {target_node} via path {path}"
         )
 
     def __build_path_to(self, target):
