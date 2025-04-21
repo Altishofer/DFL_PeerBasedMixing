@@ -22,14 +22,15 @@ class ModelHandler:
             random_state=node_id,
             warm_start=True
         )
-        self._X, self._y = self._load_partition(node_id, total_peers)
+        self._X, self._y, self._X_val, self._y_val = self._load_partition(node_id, total_peers)
 
     def train(self):
+        logging.info(f"Started training...")
         self._model.fit(self._X, self._y)
         return self.evaluate()
 
     def evaluate(self):
-        return self._model.score(self._X, self._y)
+        return self._model.score(self._X_val, self._y_val)
 
     def set_model(self, model):
         self._model.coefs_ = model.coefs_
@@ -53,19 +54,25 @@ class ModelHandler:
     def chunk(self, data, chunk_size):
         return [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
 
-    def _load_partition(self, node_id, total_peers):
+    def _load_partition(self, node_id, total_peers, val_ratio=0.2):
         data = load_digits()
         X = data.data
         y = data.target
 
         np.random.seed(42)
         indices = np.random.permutation(len(X))
-        partition_size = len(indices) // total_peers
-        start = node_id * partition_size
-        end = len(indices) if node_id == total_peers - 1 else start + partition_size
-        selected = indices[start:end]
 
-        return X[selected], y[selected]
+        val_size = int(len(indices) * val_ratio)
+
+        val_indices = indices[:val_size]
+        train_indices = indices[val_size:]
+
+        partition_size = len(train_indices) // total_peers
+        start = node_id * partition_size
+        end = len(train_indices) if node_id == total_peers - 1 else start + partition_size
+        selected = train_indices[start:end]
+
+        return X[selected], y[selected], X[val_indices], y[val_indices]
 
 
 class MessageManager:
@@ -128,7 +135,7 @@ class MessageManager:
                 self._incoming_parts[current_round][sender][part_idx] = parsed["data"]
 
                 current_parts = self._incoming_parts[current_round][sender]
-                logging.debug(f"📦 Received part {part_idx+1}/{total_parts} from Node {sender}")
+                logging.debug(f"Received part {part_idx+1}/{total_parts} from Node {sender}")
 
                 if len(current_parts) == total_parts and set(current_parts.keys()) == set(range(total_parts)):
                     full_data = b"".join(current_parts[i] for i in range(total_parts))
@@ -138,7 +145,6 @@ class MessageManager:
 
             elif parsed["type"] == "ready":
                 sender = parsed["sender"]
-                self._ready_set.add(sender)
                 logging.info(f"Ready from Node {sender} ({len(self._ready_set)}/{self._total_peers})")
 
             elif parsed["type"] == "final_done":
@@ -199,9 +205,11 @@ class Learning:
         logging.info(f"\n{'=' * 20} {title} {'=' * 20}")
 
     def _log_footer(self, acc_before, acc_after):
+        val_acc = self._model_handler.evaluate()
         delta = acc_after - acc_before
         logging.info(
             f"Round {self._current_round} done | "
-            f"Accuracy: {acc_before:.4f} ➜ {acc_after:.4f} | Δ: {delta:+.4f}"
+            f"Train: {acc_before:.4f} ➜ {acc_after:.4f} | Δ: {delta:+.4f} | "
+            f"[Validation Accuracy: {val_acc:.4f}]"
         )
         logging.info("=" * 60)

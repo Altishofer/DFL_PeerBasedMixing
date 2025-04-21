@@ -26,7 +26,6 @@ class SphinxTransport:
             dest_len=16
         )
         self._packet_size = self._params.max_len + self._params.m
-        logging.info(self._packet_size)
         self._key_store = KeyStore()
 
         self._peer = TCP_Server(

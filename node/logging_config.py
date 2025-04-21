@@ -1,21 +1,9 @@
 import logging
-import colorlog
-
 
 def setup_logging(node_id):
-    handler = colorlog.StreamHandler()
-    handler.setFormatter(colorlog.ColoredFormatter(
-        f'%(log_color)s[Node {node_id}] %(asctime)s %(levelname)s: %(message)s',
-        datefmt='%H:%M:%S',
-        log_colors={
-            'DEBUG':    'cyan',
-            'INFO':     'green',
-            'WARNING':  'yellow',
-            'ERROR':    'red',
-            'CRITICAL': 'bold_red',
-        }
-    ))
+    logging.basicConfig(
+        level=logging.INFO,
+        format=f'[Node {node_id}] %(asctime)s %(levelname)s: %(message)s',
+        datefmt='%H:%M:%S'
+    )
 
-    logger = colorlog.getLogger()
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
