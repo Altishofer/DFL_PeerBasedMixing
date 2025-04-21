@@ -108,7 +108,7 @@ class MessageManager:
         self._ready_set = {self._node_id}
         self._model_buffer[current_round].append(own_model)
 
-        while len(self._ready_set) < self._total_peers:
+        while len(self._model_buffer[current_round]) < self._total_peers:
             msg = await self._transport.receive()
             parsed = pickle.loads(msg)
 
@@ -129,7 +129,6 @@ class MessageManager:
                     model = self._model_handler.deserialize_model(full_data)
                     self._model_buffer[current_round].append(model)
                     logging.info(f"Reassembled full model from Node {sender}")
-                    await self.send_ready(current_round)
 
             elif parsed["type"] == "ready":
                 sender = parsed["sender"]
@@ -182,10 +181,13 @@ class Learning:
             self._model_handler.aggregate(models)
             acc_after = self._model_handler.evaluate()
             self._log_footer(acc_before, acc_after)
+            await self._message_manager.send_ready(self._current_round)
             self._current_round += 1
 
         logging.info(f"Completed all {self._total_rounds} training rounds")
         await self._message_manager.sync_final_round()
+        await asyncio.sleep(10)
+
 
     def _log_header(self, title):
         logging.info(f"\n{'=' * 20} {title} {'=' * 20}")

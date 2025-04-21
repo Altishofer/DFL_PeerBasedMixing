@@ -38,4 +38,3 @@ async def node_main():
 
 if __name__ == "__main__":
     asyncio.run(node_main())
-    asyncio.sleep(60)
