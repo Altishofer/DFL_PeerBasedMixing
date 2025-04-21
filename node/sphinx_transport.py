@@ -57,8 +57,8 @@ class SphinxTransport:
 
         first_hop = path[0]
         await self._peer.send(first_hop, msg_bytes)
-        logging.info(
-            f"[{self._node_id}] Sent message to Node {target_node if target_node is not None else '(random)'} via path {path}"
+        logging.debug(
+            f"Sent message to Node {target_node if target_node is not None else '(random)'} via path {path}"
         )
 
     def __build_path_to(self, target):
@@ -83,10 +83,10 @@ class SphinxTransport:
                 await self._peer.send(next_id, msg)
             elif routing[0] == Dest_flag:
                 dest, msg = receive_forward(self._params, mac_key, delta)
-                logging.info(f"[{self._node_id}] ✅ Received message of length {len(msg)} for {dest.decode()}")
+                logging.debug(f"Received message of length {len(msg)} for {dest.decode()}")
                 await self._incoming_queue.put(msg)
         except Exception as e:
-            logging.warning(f"[{self._node_id}] ❌ Error in transport: {e}")
+            logging.warning(f"❌ Error in transport: {e}")
 
     def __build_random_path(self):
         available_nodes = [nid for nid in self._peers if nid != self._node_id]

@@ -17,7 +17,7 @@ class AsyncTCPPeer:
             "0.0.0.0",
             self.port
         )
-        logging.info(f"[{self.node_id}] TCP server listening on port {self.port}")
+        logging.info(f"TCP server listening on port {self.port}")
         async with self._server:
             await self._server.serve_forever()
 
@@ -29,21 +29,21 @@ class AsyncTCPPeer:
             await writer.drain()
             writer.close()
             await writer.wait_closed()
-            logging.debug(f"[{self.node_id}] Sent {len(message)} bytes to peer {peer_id} at {host}:{port}")
+            logging.debug(f"Sent {len(message)} bytes to peer {peer_id} at {host}:{port}")
         except Exception as e:
-            logging.warning(f"[{self.node_id}] Failed to send to peer {peer_id} at {host}:{port}: {e}")
+            logging.warning(f"Failed to send to peer {peer_id} at {host}:{port}: {e}")
 
     async def _handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         peer_info = writer.get_extra_info("peername")
         try:
             data = await reader.read(65536)
-            logging.debug(f"[{self.node_id}] Received {len(data)} bytes from {peer_info}")
+            logging.debug(f"Received {len(data)} bytes from {peer_info}")
             await self.message_handler(data)
         except asyncio.IncompleteReadError:
-            logging.warning(f"[{self.node_id}] Incomplete message from {peer_info}")
+            logging.warning(f"Incomplete message from {peer_info}")
         except Exception as e:
-            logging.warning(f"[{self.node_id}] Error handling data from {peer_info}: {e}")
+            logging.warning(f"Error handling data from {peer_info}: {e}")
         finally:
             writer.close()
             await writer.wait_closed()
-            logging.debug(f"[{self.node_id}] Closed connection from {peer_info}")
+            logging.debug(f"Closed connection from {peer_info}")

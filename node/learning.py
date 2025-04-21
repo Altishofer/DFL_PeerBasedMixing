@@ -6,11 +6,12 @@ import numpy as np
 from collections import defaultdict
 from sklearn.linear_model import LogisticRegression
 from sklearn.datasets import load_digits
+from sklearn.neural_network import MLPClassifier
 
 
 class ModelHandler:
     def __init__(self, node_id, total_peers):
-        self._model = LogisticRegression(max_iter=1000)
+        self._model = MLPClassifier(hidden_layer_sizes=(32,), alpha=1e-4)
         self._X, self._y = self._load_partition(node_id, total_peers)
 
     def train(self):
@@ -20,15 +21,18 @@ class ModelHandler:
     def evaluate(self):
         return self._model.score(self._X, self._y)
 
+    def set_model(self, model):
+        self._model.coefs_ = model.coefs_
+        self._model.intercepts_ = model.intercepts_
+
     def get_model(self):
         return self._model
 
-    def set_model(self, model):
-        self._model.coef_ = model.coef_
-
     def aggregate(self, models):
-        coefs = [m.coef_ for m in models]
-        self._model.coef_ = np.mean(coefs, axis=0)
+        coefs = [m.coefs_ for m in models]
+        intercepts = [m.intercepts_ for m in models]
+        self._model.coefs_ = [np.mean([c[i] for c in coefs], axis=0) for i in range(len(coefs[0]))]
+        self._model.intercepts_ = [np.mean([b[i] for b in intercepts], axis=0) for i in range(len(intercepts[0]))]
 
     def serialize_model(self):
         return zlib.compress(pickle.dumps(self._model))
@@ -67,6 +71,7 @@ class MessageManager:
         self._incoming_parts = defaultdict(lambda: defaultdict(dict))
         self._ready_set = set()
         self._model_buffer = defaultdict(list)
+        self._final_done_buffer = set()
 
     async def send_model(self, current_round):
         model_data = self._model_handler.serialize_model()
@@ -97,7 +102,7 @@ class MessageManager:
         for peer_id in range(self._total_peers):
             if peer_id != self._node_id:
                 await self._transport.send(pickle.dumps(msg), peer_id)
-        logging.info(f"✅ Declared ready for aggregation")
+        logging.info(f"Declared ready for aggregation")
 
     async def collect_models(self, current_round, own_model):
         self._ready_set = {self._node_id}
@@ -117,22 +122,46 @@ class MessageManager:
                 self._incoming_parts[current_round][sender][part_idx] = parsed["data"]
 
                 current_parts = self._incoming_parts[current_round][sender]
-                logging.info(f"📦 Received part {part_idx+1}/{total_parts} from Node {sender}")
+                logging.debug(f"📦 Received part {part_idx+1}/{total_parts} from Node {sender}")
 
                 if len(current_parts) == total_parts and set(current_parts.keys()) == set(range(total_parts)):
                     full_data = b"".join(current_parts[i] for i in range(total_parts))
                     model = self._model_handler.deserialize_model(full_data)
                     self._model_buffer[current_round].append(model)
-                    logging.info(f"✅ Reassembled full model from Node {sender}")
+                    logging.info(f"Reassembled full model from Node {sender}")
                     await self.send_ready(current_round)
 
             elif parsed["type"] == "ready":
                 sender = parsed["sender"]
                 self._ready_set.add(sender)
-                logging.info(f"🟢 Ready from Node {sender} ({len(self._ready_set)}/{self._total_peers})")
+                logging.info(f"Ready from Node {sender} ({len(self._ready_set)}/{self._total_peers})")
+
+            elif parsed["type"] == "final_done":
+                sender = parsed["sender"]
+                if sender not in self._final_done_buffer:
+                    self._final_done_buffer.add(sender)
+                    logging.debug(f"Buffered early final_done from Node {sender}")
 
         return self._model_buffer[current_round]
 
+    async def sync_final_round(self):
+        final_done = {self._node_id} | self._final_done_buffer
+        msg = {
+            "type": "final_done",
+            "sender": self._node_id
+        }
+        for peer_id in range(self._total_peers):
+            if peer_id != self._node_id:
+                await self._transport.send(pickle.dumps(msg), peer_id)
+
+        while len(final_done) < self._total_peers:
+            msg = await self._transport.receive()
+            parsed = pickle.loads(msg)
+            if parsed.get("type") == "final_done":
+                sender = parsed["sender"]
+                if sender not in final_done:
+                    final_done.add(sender)
+                    logging.info(f"Final done received from Node {sender} ({len(final_done)}/{self._total_peers})")
 
 class Learning:
     def __init__(self, node_id, transport, total_peers, total_rounds=5):
@@ -155,7 +184,8 @@ class Learning:
             self._log_footer(acc_before, acc_after)
             self._current_round += 1
 
-        logging.info(f"✅ Completed all {self._total_rounds} training rounds")
+        logging.info(f"Completed all {self._total_rounds} training rounds")
+        await self._message_manager.sync_final_round()
 
     def _log_header(self, title):
         logging.info(f"\n{'=' * 20} {title} {'=' * 20}")
@@ -163,7 +193,7 @@ class Learning:
     def _log_footer(self, acc_before, acc_after):
         delta = acc_after - acc_before
         logging.info(
-            f"✅ Round {self._current_round} done | "
+            f"Round {self._current_round} done | "
             f"Accuracy: {acc_before:.4f} ➜ {acc_after:.4f} | Δ: {delta:+.4f}"
         )
         logging.info("=" * 60)

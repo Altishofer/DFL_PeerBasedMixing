@@ -5,10 +5,6 @@ import os
 import asyncio
 from logging_config import setup_logging
 
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "3"
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
 setup_logging(node_id=2)
 
 def handle_exception(loop, context):
@@ -42,3 +38,4 @@ async def node_main():
 
 if __name__ == "__main__":
     asyncio.run(node_main())
+    asyncio.sleep(60)
