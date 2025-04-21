@@ -4,6 +4,7 @@ import logging
 import zlib
 import numpy as np
 from collections import defaultdict
+from rich.table import Table
 from sklearn.linear_model import LogisticRegression
 from sklearn.datasets import load_digits
 from sklearn.neural_network import MLPClassifier
@@ -83,8 +84,6 @@ class MessageManager:
         self._model_handler = model_handler
         self._incoming_parts = defaultdict(lambda: defaultdict(dict))
         self._model_buffer = defaultdict(list)
-        self._final_done_buffer = set()
-        self._ready_set = defaultdict(lambda: set())
 
     async def send_model(self, current_round):
         model_data = self._model_handler.serialize_model()
@@ -106,22 +105,11 @@ class MessageManager:
 
         logging.info(f"Sent model in {len(chunks)} parts each")
 
-    async def send_ready(self, current_round):
-        msg = {
-            "type": "ready",
-            "round": current_round,
-            "sender": self._node_id
-        }
-        for peer_id in range(self._total_peers):
-            if peer_id != self._node_id:
-                await self._transport.send(pickle.dumps(msg), peer_id)
-        logging.info(f"Declared ready for aggregation")
 
     async def collect_models(self, current_round, own_model):
-        self._ready_set[current_round].add(self._node_id)
         self._model_buffer[current_round].append(own_model)
 
-        while len(self._model_buffer[current_round]) < self._total_peers and len(self._ready_set[current_round]) < self._total_peers:
+        while len(self._model_buffer[current_round]) < self._total_peers:
             msg = await self._transport.receive()
             parsed = pickle.loads(msg)
 
@@ -132,46 +120,16 @@ class MessageManager:
                 msg_round = parsed["round"]
                 self._incoming_parts[msg_round][sender][part_idx] = parsed["data"]
 
-                current_parts = self._incoming_parts[current_round][sender]
+                current_parts = self._incoming_parts[msg_round][sender]
                 logging.debug(f"Received part {part_idx+1}/{total_parts} from Node {sender} for round {msg_round}")
 
                 if len(current_parts) == total_parts and set(current_parts.keys()) == set(range(total_parts)):
                     full_data = b"".join(current_parts[i] for i in range(total_parts))
                     model = self._model_handler.deserialize_model(full_data)
-                    self._model_buffer[current_round].append(model)
+                    self._model_buffer[msg_round].append(model)
                     logging.info(f"Reassembled full model from Node {sender} for round {msg_round}")
 
-            elif parsed["type"] == "ready":
-                sender = parsed["sender"]
-                msg_round = parsed["round"]
-                self._ready_set[msg_round].add(sender)
-                logging.info(f"Ready from Node {sender} for round {msg_round} ({len(self._ready_set[msg_round])}/{self._total_peers})")
-
-            elif parsed["type"] == "final_done":
-                sender = parsed["sender"]
-                self._final_done_buffer.add(sender)
-                logging.debug(f"Buffered early final_done from Node {sender}")
-
         return self._model_buffer[current_round]
-
-    async def sync_final_round(self):
-        final_done = {self._node_id} | self._final_done_buffer
-        msg = {
-            "type": "final_done",
-            "sender": self._node_id
-        }
-        for peer_id in range(self._total_peers):
-            if peer_id != self._node_id:
-                await self._transport.send(pickle.dumps(msg), peer_id)
-
-        while len(final_done) < self._total_peers:
-            msg = await self._transport.receive()
-            parsed = pickle.loads(msg)
-            if parsed.get("type") == "final_done":
-                sender = parsed["sender"]
-                if sender not in final_done:
-                    final_done.add(sender)
-                    logging.info(f"Final done received from Node {sender} ({len(final_done)}/{self._total_peers})")
 
 class Learning:
     def __init__(self, node_id, transport, total_peers, total_rounds=5):
@@ -192,11 +150,9 @@ class Learning:
             self._model_handler.aggregate(models)
             acc_after = self._model_handler.evaluate()
             self._log_footer(acc_before, acc_after)
-            await self._message_manager.send_ready(self._current_round)
             self._current_round += 1
 
         logging.info(f"Completed all {self._total_rounds} training rounds")
-        await self._message_manager.sync_final_round()
         await asyncio.sleep(10)
 
 
