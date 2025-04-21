@@ -17,7 +17,7 @@ from sphinxmix.SphinxClient import (
 from sphinxmix.SphinxNode import sphinx_process
 
 from key_store import KeyStore
-from tcp_server import AsyncTCPServer, AsyncConnectionPool
+from tcp_server import AsyncTCPPeer
 
 MAX_HOPS = 3
 
@@ -35,8 +35,7 @@ class PeerNode:
         )
         self._group = self._params.group
         self._key_store = KeyStore()
-        self.server = AsyncTCPServer(node_id, port, self.handle_message)
-        self.conn_pool = AsyncConnectionPool(peers)
+        self.server = AsyncTCPPeer(node_id, port, peers, self.handle_message, 1216)
 
 
     async def handle_message(self, data: bytes):
@@ -50,7 +49,7 @@ class PeerNode:
             if routing[0] == Relay_flag:
                 _, next_id = routing
                 msg = pack_message(self._params, (header, delta))
-                await self.conn_pool.send(next_id, msg)
+                await self.server.send(next_id, msg)
             elif routing[0] == Dest_flag:
                 dest, msg = receive_forward(self._params, mac_key, delta)
                 logging.info(f"[{self._node_id}] Received message for {dest.decode()}: {msg.decode()}")
@@ -67,7 +66,7 @@ class PeerNode:
         header, delta = create_forward_message(self._params, nodes_routing, keys_nodes, topic, message)
         first_hop = path[0]
         msg_bytes = pack_message(self._params, (header, delta))
-        await self.conn_pool.send(first_hop, msg_bytes)
+        await self.server.send(first_hop, msg_bytes)
         logging.info(f"[{self._node_id}] Sent message via path {path}")
 
     async def start(self):
