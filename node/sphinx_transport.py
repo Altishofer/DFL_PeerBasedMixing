@@ -42,8 +42,12 @@ class SphinxTransport:
     async def start(self):
         asyncio.create_task(self._peer.start())
 
-    async def send(self, payload: bytes):
-        path = self.__build_random_path()
+    async def send(self, payload: bytes, target_node: int = None):
+        if target_node is not None:
+            path = self.__build_path_to(target_node)
+        else:
+            path = self.__build_random_path()
+
         nodes_routing = list(map(Nenc, path))
         keys_nodes = [self._key_store.get_y(nid) for nid in path]
         topic = b"peer-message"
@@ -53,7 +57,14 @@ class SphinxTransport:
 
         first_hop = path[0]
         await self._peer.send(first_hop, msg_bytes)
-        logging.info(f"[{self._node_id}] Sent message via path {path}")
+        logging.info(
+            f"[{self._node_id}] Sent message to Node {target_node if target_node is not None else '(random)'} via path {path}"
+        )
+
+    def __build_path_to(self, target):
+        intermediates = [nid for nid in self._peers if nid not in (self._node_id, target)]
+        hops = random.sample(intermediates, min(self._max_hops - 1, len(intermediates)))
+        return hops + [target]
 
     async def receive(self) -> bytes:
         return await self._incoming_queue.get()

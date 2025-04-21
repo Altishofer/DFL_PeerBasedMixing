@@ -1,9 +1,19 @@
-import asyncio
-import os
-import time
 from peer_node import PeerNode
-from logging_config import setup_logging
 import logging
+
+import os
+import asyncio
+from logging_config import setup_logging
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
+setup_logging(node_id=2)
+
+def handle_exception(loop, context):
+    msg = context.get("exception", context["message"])
+    logging.error(f"💥 Unhandled exception: {msg}")
 
 
 def load_env(key):

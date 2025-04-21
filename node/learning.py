@@ -8,20 +8,38 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.datasets import load_digits
 
 
-class Learning:
-    def __init__(self, node_id, transport, total_peers, total_rounds=5):
-        self._node_id = node_id
-        self._transport = transport
+class ModelHandler:
+    def __init__(self, node_id, total_peers):
         self._model = LogisticRegression(max_iter=1000)
-        self._X, self._y = self._load_partition(total_peers)
-        self._total_peers = total_peers
-        self._total_rounds = total_rounds
-        self._current_round = 0
-        self._model_buffer = {}
-        self._ready_set = set()
-        self._incoming_parts = defaultdict(lambda: defaultdict(dict))  # round -> sender -> {part_idx: chunk}
+        self._X, self._y = self._load_partition(node_id, total_peers)
 
-    def _load_partition(self, total_peers):
+    def train(self):
+        self._model.fit(self._X, self._y)
+        return self.evaluate()
+
+    def evaluate(self):
+        return self._model.score(self._X, self._y)
+
+    def get_model(self):
+        return self._model
+
+    def set_model(self, model):
+        self._model.coef_ = model.coef_
+
+    def aggregate(self, models):
+        coefs = [m.coef_ for m in models]
+        self._model.coef_ = np.mean(coefs, axis=0)
+
+    def serialize_model(self):
+        return zlib.compress(pickle.dumps(self._model))
+
+    def deserialize_model(self, byte_data):
+        return pickle.loads(zlib.decompress(byte_data))
+
+    def chunk(self, data, chunk_size):
+        return [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+
+    def _load_partition(self, node_id, total_peers):
         data = load_digits()
         X = data.data
         y = data.target
@@ -29,116 +47,115 @@ class Learning:
         for i, label in enumerate(y):
             label_indices[label].append(i)
 
-        selected_indices = []
+        selected = []
         for label, indices in label_indices.items():
             indices.sort()
             chunk_size = len(indices) // total_peers
-            start = self._node_id * chunk_size
-            end = start + chunk_size if self._node_id < total_peers - 1 else len(indices)
-            selected_indices.extend(indices[start:end])
+            start = node_id * chunk_size
+            end = len(indices) if node_id == total_peers - 1 else start + chunk_size
+            selected.extend(indices[start:end])
 
-        return X[selected_indices], y[selected_indices]
+        return X[selected], y[selected]
 
-    async def run(self):
-        while self._current_round < self._total_rounds:
-            self._log_header(f"ROUND {self._current_round}")
-            acc_before = self._train()
-            await self._send_model()
-            await self._send_ready()
-            await self._collect_for_round()
-            self._aggregate()
-            acc_after = self._evaluate()
-            self._log_footer(acc_before, acc_after)
-            self._current_round += 1
 
-        logging.info(f"[Node {self._node_id}] ✅ Completed all {self._total_rounds} training rounds")
+class MessageManager:
+    def __init__(self, node_id, total_peers, transport, model_handler):
+        self._node_id = node_id
+        self._total_peers = total_peers
+        self._transport = transport
+        self._model_handler = model_handler
+        self._incoming_parts = defaultdict(lambda: defaultdict(dict))
+        self._ready_set = set()
+        self._model_buffer = defaultdict(list)
 
-    def _train(self):
-        self._model.fit(self._X, self._y)
-        acc = self._model.score(self._X, self._y)
-        logging.info(f"[Node {self._node_id}] 📈 Trained | Accuracy before agg: {acc:.4f}")
-        return acc
+    async def send_model(self, current_round):
+        model_data = self._model_handler.serialize_model()
+        chunks = self._model_handler.chunk(model_data, 700)
 
-    def _chunk_bytes(self, data: bytes, chunk_size: int):
-        return [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+        for peer_id in range(self._total_peers):
+            if peer_id == self._node_id:
+                continue
+            for idx, chunk in enumerate(chunks):
+                msg = {
+                    "type": "model_part",
+                    "round": current_round,
+                    "sender": self._node_id,
+                    "part_idx": idx,
+                    "total_parts": len(chunks),
+                    "data": chunk
+                }
+                await self._transport.send(pickle.dumps(msg), peer_id)
 
-    async def _send_model(self):
-        raw = zlib.compress(pickle.dumps(self._model))
-        chunks = self._chunk_bytes(raw, 700)
+        logging.info(f"📤 Sent model in {len(chunks)} parts")
 
-        for idx, chunk in enumerate(chunks):
-            msg = {
-                "type": "model_part",
-                "round": self._current_round,
-                "sender": self._node_id,
-                "part_idx": idx,
-                "total_parts": len(chunks),
-                "data": chunk
-            }
-            await self._transport.send(pickle.dumps(msg))
-
-        logging.info(f"[Node {self._node_id}] 📤 Sent model in {len(chunks)} parts")
-
-    async def _send_ready(self):
+    async def send_ready(self, current_round):
         msg = {
             "type": "ready",
-            "round": self._current_round,
+            "round": current_round,
             "sender": self._node_id
         }
-        await self._transport.send(pickle.dumps(msg))
-        logging.info(f"[Node {self._node_id}] ✅ Declared ready for aggregation")
+        for peer_id in range(self._total_peers):
+            if peer_id != self._node_id:
+                await self._transport.send(pickle.dumps(msg), peer_id)
+        logging.info(f"✅ Declared ready for aggregation")
 
-    async def _collect_for_round(self):
-        r = self._current_round
-        self._model_buffer.setdefault(r, [self._model])
+    async def collect_models(self, current_round, own_model):
         self._ready_set = {self._node_id}
+        self._model_buffer[current_round].append(own_model)
 
         while len(self._ready_set) < self._total_peers:
             msg = await self._transport.receive()
             parsed = pickle.loads(msg)
 
-            mtype = parsed.get("type")
-            sender = parsed.get("sender")
-            round_num = parsed.get("round")
-
-            if round_num != r:
+            if parsed.get("round") != current_round:
                 continue
 
-            if mtype == "model_part":
+            if parsed["type"] == "model_part":
+                sender = parsed["sender"]
                 part_idx = parsed["part_idx"]
                 total_parts = parsed["total_parts"]
-                chunk = parsed["data"]
+                self._incoming_parts[current_round][sender][part_idx] = parsed["data"]
 
-                self._incoming_parts[r][sender][part_idx] = chunk
-                current = len(self._incoming_parts[r][sender])
+                current_parts = self._incoming_parts[current_round][sender]
+                logging.info(f"📦 Received part {part_idx+1}/{total_parts} from Node {sender}")
 
-                logging.info(
-                    f"[Node {self._node_id}] 📦 Received part {part_idx+1}/{total_parts} from Node {sender}"
-                )
+                if len(current_parts) == total_parts and set(current_parts.keys()) == set(range(total_parts)):
+                    full_data = b"".join(current_parts[i] for i in range(total_parts))
+                    model = self._model_handler.deserialize_model(full_data)
+                    self._model_buffer[current_round].append(model)
+                    logging.info(f"✅ Reassembled full model from Node {sender}")
+                    await self.send_ready(current_round)
 
-                if current == total_parts:
-                    ordered = [self._incoming_parts[r][sender][i] for i in range(total_parts)]
-                    model_bytes = b"".join(ordered)
-                    model = pickle.loads(zlib.decompress(model_bytes))
-                    self._model_buffer[r].append(model)
-                    logging.info(f"[Node {self._node_id}] ✅ Reassembled full model from Node {sender}")
-
-            elif mtype == "ready":
+            elif parsed["type"] == "ready":
+                sender = parsed["sender"]
                 self._ready_set.add(sender)
-                logging.info(
-                    f"[Node {self._node_id}] 🟢 Ready from Node {sender} "
-                    f"({len(self._ready_set)}/{self._total_peers})"
-                )
+                logging.info(f"🟢 Ready from Node {sender} ({len(self._ready_set)}/{self._total_peers})")
 
-    def _aggregate(self):
-        models = self._model_buffer[self._current_round]
-        coefs = [model.coef_ for model in models]
-        self._model.coef_ = np.mean(coefs, axis=0)
-        logging.info(f"[Node {self._node_id}] 🧠 Aggregated {len(models)} models")
+        return self._model_buffer[current_round]
 
-    def _evaluate(self):
-        acc = self._model.score(self._X, self._y)
-        return acc
+
+class Learning:
+    def __init__(self, node_id, transport, total_peers, total_rounds=5):
+        self._node_id = node_id
+        self._transport = transport
+        self._total_peers = total_peers
+        self._total_rounds = total_rounds
+        self._current_round = 0
+        self._model_handler = ModelHandler(node_id, total_peers)
+        self._message_manager = MessageManager(node_id, total_peers, transport, self._model_handler)
+
+    async def run(self):
+        while self._current_round < self._total_rounds:
+            self._log_header(f"ROUND {self._current_round}")
+            acc_before = self._model_handler.train()
+            await self._message_manager.send_model(self._current_round)
+            models = await self._message_manager.collect_models(self._current_round, self._model_handler.get_model())
+            self._model_handler.aggregate(models)
+            acc_after = self._model_handler.evaluate()
+            self._log_footer(acc_before, acc_after)
+            self._current_round += 1
+
+        logging.info(f"✅ Completed all {self._total_rounds} training rounds")
 
     def _log_header(self, title):
         logging.info(f"\n{'=' * 20} {title} {'=' * 20}")
@@ -146,7 +163,7 @@ class Learning:
     def _log_footer(self, acc_before, acc_after):
         delta = acc_after - acc_before
         logging.info(
-            f"[Node {self._node_id}] ✅ Round {self._current_round} done | "
+            f"✅ Round {self._current_round} done | "
             f"Accuracy: {acc_before:.4f} ➜ {acc_after:.4f} | Δ: {delta:+.4f}"
         )
         logging.info("=" * 60)
