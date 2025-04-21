@@ -1,3 +1,4 @@
+import asyncio
 import threading
 import socket
 import random
@@ -15,106 +16,63 @@ from sphinxmix.SphinxClient import (
 )
 from sphinxmix.SphinxNode import sphinx_process
 
+from key_store import KeyStore
+from tcp_server import AsyncTCPServer, AsyncConnectionPool
+
 MAX_HOPS = 3
 
 
 class PeerNode:
     def __init__(self, node_id, port, peers):
-        self.node_id = node_id
-        self.port = port
-        self.peers = peers
-        self.params = SphinxParams()
-        self.group = self.params.group
-        self.pkiPriv = dict()
-        self.pkiPub = dict()
-        self.load_keys()
-
-    def load_keys(self):
-
-        priv_path = "/config/pki_priv.pkl"
-        pub_path = "/config/pki_pub.pkl"
-
-        with open(priv_path, "rb") as f:
-            priv_raw = pickle.load(f)
-
-        with open(pub_path, "rb") as f:
-            pub_raw = pickle.load(f)
-
-        ec = EcGroup()
-        self.pkiPriv = {}
-        self.pkiPub = {}
-
-        for nid, x_bytes, y_bytes in priv_raw.values():
-            x = Bn.from_binary(x_bytes)
-            y = EcPt.from_binary(y_bytes, ec)
-            self.pkiPriv[nid] = pki_entry(nid, x, y)
-
-        for nid, y_bytes in pub_raw.values():
-            y = EcPt.from_binary(y_bytes, ec)
-            self.pkiPub[nid] = pki_entry(nid, None, y)
+        self._node_id = node_id
+        self._port = port
+        self._peers = peers
+        self._params = SphinxParams(
+            header_len=192,   # header size in bytes
+            body_len=1024,    # payload size in bytes
+            k=16,             # each hops' address in bytes
+            dest_len=16       # destination address in bytes
+        )
+        self._group = self._params.group
+        self._key_store = KeyStore()
+        self.server = AsyncTCPServer(node_id, port, self.handle_message)
+        self.conn_pool = AsyncConnectionPool(peers)
 
 
-    def start(self):
-        threading.Thread(target=self.server_loop, daemon=True).start()
-        time.sleep(1)
-        self.send_loop()
-
-    def server_loop(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
-            server.bind(("0.0.0.0", self.port))
-            server.listen()
-            logging.info(f"Listening on port {self.port}")
-            while True:
-                conn, _ = server.accept()
-                threading.Thread(target=self.handle_connection, args=(conn,), daemon=True).start()
-
-    def handle_connection(self, conn):
-        with conn:
-            try:
-                data = conn.recv(65536)
-                param_dict = {(self.params.max_len, self.params.m): self.params}
-                _, (header, delta) = unpack_message(param_dict, data)
-                x = self.pkiPriv[self.node_id].x
-                tag, info, (header, delta), mac_key = sphinx_process(self.params, x, header, delta)
-                routing = PFdecode(self.params, info)
-
-                if routing[0] == Relay_flag:
-                    _, next_id = routing
-                    host, port = self.peers[next_id]
-                    logging.info(f"Forward to {next_id}")
-                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                        sock.connect((host, port))
-                        msg_bytes = pack_message(self.params, (header, delta))
-                        sock.sendall(msg_bytes)
-
-                elif routing[0] == Dest_flag:
-                    dest, msg = receive_forward(self.params, mac_key, delta)
-                    logging.info(f"Received message for {dest.decode()}: {msg.decode()}")
-
-            except Exception as e:
-                logging.info(f"Error handling connection: {e}")
-
-    def send_loop(self):
-        while True:
-            time.sleep(random.randint(3, 6))
-            self.send_random_message()
-
-    def send_random_message(self):
-        available_nodes = [nid for nid in self.peers if nid != self.node_id]
-        path = random.sample(available_nodes, k=min(MAX_HOPS, len(available_nodes)))
-        path = [self.node_id] + path
-        nodes_routing = list(map(Nenc, path))
-        keys_nodes = [self.pkiPub[n].y for n in path]
-        dest = b"peer-message"
-        message = f"Hi from node {self.node_id}".encode()
-        header, delta = create_forward_message(self.params, nodes_routing, keys_nodes, dest, message)
-        first_hop = path[0]
-        host, port = self.peers[first_hop]
+    async def handle_message(self, data: bytes):
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.connect((host, port))
-                msg_bytes = pack_message(self.params, (header, delta))
-                sock.sendall(msg_bytes)
-            logging.info(f"Sent message to path {path}")
+            param_dict = {(self._params.max_len, self._params.m): self._params}
+            _, (header, delta) = unpack_message(param_dict, data)
+            x = self._key_store.get_x(self._node_id)
+            tag, info, (header, delta), mac_key = sphinx_process(self._params, x, header, delta)
+            routing = PFdecode(self._params, info)
+
+            if routing[0] == Relay_flag:
+                _, next_id = routing
+                msg = pack_message(self._params, (header, delta))
+                await self.conn_pool.send(next_id, msg)
+            elif routing[0] == Dest_flag:
+                dest, msg = receive_forward(self._params, mac_key, delta)
+                logging.info(f"[{self._node_id}] Received message for {dest.decode()}: {msg.decode()}")
         except Exception as e:
-            logging.info(f"Failed to send message: {e}")
+            logging.warning(f"[{self._node_id}] Error in message handler: {e}")
+
+    async def send_random_message(self):
+        available_nodes = [nid for nid in self._peers if nid != self._node_id]
+        path = [self._node_id] + random.sample(available_nodes, min(MAX_HOPS, len(available_nodes)))
+        nodes_routing = list(map(Nenc, path))
+        keys_nodes = [self._key_store.get_y(node_id) for node_id in path]
+        topic = b"peer-message"
+        message = f"Hi from node {self._node_id}".encode()
+        header, delta = create_forward_message(self._params, nodes_routing, keys_nodes, topic, message)
+        first_hop = path[0]
+        msg_bytes = pack_message(self._params, (header, delta))
+        await self.conn_pool.send(first_hop, msg_bytes)
+        logging.info(f"[{self._node_id}] Sent message via path {path}")
+
+    async def start(self):
+        asyncio.create_task(self.server.start())
+        await asyncio.sleep(1)
+        while True:
+            await asyncio.sleep(random.randint(3, 6))
+            await self.send_random_message()

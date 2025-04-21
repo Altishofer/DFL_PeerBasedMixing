@@ -1,8 +1,10 @@
+import asyncio
 import os
 import time
 from peer_node import PeerNode
 from logging_config import setup_logging
 import logging
+
 
 def load_env(key):
     env = os.environ.get(key)
@@ -10,7 +12,8 @@ def load_env(key):
         raise ValueError(f"Env {key} is not set")
     return env
 
-def node_main():
+
+async def node_main():
     node_id = int(load_env("NODE_ID"))
     n_nodes = int(load_env("N_NODES"))
     port = int(load_env("PORT"))
@@ -24,10 +27,8 @@ def node_main():
     }
 
     node = PeerNode(node_id=node_id, port=port, peers=peers)
-    node.start()
+    await node.start()
 
-    while True:
-        time.sleep(1)
 
 if __name__ == "__main__":
-    node_main()
+    asyncio.run(node_main())
