@@ -82,9 +82,9 @@ class MessageManager:
         self._transport = transport
         self._model_handler = model_handler
         self._incoming_parts = defaultdict(lambda: defaultdict(dict))
-        self._ready_set = set()
         self._model_buffer = defaultdict(list)
         self._final_done_buffer = set()
+        self._ready_set = defaultdict(lambda: set())
 
     async def send_model(self, current_round):
         model_data = self._model_handler.serialize_model()
@@ -118,40 +118,39 @@ class MessageManager:
         logging.info(f"Declared ready for aggregation")
 
     async def collect_models(self, current_round, own_model):
-        self._ready_set = {self._node_id}
+        self._ready_set[current_round].add(self._node_id)
         self._model_buffer[current_round].append(own_model)
 
-        while len(self._model_buffer[current_round]) < self._total_peers:
+        while len(self._model_buffer[current_round]) < self._total_peers and len(self._ready_set[current_round]) < self._total_peers:
             msg = await self._transport.receive()
             parsed = pickle.loads(msg)
-
-            if parsed.get("round") != current_round:
-                continue
 
             if parsed["type"] == "model_part":
                 sender = parsed["sender"]
                 part_idx = parsed["part_idx"]
                 total_parts = parsed["total_parts"]
-                self._incoming_parts[current_round][sender][part_idx] = parsed["data"]
+                msg_round = parsed["round"]
+                self._incoming_parts[msg_round][sender][part_idx] = parsed["data"]
 
                 current_parts = self._incoming_parts[current_round][sender]
-                logging.debug(f"Received part {part_idx+1}/{total_parts} from Node {sender}")
+                logging.debug(f"Received part {part_idx+1}/{total_parts} from Node {sender} for round {msg_round}")
 
                 if len(current_parts) == total_parts and set(current_parts.keys()) == set(range(total_parts)):
                     full_data = b"".join(current_parts[i] for i in range(total_parts))
                     model = self._model_handler.deserialize_model(full_data)
                     self._model_buffer[current_round].append(model)
-                    logging.info(f"Reassembled full model from Node {sender}")
+                    logging.info(f"Reassembled full model from Node {sender} for round {msg_round}")
 
             elif parsed["type"] == "ready":
                 sender = parsed["sender"]
-                logging.info(f"Ready from Node {sender} ({len(self._ready_set)}/{self._total_peers})")
+                msg_round = parsed["round"]
+                self._ready_set[msg_round].add(sender)
+                logging.info(f"Ready from Node {sender} for round {msg_round} ({len(self._ready_set[msg_round])}/{self._total_peers})")
 
             elif parsed["type"] == "final_done":
                 sender = parsed["sender"]
-                if sender not in self._final_done_buffer:
-                    self._final_done_buffer.add(sender)
-                    logging.debug(f"Buffered early final_done from Node {sender}")
+                self._final_done_buffer.add(sender)
+                logging.debug(f"Buffered early final_done from Node {sender}")
 
         return self._model_buffer[current_round]
 
