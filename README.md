@@ -32,10 +32,8 @@ The backend runs at http://localhost:8000 and exposes endpoints for starting and
 
 ### 4. Install Node.js and set up the frontend
 
-sudo apt install npm  
-npx create-react-app frontend  
+sudo apt install npm   
 cd frontend  
-npm install axios  
 npm install
 
 ### 5. Start the React frontend
