@@ -1,10 +1,12 @@
 import asyncio
 import random
 import logging
+import pickle
 
 from sphinxmix.SphinxClient import (
-    create_forward_message, PFdecode, Relay_flag, Dest_flag,
-    receive_forward, Nenc, pack_message, unpack_message
+    create_forward_message, PFdecode, Relay_flag, Dest_flag, Surb_flag,
+    receive_forward, Nenc, pack_message, unpack_message,
+    create_surb, package_surb, receive_surb
 )
 from sphinxmix.SphinxParams import SphinxParams
 from sphinxmix.SphinxNode import sphinx_process
@@ -37,6 +39,7 @@ class SphinxTransport:
         )
 
         self._incoming_queue = asyncio.Queue()
+        self._surb_store = {}
 
     async def start(self):
         asyncio.create_task(self._peer.start())
@@ -46,21 +49,49 @@ class SphinxTransport:
 
         nodes_routing = list(map(Nenc, path))
         keys_nodes = [self._key_store.get_y(nid) for nid in path]
-        topic = b"peer-message"
 
-        header, delta = create_forward_message(self._params, nodes_routing, keys_nodes, topic, payload)
+        surbid, surbkeytuple, nymtuple = create_surb(self._params, nodes_routing, keys_nodes, b"myself")
+        self._surb_store[surbid] = surbkeytuple
+        surb_payload = {
+            "msg": payload,
+            "surb": nymtuple.serialize(),
+        }
+        serialized_surb_payload = pickle.dumps(surb_payload) # TODO: Serialization is not working due to encrypted nymtuple
+        header, delta = create_forward_message(self._params, nodes_routing, keys_nodes, b"peer-message", serialized_surb_payload)
         msg_bytes = pack_message(self._params, (header, delta))
 
         first_hop = path[0]
         await self._peer.send(first_hop, msg_bytes)
-        logging.debug(
-            f"Sent message to Node {target_node} via path {path}"
-        )
+        logging.debug(f"Sent message to Node {target_node} via path {path}")
 
-    def __build_path_to(self, target):
-        intermediates = [nid for nid in self._peers if nid not in (self._node_id, target)]
-        hops = random.sample(intermediates, min(self._max_hops - 1, len(intermediates)))
-        return hops + [target]
+    def __resolve_surb(self, delta: bytes, id):
+        if (id in self._surb_store):
+            key = self._surb_store[id]
+            dest, msg = receive_surb(self._params, key, delta)
+            del self._surb_store[id]
+            logging.debug(f"Resolved surb {id} with message {msg}")
+        else:
+            logging.warning(f"❌ Surb {id} not found in the store")
+            return None
+        
+    async def __handle_surb(self, payload_bytes: bytes):
+        try:
+            payload = pickle.loads(payload_bytes)
+            logging.debug(f"Received payload: {payload}")
+            msg = payload["msg"]
+            logging.debug(f"Received msg: {msg}")
+            await self._incoming_queue.put(msg)
+
+            surb = payload["surb"]
+            reply_msg = b"Message received"
+            header, delta = await package_surb(self._params, surb, reply_msg)
+            msg_bytes = pack_message(self._params, (header, delta))
+            await self._peer.send_first_hop(surb[0], msg_bytes)  # surb[0] is usually the first hop ID
+            logging.info("Sent SURB-based reply.")
+
+        except Exception as e:
+            logging.error(f"Error handling surb: {e}")
+       
 
     async def receive(self) -> bytes:
         return await self._incoming_queue.get()
@@ -80,10 +111,20 @@ class SphinxTransport:
             elif routing[0] == Dest_flag:
                 dest, msg = receive_forward(self._params, mac_key, delta)
                 logging.debug(f"Received message of length {len(msg)} for {dest.decode()}")
-                await self._incoming_queue.put(msg)
+                await self.__handle_surb(msg)
+            elif routing[0] == Surb_flag:
+                _, dest, myid = routing
+                logging.debug(f"Received surb {myid} for {dest.decode()}")
+                self.__resolve_surb(delta, myid)
+
         except Exception as e:
             logging.warning(f"❌ Error in transport: {e}")
 
     def __build_random_path(self):
         available_nodes = [nid for nid in self._peers if nid != self._node_id]
         return random.sample(available_nodes, min(self._max_hops, len(available_nodes)))
+
+    def __build_path_to(self, target):
+        intermediates = [nid for nid in self._peers if nid not in (self._node_id, target)]
+        hops = random.sample(intermediates, min(self._max_hops - 1, len(intermediates)))
+        return hops + [target]

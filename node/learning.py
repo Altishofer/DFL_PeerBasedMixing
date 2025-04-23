@@ -105,7 +105,6 @@ class MessageManager:
 
         logging.info(f"Sent model in {len(chunks)} parts each")
 
-
     async def collect_models(self, current_round, own_model):
         self._model_buffer[current_round].append(own_model)
 
