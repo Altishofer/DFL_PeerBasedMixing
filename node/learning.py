@@ -87,7 +87,7 @@ class MessageManager:
 
     async def send_model(self, current_round):
         model_data = self._model_handler.serialize_model()
-        chunks = self._model_handler.chunk(model_data, 700)
+        chunks = self._model_handler.chunk(model_data, 600)
 
         for peer_id in range(self._total_peers):
             if peer_id == self._node_id:
