@@ -125,15 +125,32 @@ docker ps -aq | xargs -r docker rm -f
 
 ## To Do
 
-- Enable and disable mixnet routing for experimental purposes
-- Use persistent TCP connections (currently, each message uses a new socket)
-- Consider using UDP instead of TCP for reduced overhead
-- Add message hashes for payload verification and replay protection
+### Jan
+- Novelty of our implementation
+- Model and network anonymity for DFL
+- Wait for the implementation to condensate, start writing again
+
+### Linn
 - Switch to structured JSON model updates instead of serialized byte streams
-- Implement streaming-based FL aggregation
+- Implement streaming-based FL aggregation (send parts during each epoch)
+- Aggregation algo which aggregates all model fragments, ignoring any identity and parameter distribution
+- Implement more robust fragment-based aggregation
+
+### Sandrin
+- Use persistent TCP connections (currently, each message uses a new socket)
+- Add message hashes for payload verification and replay protection
 - Introduce random synonyms for models and fragments to improve unlinkability
 - Real-time node statistics and visualization in the frontend
+- job based deployment
+
+
+### Altin
+- Enable and disable mixnet routing for experimental purposes
 - Allow free join/leave of nodes by decoupling strict round synchronization
-- Implement more robust fragment-based aggregation
+- Mixing strategies (delay, shuffle, batch, dummy)
+- Mark nodes as active or inactive, for paths where messages are not received
+
+
+
 
 ---
