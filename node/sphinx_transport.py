@@ -70,7 +70,7 @@ class SphinxTransport:
             key = self._surb_store[id]
             msg = receive_surb(self._params, key, delta)
             del self._surb_store[id]
-            logging.info(f"{self._node_id} resolved surb with message: {msg.decode()}")
+            logging.info(f"Node {self._node_id} resolved surb with message: {msg.decode()}")
         else:
             logging.warning(f"❌ Surb {id} not found in the store")
             return None
@@ -106,15 +106,12 @@ class SphinxTransport:
             if routing[0] == Relay_flag:
                 _, next_id = routing
                 msg = pack_message(self._params, (header, delta))
-                # logging.debug(f"Received message of length {len(msg)} for {next_id}")
                 await self._peer.send(next_id, msg)
             elif routing[0] == Dest_flag:
                 dest, msg = receive_forward(self._params, mac_key, delta)
-                # logging.debug(f"Received message of length {len(msg)} for {dest.decode()}")
                 await self.__handle_surb(msg)
             elif routing[0] == Surb_flag:
                 _, dest, myid = routing
-                # logging.debug(f"Received surb {myid} for {dest.decode()}")
                 self.__resolve_surb(delta, myid)
 
         except Exception as e:
