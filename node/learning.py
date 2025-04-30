@@ -87,7 +87,7 @@ class MessageManager:
 
     async def send_model(self, current_round):
         model_data = self._model_handler.serialize_model()
-        chunks = self._model_handler.chunk(model_data, 700)
+        chunks = self._model_handler.chunk(model_data, 600)
 
         for peer_id in range(self._total_peers):
             if peer_id == self._node_id:
@@ -104,7 +104,6 @@ class MessageManager:
                 await self._transport.send(pickle.dumps(msg), peer_id)
 
         logging.info(f"Sent model in {len(chunks)} parts each")
-
 
     async def collect_models(self, current_round, own_model):
         self._model_buffer[current_round].append(own_model)
