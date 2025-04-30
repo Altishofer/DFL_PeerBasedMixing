@@ -65,7 +65,7 @@ def start_nodes(n):
                     "mode": "ro"
                 },
                 os.path.abspath("../node"): {
-                    "bind": "/app",
+                    "bind": "/node",
                     "mode": "ro"
                 }
             },
