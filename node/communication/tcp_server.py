@@ -5,7 +5,7 @@ from contextlib import suppress
 from retry import retry
 
 
-class TCP_Server:
+class TcpServer:
     def __init__(self, node_id, port, peers, message_handler, packet_size):
         self.node_id = node_id
         self.port = port

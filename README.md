@@ -61,6 +61,12 @@ cd DFL_PeerBasedMixing
 docker build -t dfl_node ./node
 ```
 
+*or for debugging purposes*
+
+```bash
+docker build -t dfl_node ./node --progress=plain --no-cache
+```
+
 ### 3. Install Python requirements
 
 ```bash
@@ -87,6 +93,7 @@ npm install
 ### 6. Start the React frontend
 
 ```bash
+cd frontend
 npm start
 ```
 
