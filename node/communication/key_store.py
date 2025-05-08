@@ -1,12 +1,10 @@
 import pickle
-import logging
 
 from petlib.bn import Bn
 from petlib.ec import EcGroup, EcPt
 
 from sphinxmix.SphinxClient import (
-    create_forward_message, PFdecode, Relay_flag, Dest_flag,
-    receive_forward, Nenc, pki_entry, pack_message, unpack_message
+    pki_entry
 )
 
 from utils.exception_decorator import log_exceptions

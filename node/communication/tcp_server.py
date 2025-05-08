@@ -1,8 +1,5 @@
 import asyncio
 import logging
-from contextlib import suppress
-
-from retry import retry
 
 from communication.connection import Connection
 from utils.exception_decorator import log_exceptions
