@@ -76,6 +76,7 @@ pip install -r requirements.txt
 ### 4. Start the FastAPI backend
 
 ```bash
+mkdir secrets
 cd manager
 uvicorn app:app --reload
 ```

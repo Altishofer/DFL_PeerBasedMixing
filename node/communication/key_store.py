@@ -47,8 +47,10 @@ class KeyStore:
     def get_x(self, node_id):
         if node_id in self._pkiPriv:
             return self._pkiPriv[node_id].x
+        return None
 
     def get_y(self, node_id):
         if node_id in self._pkiPub:
             return self._pkiPriv[node_id].y
+        return None
 
