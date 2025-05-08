@@ -2,6 +2,9 @@ import asyncio
 import random
 import logging
 import struct
+import sys
+import time
+
 import msgpack
 
 from sphinxmix.SphinxClient import (
@@ -28,7 +31,7 @@ class SphinxTransport:
             k=16,
             dest_len=16
         )
-        self._packet_size = self._params.max_len + self._params.m
+        self._packet_size = 1253
         self._key_store = KeyStore()
 
         self._peer = TcpServer(
@@ -44,6 +47,9 @@ class SphinxTransport:
 
     async def start(self):
         asyncio.create_task(self._peer.start())
+        await asyncio.sleep(5)
+        await self._peer.connect_peers()
+        await asyncio.sleep(5)
 
     async def send(self, payload: bytes, target_node: int = None):
         path, nodes_routing, keys_nodes = self.__build_forward_path(target_node)

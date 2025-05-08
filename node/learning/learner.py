@@ -40,4 +40,3 @@ class Learner:
             f"Train: {acc_before:.4f} ➜ {acc_after:.4f} | Δ: {delta:+.4f} | "
             f"[Validation Accuracy: {val_acc:.4f}]"
         )
-        logging.info("=" * 60)

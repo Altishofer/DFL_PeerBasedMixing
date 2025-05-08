@@ -120,6 +120,10 @@ DFL_PeerBasedMixing/
 docker ps -aq | xargs -r docker rm -f
 ```
 
+```bash
+docker inspect --format '{{.State.Pid}}' $(docker ps -q) | xargs -r sudo kill -9
+```
+
 
 ---
 

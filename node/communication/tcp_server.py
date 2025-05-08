@@ -4,15 +4,18 @@ from contextlib import suppress
 
 from retry import retry
 
+from communication.connection import Connection
+
 
 class TcpServer:
-    def __init__(self, node_id, port, peers, message_handler, packet_size):
+    def __init__(self, node_id:str, port:int, peers:dict, message_handler, packet_size):
         self.node_id = node_id
         self.port = port
-        self.peers = peers  # peer_id: (host, port)
+        self.peers = peers
         self.message_handler = message_handler
         self.packet_size = packet_size
         self._server = None
+        self.connections = {} # node_id : Connection
 
     async def start(self):
         self._server = await asyncio.start_server(
@@ -24,30 +27,22 @@ class TcpServer:
         async with self._server:
             await self._server.serve_forever()
 
-    @retry(delay=4, tries=5)
+    async def connect_peers(self):
+        self.connections = {
+        peer_id: await Connection.create(host, port)
+        for peer_id, (host, port) in
+        self.peers.items() if peer_id != self.node_id
+        }
+
     async def send(self, peer_id, message: bytes):
-        host, port = self.peers[peer_id]
-        try:
-            reader, writer = await asyncio.open_connection(host, port)
-            writer.write(message)
-            await writer.drain()
-            writer.close()
-            await writer.wait_closed()
-            logging.debug(f"Sent {len(message)} bytes to peer {peer_id} at {host}:{port}")
-        except Exception as e:
-            logging.warning(f"Failed to send to peer {peer_id} at {host}:{port}: {e}")
+        connection = self.connections[peer_id]
+        await connection.send(message)
 
     async def _handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         peer_info = writer.get_extra_info("peername")
         try:
-            data = await reader.read(65536)
-            logging.debug(f"Received {len(data)} bytes from {peer_info}")
-            await self.message_handler(data)
-        except asyncio.IncompleteReadError:
-            logging.warning(f"Incomplete message from {peer_info}")
+            while True:
+                data = await reader.readexactly(self.packet_size)
+                await self.message_handler(data)
         except Exception as e:
             logging.warning(f"Error handling data from {peer_info}: {e}")
-        finally:
-            writer.close()
-            await writer.wait_closed()
-            logging.debug(f"Closed connection from {peer_info}")
