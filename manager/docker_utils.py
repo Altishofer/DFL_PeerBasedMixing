@@ -73,9 +73,6 @@ def start_nodes(n):
             network=NETWORK,
             hostname=f"node_{i}",
             init=True,
-            mem_limit="512m",
-            cpu_period=100000,
-            cpu_quota=50000
         )
 
 def stop_nodes():

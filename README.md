@@ -151,6 +151,10 @@ docker ps -aq | xargs -r docker rm -f
 - Mark nodes as active or inactive, for paths where messages are not received
 
 
+## Notes
+write about small prototypes
+think about experiments
+
 
 
 ---
