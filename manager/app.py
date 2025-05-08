@@ -30,6 +30,14 @@ def start(count: int):
     return {"status": "started", "nodes": count}
 
 
+@app.post("/clear")
+def start(count: int):
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")
+    filename = os.path.join(METRICS_DIR, f"metrics_{timestamp}.jsonl")
+    if os.path.exists(filename):
+        os.remove(filename)
+    return {"status": "started", "nodes": count}
+
 @app.post("/stop")
 def stop():
     stop_nodes()

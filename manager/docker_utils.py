@@ -77,19 +77,17 @@ def start_nodes(n):
         )
 
 def stop_nodes():
-    for c in client.containers.list(all=True):
-        if c.name.startswith("node"):
-            try:
+    containers = client.containers.list(all=True)
+    for c in containers:
+        try:
+            if c.name.startswith("node_"):
+                print(f"Stopping {c.name} (status: {c.status})")
                 if c.status == "running":
-                    try:
-                        c.stop(timeout=5)
-                    except docker.errors.APIError:
-                        print(f"[!] Failed to stop {c.name}, forcing kill")
-                        c.kill()
+                    c.stop(timeout=5)
                 c.remove(force=True)
-                print(f"Stopped and removed container: {c.name}")
-            except docker.errors.APIError as e:
-                print(f"Error stopping/removing container {c.name}: {e}")
+                print(f"Removed {c.name}")
+        except docker.errors.APIError as e:
+            print(f"[!] Failed to stop/remove {c.name}: {e}")
 
 def get_status():
     return [
