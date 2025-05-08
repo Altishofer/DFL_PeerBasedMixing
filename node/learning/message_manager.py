@@ -31,7 +31,7 @@ class MessageManager:
                     "total_parts": len(chunks),
                     "data": chunk
                 }
-                await self._transport.send(pickle.dumps(msg), peer_id)
+                await self._transport.send(msg, peer_id)
 
         logging.info(f"Sent model in {len(chunks)} parts each")
 

@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import pickle
 
 from sphinxmix.SphinxClient import (
     Relay_flag, Dest_flag, Surb_flag,
@@ -7,8 +8,10 @@ from sphinxmix.SphinxClient import (
 )
 from sphinxmix.SphinxParams import SphinxParams
 
+from communication.sphinx.cache import Cache
 from communication.sphinx.sphinx_router import SphinxRouter
 from node.communication.tcp_server import TcpServer
+from utils.config_store import ConfigStore
 from utils.exception_decorator import log_exceptions
 
 
@@ -40,7 +43,9 @@ class SphinxTransport:
             message_handler=self.__handle_incoming
         )
 
+        self._cache = Cache()
         self._incoming_queue = asyncio.Queue()
+        asyncio.create_task(self.resend_loop())
 
     @log_exceptions
     async def start(self):
@@ -50,13 +55,23 @@ class SphinxTransport:
         await asyncio.sleep(5)
 
     @log_exceptions
-    async def send(self, payload: bytes, target_node: int = None):
-        path, msg_bytes = self.sphinx_router.create_forward_msg(target_node, payload)
+    async def send(self, json_payload: dict, target_node: int = None):
+        str_payload = pickle.dumps(json_payload)
+        path, msg_bytes = self.sphinx_router.create_forward_msg(target_node, str_payload)
         await self._peer.send(path[0], msg_bytes)
 
     @log_exceptions
     async def receive(self) -> bytes:
         return await self._incoming_queue.get()
+
+    @log_exceptions
+    async def resend_loop(self):
+        while True:
+            stale = self._cache.get_older_than(ConfigStore.resend_time)
+            for fragment in stale:
+                await self.send(fragment.payload, fragment.target_node)
+                logging.info(f"Resent message to node {fragment.target_node}")
+            await asyncio.sleep(1)
 
     @log_exceptions
     async def __unpack_payload_and_send_surb(self, payload_bytes: bytes):

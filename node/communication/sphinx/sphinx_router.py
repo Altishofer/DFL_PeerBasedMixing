@@ -8,7 +8,7 @@ from sphinxmix.SphinxClient import (
 )
 from sphinxmix.SphinxNode import sphinx_process
 
-from communication.sphinx.msg_cache import MsgCache
+from communication.sphinx.cache import Cache
 from node.communication.sphinx.key_store import KeyStore
 from utils.config_store import ConfigStore
 from utils.exception_decorator import log_exceptions
@@ -20,8 +20,10 @@ class SphinxRouter:
         self._node_id = node_id
         self._peers = peers
         self._params = params
-        self.msg_cache = MsgCache()
+        self.cache = Cache()
         self._key_store = KeyStore()
+
+        self._surb_key_store = {}
 
     @log_exceptions
     def create_forward_msg(self, target_node, payload):
@@ -31,6 +33,7 @@ class SphinxRouter:
         surbid, surbkeytuple, nymtuple = self.create_and_store_surb(nodes_routing_back, keys_nodes_back)
         header, delta = self.create_forward_packet(nodes_routing, keys_nodes, nymtuple, payload)
         msg_bytes = pack_message(self._params, (header, delta))
+        self.cache.new_fragment(surbid, surbkeytuple, target_node, payload)
         return path, msg_bytes
 
     @log_exceptions
@@ -54,7 +57,7 @@ class SphinxRouter:
     @log_exceptions
     def create_and_store_surb(self, routing, keys):
         surbid, surbkeytuple, nymtuple = create_surb(self._params, routing, keys, b"myself")
-        self.msg_cache.new_fragment(surbid, surbkeytuple)
+        self._surb_key_store[surbid] = surbkeytuple
         return surbid, surbkeytuple, nymtuple
 
     @log_exceptions
@@ -63,7 +66,9 @@ class SphinxRouter:
 
     @log_exceptions
     def decrypt_surb(self, delta: bytes, surb_id):
-        key = self.msg_cache.received_surb(surb_id)
+        key = self.cache.received_surb(surb_id)
+
+        key = self._surb_key_store[surb_id]
         msg = receive_surb(self._params, key, delta)
         logging.debug(f"{self._node_id} resolved surb with message: {msg.decode()}")
         return msg
