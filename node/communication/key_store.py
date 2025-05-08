@@ -9,7 +9,7 @@ from sphinxmix.SphinxClient import (
     receive_forward, Nenc, pki_entry, pack_message, unpack_message
 )
 
-
+from utils.exception_decorator import log_exceptions
 
 
 class KeyStore:
@@ -19,7 +19,7 @@ class KeyStore:
         self._pkiPub = dict()
         self.load_keys()
 
-
+    @log_exceptions
     def load_keys(self):
 
         priv_path = "/config/pki_priv.pkl"
@@ -44,11 +44,13 @@ class KeyStore:
             y = EcPt.from_binary(y_bytes, ec)
             self._pkiPub[nid] = pki_entry(nid, None, y)
 
+    @log_exceptions
     def get_x(self, node_id):
         if node_id in self._pkiPriv:
             return self._pkiPriv[node_id].x
         return None
 
+    @log_exceptions
     def get_y(self, node_id):
         if node_id in self._pkiPub:
             return self._pkiPriv[node_id].y

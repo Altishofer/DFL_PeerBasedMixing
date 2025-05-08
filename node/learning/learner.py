@@ -3,6 +3,7 @@ import logging
 
 from node.learning.message_manager import MessageManager
 from node.learning.model_handler import ModelHandler
+from utils.exception_decorator import log_exceptions
 
 
 class Learner:
@@ -15,6 +16,7 @@ class Learner:
         self._model_handler = ModelHandler(node_id, total_peers)
         self._message_manager = MessageManager(node_id, total_peers, transport, self._model_handler)
 
+    @log_exceptions
     async def run(self):
         while self._current_round < self._total_rounds:
             self._log_header(f"ROUND {self._current_round}")
@@ -29,9 +31,11 @@ class Learner:
         logging.info(f"Completed all {self._total_rounds} training rounds")
         await asyncio.sleep(10)
 
+    @log_exceptions
     def _log_header(self, title):
         logging.info(f"\n{'=' * 20} {title} {'=' * 20}")
 
+    @log_exceptions
     def _log_footer(self, acc_before, acc_after):
         val_acc = self._model_handler.evaluate()
         delta = acc_after - acc_before

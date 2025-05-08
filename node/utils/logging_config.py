@@ -1,5 +1,9 @@
 import logging
 
+from utils.exception_decorator import log_exceptions
+
+
+@log_exceptions
 def setup_logging(node_id):
     logging.basicConfig(
         level=logging.INFO,

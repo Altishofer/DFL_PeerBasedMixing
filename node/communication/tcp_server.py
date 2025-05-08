@@ -5,6 +5,7 @@ from contextlib import suppress
 from retry import retry
 
 from communication.connection import Connection
+from utils.exception_decorator import log_exceptions
 
 
 class TcpServer:
@@ -17,6 +18,7 @@ class TcpServer:
         self._server = None
         self.connections = {} # node_id : Connection
 
+    @log_exceptions
     async def start(self):
         self._server = await asyncio.start_server(
             self._handle_connection,
@@ -27,6 +29,7 @@ class TcpServer:
         async with self._server:
             await self._server.serve_forever()
 
+    @log_exceptions
     async def connect_peers(self):
         self.connections = {
         peer_id: await Connection.create(host, port)
@@ -34,15 +37,14 @@ class TcpServer:
         self.peers.items() if peer_id != self.node_id
         }
 
+    @log_exceptions
     async def send(self, peer_id, message: bytes):
         connection = self.connections[peer_id]
         await connection.send(message)
 
+    @log_exceptions
     async def _handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         peer_info = writer.get_extra_info("peername")
-        try:
-            while True:
-                data = await reader.readexactly(self.packet_size)
-                await self.message_handler(data)
-        except Exception as e:
-            logging.warning(f"Error handling data from {peer_info}: {e}")
+        while True:
+            data = await reader.readexactly(self.packet_size)
+            await self.message_handler(data)

@@ -2,6 +2,8 @@ import logging
 import pickle
 from collections import defaultdict
 
+from utils.exception_decorator import log_exceptions
+
 
 class MessageManager:
     def __init__(self, node_id, total_peers, transport, model_handler):
@@ -12,6 +14,7 @@ class MessageManager:
         self._incoming_parts = defaultdict(lambda: defaultdict(dict))
         self._model_buffer = defaultdict(list)
 
+    @log_exceptions
     async def send_model(self, current_round):
         model_data = self._model_handler.serialize_model()
         chunks = self._model_handler.chunk(model_data, 600)
@@ -32,6 +35,7 @@ class MessageManager:
 
         logging.info(f"Sent model in {len(chunks)} parts each")
 
+    @log_exceptions
     async def collect_models(self, current_round, own_model):
         self._model_buffer[current_round].append(own_model)
 
