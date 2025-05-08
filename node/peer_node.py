@@ -3,6 +3,7 @@ import random
 
 from communication.sphinx.sphinx_transport import SphinxTransport
 from learning.learner import Learner
+from metrics.node_metrics import Metrics
 
 
 class PeerNode:
@@ -10,6 +11,7 @@ class PeerNode:
         self._node_id = node_id
         self._transport = SphinxTransport(node_id, port, peers)
         self._learning = Learner(node_id, self._transport, total_peers=len(peers))
+        Metrics(controller_url="http://controller:8000")
 
     async def start(self):
         await self._transport.start()

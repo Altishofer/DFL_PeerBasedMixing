@@ -7,3 +7,5 @@ package-lock.json
 __pycache__/
 *.pkl
 secrets/
+manager/metrics
+*.jsonl

@@ -57,7 +57,6 @@ class SphinxRouter:
     @log_exceptions
     def create_and_store_surb(self, routing, keys):
         surbid, surbkeytuple, nymtuple = create_surb(self._params, routing, keys, b"myself")
-        self._surb_key_store[surbid] = surbkeytuple
         return surbid, surbkeytuple, nymtuple
 
     @log_exceptions
@@ -67,8 +66,6 @@ class SphinxRouter:
     @log_exceptions
     def decrypt_surb(self, delta: bytes, surb_id):
         key = self.cache.received_surb(surb_id)
-
-        key = self._surb_key_store[surb_id]
         msg = receive_surb(self._params, key, delta)
         logging.debug(f"{self._node_id} resolved surb with message: {msg.decode()}")
         return msg
