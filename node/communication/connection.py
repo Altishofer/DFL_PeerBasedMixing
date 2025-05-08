@@ -15,7 +15,6 @@ class Connection:
         self._port = port
         self._reader = reader
         self._writer = writer
-        self._metrics = Metrics()
 
     @classmethod
     @retry(tries=5, delay=1)
@@ -28,8 +27,6 @@ class Connection:
     @retry(tries=5, delay=1)
     @log_exceptions
     async def send(self, message: bytes):
-        self._metrics.increment("msg_sent")
-        self._metrics.increment("payload_sent", len(message))
         self._writer.write(message)
         await self._writer.drain()
         logging.debug(f"Sent {len(message)} bytes to peer at {self._host}:{self._port}")

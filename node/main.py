@@ -31,7 +31,12 @@ async def node_main():
         for i in range(n_nodes)
     }
 
-    node = PeerNode(node_id=node_id, port=port, peers=peers)
+    node = PeerNode(
+        node_id=node_id,
+        port=port,
+        peers=peers,
+        host_name=f"node_{node_id}"
+    )
     await node.start()
 
 

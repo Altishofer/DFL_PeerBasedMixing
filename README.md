@@ -78,7 +78,7 @@ pip install -r requirements.txt
 ```bash
 mkdir secrets
 cd manager
-uvicorn app:app --reload
+uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Backend runs at [http://localhost:8000](http://localhost:8000).

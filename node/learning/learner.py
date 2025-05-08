@@ -7,7 +7,7 @@ from utils.exception_decorator import log_exceptions
 
 
 class Learner:
-    def __init__(self, node_id, transport, total_peers, total_rounds=5):
+    def __init__(self, node_id, transport, total_peers, total_rounds=30):
         self._node_id = node_id
         self._transport = transport
         self._total_peers = total_peers

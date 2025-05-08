@@ -47,7 +47,7 @@ def start_nodes(n):
     generate_keys(n)
 
     for i in range(n):
-        name = f"node{i}"
+        name = f"node_{i}"
         ip = f"{BASE_IP_PREFIX}{i}"
 
         print(f"Starting {name} @ {ip}")
@@ -73,6 +73,7 @@ def start_nodes(n):
             network=NETWORK,
             hostname=f"node_{i}",
             init=True,
+            extra_hosts={"host.docker.internal": "host-gateway"}
         )
 
 def stop_nodes():
