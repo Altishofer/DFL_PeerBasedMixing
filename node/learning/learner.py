@@ -20,8 +20,8 @@ class Learner:
             self._log_header(f"ROUND {self._current_round}")
             acc_before = self._model_handler.train()
             await self._message_manager.send_model(self._current_round)
-            models = await self._message_manager.collect_models(self._current_round, self._model_handler.get_model())
-            self._model_handler.aggregate(models)
+            model_chunks = await self._message_manager.collect_models(self._current_round)
+            self._model_handler.aggregate(model_chunks)
             acc_after = self._model_handler.evaluate()
             self._log_footer(acc_before, acc_after)
             self._current_round += 1

@@ -97,7 +97,7 @@ class SphinxTransport:
             logging.error(f"Error handling surb: {e}")
 
     async def receive(self) -> bytes:
-        return await self._incoming_queue.get()
+        return await self._incoming_queue.get_nowait()
 
     async def __handle_incoming(self, data: bytes):
         try:
