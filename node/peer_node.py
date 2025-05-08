@@ -1,7 +1,7 @@
 import asyncio
 import random
 
-from communication.sphinx_transport import SphinxTransport
+from communication.sphinx.sphinx_transport import SphinxTransport
 from learning.learner import Learner
 
 
@@ -14,4 +14,4 @@ class PeerNode:
     async def start(self):
         await self._transport.start()
         await self._learning.run()
-        await asyncio.sleep(30)
+        await asyncio.sleep(15)

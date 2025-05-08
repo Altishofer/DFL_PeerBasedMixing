@@ -1,14 +1,13 @@
 import asyncio
 import logging
 
-
 from sphinxmix.SphinxClient import (
     Relay_flag, Dest_flag, Surb_flag,
     receive_forward, pack_message
 )
 from sphinxmix.SphinxParams import SphinxParams
 
-from communication.sphinx_router import SphinxRouter
+from communication.sphinx.sphinx_router import SphinxRouter
 from node.communication.tcp_server import TcpServer
 from utils.exception_decorator import log_exceptions
 
@@ -61,22 +60,16 @@ class SphinxTransport:
 
     @log_exceptions
     async def __unpack_payload_and_send_surb(self, payload_bytes: bytes):
-        try:
-            nymtuple, payload = payload_bytes
-            await self._incoming_queue.put(payload)
-            msg_bytes, first_hop = self.sphinx_router.create_surb_reply(nymtuple)
-            await self._peer.send(first_hop, msg_bytes)
-            logging.debug("Sent SURB-based reply.")
-        except Exception:
-            logging.error(f"Error __unpack_payload_and_send_surb", exc_info=True)
+        nymtuple, payload = payload_bytes
+        await self._incoming_queue.put(payload)
+        msg_bytes, first_hop = self.sphinx_router.create_surb_reply(nymtuple)
+        await self._peer.send(first_hop, msg_bytes)
+        logging.debug("Sent SURB-based reply.")
 
     @log_exceptions
     async def __handle_incoming(self, data: bytes):
-        try:
-            unpacked = self.sphinx_router.process_incoming(data)
-            await self.__handle_routing_decision(*unpacked)
-        except Exception as e:
-            logging.error(f"Error handling_incoming", exc_info=True)
+        unpacked = self.sphinx_router.process_incoming(data)
+        await self.__handle_routing_decision(*unpacked)
 
     @log_exceptions
     async def __handle_routing_decision(self, routing, header, delta, mac_key):
