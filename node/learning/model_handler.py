@@ -8,8 +8,6 @@ from sklearn.exceptions import ConvergenceWarning
 import warnings
 from math import ceil
 
-from utils.exception_decorator import log_exceptions
-
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 
@@ -24,22 +22,18 @@ class ModelHandler:
         )
         self._X, self._y, self._X_val, self._y_val = self._load_partition(node_id, total_peers)
 
-    @log_exceptions
     def train(self):
         logging.info(f"Started training...")
         self._model.fit(self._X, self._y)
         return self.evaluate()
 
-    @log_exceptions
     def evaluate(self):
         return self._model.score(self._X_val, self._y_val)
 
-    @log_exceptions
     def set_model(self, model):
         self._model.coefs_ = model.coefs_
         self._model.intercepts_ = model.intercepts_
 
-    @log_exceptions
     def get_model(self):
         return self._model
     
@@ -47,28 +41,6 @@ class ModelHandler:
         aggregate[chunk["start"]:chunk["end"]] += chunk["data"]
         counter[chunk["start"]:chunk["end"]] += 1
 
-<<<<<<< HEAD
-    @log_exceptions
-    def aggregate(self, models):
-        coefs = [m.coefs_ for m in models]
-        intercepts = [m.intercepts_ for m in models]
-        self._model.coefs_ = [np.mean([m[i] for m in coefs], axis=0) for i in range(len(coefs[0]))]
-        self._model.intercepts_ = [np.mean([b[i] for b in intercepts], axis=0) for i in range(len(intercepts[0]))]
-
-    @log_exceptions
-    def serialize_model(self):
-        return zlib.compress(pickle.dumps(self._model))
-
-    @log_exceptions
-    def deserialize_model(self, byte_data):
-        return pickle.loads(zlib.decompress(byte_data))
-
-    @log_exceptions
-    def chunk(self, data, chunk_size):
-        return [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
-
-    @log_exceptions
-=======
     def aggregate(self, model_chunks):
         agg_coefs = self._flatten(self._model.coefs_)
         agg_intercepts = self._flatten(self._model.intercepts_)
@@ -149,7 +121,6 @@ class ModelHandler:
             
         return coef_chunks, intercept_chunks
     
->>>>>>> linn
     def _load_partition(self, node_id, total_peers, val_ratio=0.2):
         data = load_digits()
         X = data.data
