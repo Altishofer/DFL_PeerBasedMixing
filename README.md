@@ -163,3 +163,7 @@ think about experiments
 
 
 ---
+
+sudo snap remove --purge docker
+
+https://docs.docker.com/engine/install/ubuntu/

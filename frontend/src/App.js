@@ -13,10 +13,7 @@ const MAX_NODES = 10;
 
 const METRIC_FIELDS = {
   msg_sent: 'Messages Sent',
-  payload_sent: 'Payload Sent',
-  msg_recv: 'Messages Received',
   errors: 'Errors',
-  time_stamp: 'Timestamp',
   surb_received: 'SURBs Received',
   fragment_received: 'Fragments Received',
   bytes_received: 'Bytes Received',
@@ -28,7 +25,7 @@ const METRIC_FIELDS = {
 };
 
 const METRIC_KEYS = Object.keys(METRIC_FIELDS);
-const getDisplayName = key => METRIC_FIELDS[key] || key;
+const getDisplayName = key => METRIC_FIELDS[key] || null;
 
 const Dashboard = () => {
   const [nodeCount, setNodeCount] = useState(4);
@@ -39,6 +36,7 @@ const Dashboard = () => {
   const [error, setError] = useState('');
   const [nodeUptimes, setNodeUptimes] = useState({});
   const [config, setConfig] = useState({ displayMode: 'raw' });
+const [wsTrigger, setWsTrigger] = useState(0);
 
   const seenIdsRef = useRef(new Set());
   const wsRef = useRef(null);
@@ -60,7 +58,7 @@ const Dashboard = () => {
         const updated = { ...prev };
         for (const { name, status, started_at } of newStatus) {
           if (!name) continue;
-          const isRunning = status === 'running';
+          const isRunning = status?.toLowerCase() === 'running';
           const startTime = started_at ? new Date(started_at).getTime() : null;
           if (!updated[name]) {
             updated[name] = {
@@ -87,16 +85,18 @@ const Dashboard = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setNodeUptimes(prev => {
-        const now = Date.now();
-        const updated = {};
-        for (const [node, info] of Object.entries(prev)) {
-          updated[node] = {
-            ...info,
-            elapsedMs: info.isRunning && info.startTime ? now - info.startTime : info.elapsedMs
-          };
-        }
-        return updated;
-      });
+      const now = Date.now();
+      const updated = {};
+      for (const [node, info] of Object.entries(prev)) {
+        const shouldUpdate = info.isRunning && info.startTime;
+        updated[node] = {
+          ...info,
+          elapsedMs: shouldUpdate ? now - info.startTime : info.elapsedMs
+        };
+      }
+      return updated;
+    });
+
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -114,15 +114,6 @@ const Dashboard = () => {
       setIsLoading(false);
     }
   }, [fetchNodeStatus]);
-
-  const startNodes = useCallback(async () => {
-    setMetrics([]);
-    seenIdsRef.current = new Set();
-    setSelectedMetrics([]);
-    await manageNodes(`/start/${nodeCount}`, 'Failed to start nodes');
-  }, [manageNodes, nodeCount]);
-
-  const stopNodes = useCallback(() => manageNodes('/stop', 'Failed to stop nodes'), [manageNodes]);
 
   const loadInitialState = useCallback(async () => {
   try {
@@ -148,9 +139,31 @@ const Dashboard = () => {
 }, [fetchNodeStatus]);
 
 
-const clearStats = useCallback(async () => {
+const startNodes = useCallback(async () => {
+  setMetrics([]);
+  seenIdsRef.current = new Set();
+  setSelectedMetrics([]);
+  await manageNodes(`/start/${nodeCount}`, 'Failed to start nodes');
+setWsTrigger(prev => prev + 1);
+
+  await new Promise(resolve => setTimeout(resolve, 500));
+
   await loadInitialState();
-}, [loadInitialState]);
+}, [manageNodes, nodeCount, loadInitialState]);
+
+
+  const stopNodes = useCallback(() => manageNodes('/stop', 'Failed to stop nodes'), [manageNodes]);
+
+
+const clearStats = useCallback(() => {
+  setMetrics([]);
+  setNodeStatus([]);
+  setNodeUptimes({});
+  seenIdsRef.current = new Set();
+  setSelectedMetrics([]);
+}, []);
+
+
 
   const buildChartData = useCallback((metricType) => {
     const timeMap = new Map();
@@ -233,7 +246,7 @@ const clearStats = useCallback(async () => {
                     fillOpacity={0.2}
                     activeDot={{ r: 6 }}
                     connectNulls
-                    dot={false}
+                    dot={{ r: 1 }}
                   />
                 ))}
               </AreaChart>
@@ -283,7 +296,7 @@ const clearStats = useCallback(async () => {
     clearInterval(statusInterval);
     if (wsRef.current) wsRef.current.close();
   };
-}, [fetchNodeStatus, loadInitialState]);
+}, [fetchNodeStatus, loadInitialState, wsTrigger]);
 
 
 
@@ -333,16 +346,17 @@ const clearStats = useCallback(async () => {
         <div className="control-group">
           <label>Metrics Display</label>
           <div className="metric-toggle-container">
-            {METRIC_KEYS.map(field => (
-              <button
-                key={field}
-                className={`metric-toggle ${selectedMetrics.includes(field) ? 'active' : ''}`}
-                onClick={() => handleMetricToggle(field)}
-              >
-                {getDisplayName(field)}
-              </button>
-            ))}
-          </div>
+          {METRIC_KEYS.filter(field => getDisplayName(field)).map(field => (
+            <button
+              key={field}
+              className={`metric-toggle ${selectedMetrics.includes(field) ? 'active' : ''}`}
+              onClick={() => handleMetricToggle(field)}
+            >
+              {getDisplayName(field)}
+            </button>
+          ))}
+        </div>
+
         </div>
 
         <div className="action-buttons">
@@ -390,7 +404,7 @@ const clearStats = useCallback(async () => {
                       const minutes = Math.floor(totalMs / (1000 * 60)) % 60;
                       const hours = Math.floor(totalMs / (1000 * 60 * 60));
                       return `${hours}h ${minutes}m ${seconds}s`;
-                    })() : 'N/A';
+                    })() : '---';
 
                     return (
                       <tr key={node}>

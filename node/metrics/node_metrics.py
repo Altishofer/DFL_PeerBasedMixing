@@ -19,10 +19,8 @@ class MetricField(Enum):
     BYTES_RECEIVED = "bytes_received"
     CURRENT_ROUND = "current_round"
     ACCURACY = "accuracy"
-
     FRAGMENT_RESENT = "fragment_resent"
     BYTES_SENT = "bytes_sent"
-
     FRAGMENTS_FORWARDED = "fragments_forwarded"
 
 
@@ -107,8 +105,8 @@ class Metrics:
 
     def _push_loop(self):
         while True:
-            jitter = random.uniform(-1.0, 1.0)
-            time.sleep(3.0 + jitter)
+            jitter = random.uniform(-0.1, 0.1)
+            time.sleep(1 + jitter)
             data = self.get_log()
             if not data:
                 continue

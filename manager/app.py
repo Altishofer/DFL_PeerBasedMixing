@@ -3,12 +3,14 @@ import datetime
 import json
 import os
 import logging
+import subprocess
 from collections import deque
 from contextlib import asynccontextmanager
 
 import aiofiles
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.models import Response
 
 from docker_utils import (
     collect_resource_metrics,
@@ -53,12 +55,29 @@ def start(count: int):
     start_nodes(count)
     return {"status": "started", "nodes": count}
 
-@app.post("/clear")
-def clear():
-    filename = os.path.join(METRICS_DIR, "metrics.jsonl")
-    if os.path.exists(filename):
-        os.remove(filename)
-    return {"status": "cleared"}
+@app.websocket("/ws/logs/{container_name}")
+async def container_logs(websocket: WebSocket, container_name: str):
+    await websocket.accept()
+    process = subprocess.Popen(
+        ['docker', 'logs', '-f', container_name],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True
+    )
+
+    try:
+        while True:
+            line = process.stdout.readline()
+            if not line:
+                await asyncio.sleep(0.1)
+                continue
+            await websocket.send_text(line.strip())
+    except WebSocketDisconnect:
+        pass
+    finally:
+        process.kill()
+        await websocket.close()
+
 
 @app.post("/stop")
 def stop():
@@ -86,17 +105,21 @@ async def metrics_websocket(websocket: WebSocket):
     websockets.add(websocket)
 
     try:
-        await websocket.send_text(json.dumps(list(recent_metrics)))
+        if recent_metrics:
+            await websocket.send_text(json.dumps(list(recent_metrics)))
+            recent_metrics.clear()
 
         while True:
             await asyncio.sleep(1)
             if recent_metrics:
-                await websocket.send_text(json.dumps(list(recent_metrics)[-10:]))
+                await websocket.send_text(json.dumps(list(recent_metrics)))
+                recent_metrics.clear()
     except WebSocketDisconnect:
         websockets.discard(websocket)
     except Exception as e:
         logging.error(f"WebSocket error: {e}")
         websockets.discard(websocket)
+
 
 @app.get("/metrics")
 async def get_all_metrics():
