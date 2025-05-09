@@ -58,7 +58,9 @@ class SphinxTransport:
 
     @log_exceptions
     async def send(self, json_payload: dict, target_node: int = None):
-        str_payload = pickle.dumps(json_payload)
+        # str_payload = pickle.dumps(json_payload)
+        str_payload = json_payload
+        # logging.info(f"sending {str_payload}, of type {type(str_payload)}")
         path, msg_bytes = self.sphinx_router.create_forward_msg(target_node, str_payload)
         await self._peer.send(path[0], msg_bytes)
 

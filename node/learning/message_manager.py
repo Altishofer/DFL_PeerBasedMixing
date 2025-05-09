@@ -59,8 +59,10 @@ class MessageManager:
         logging.debug("Finished collecting models")
         return self._model_chunk_buffer[current_round]
 
+    @log_exceptions
     def _serialize_msg(self, msg):
         return zlib.compress(pickle.dumps(msg))
 
+    @log_exceptions
     def _deserialize_msg(self, msg):
         return pickle.loads(zlib.decompress(msg))
