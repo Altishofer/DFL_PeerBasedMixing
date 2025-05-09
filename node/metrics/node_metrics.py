@@ -2,19 +2,40 @@ import random
 import time
 import requests
 import logging
-from dataclasses import dataclass, asdict
 from threading import Lock, Thread
 from typing import List, Dict, Any
 from datetime import datetime, timezone
+from enum import Enum
 
 
+class MetricField(Enum):
+    MSG_SENT = "msg_sent"
+    PAYLOAD_SENT = "payload_sent"
+    MSG_RECV = "msg_recv"
+    ERRORS = "errors"
+    TIME_STAMP = "time_stamp"
+    SURB_RECEIVED = "surb_received"
+    FRAGMENT_RECEIVED = "fragment_received"
+    BYTES_RECEIVED = "bytes_received"
 
-@dataclass
-class MetricData:
-    msg_sent: int = 0
-    payload_sent: int = 0
-    msg_recv: int = 0
-    errors: int = 0
+    FRAGMENT_RESENT = "fragment_resent"
+    BYTES_SENT = "bytes_sent"
+
+    FRAGMENTS_FORWARDED = "fragments_forwarded"
+
+
+_metrics_instance = None
+
+def init_metrics(controller_url: str, host_name: str):
+    global _metrics_instance
+    if _metrics_instance is None:
+        _metrics_instance = Metrics(controller_url=controller_url, host_name=host_name)
+    return _metrics_instance
+
+def metrics():
+    if _metrics_instance is None:
+        raise RuntimeError("Metrics not initialized. Call init_metrics() first.")
+    return _metrics_instance
 
 
 class Metrics:
@@ -30,7 +51,7 @@ class Metrics:
         return cls._instance
 
     def _init(self, controller_url: str, host_name: str):
-        self._data = MetricData()
+        self._data: Dict[MetricField, int] = {field: 0 for field in MetricField}
         self._data_lock = Lock()
         self._change_log: List[Dict[str, Any]] = []
         self._controller_url = controller_url
@@ -39,29 +60,27 @@ class Metrics:
             thread = Thread(target=self._push_loop, daemon=True)
             thread.start()
 
-    def _record_change(self, field: str, value: Any):
+    def _record_change(self, field: MetricField, value: Any):
         self._change_log.append({
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "field": field,
+            "field": field.value,
             "value": value,
-            "node":self._host
+            "node": self._host
         })
 
-    def increment(self, field: str, amount: int = 1):
+    def increment(self, field: MetricField, amount: int = 1):
         with self._data_lock:
-            current = getattr(self._data, field)
-            new_value = current + amount
-            setattr(self._data, field, new_value)
-            self._record_change(field, new_value)
+            self._data[field] += amount
+            self._record_change(field, self._data[field])
 
-    def set(self, field: str, value: Any):
+    def set(self, field: MetricField, value: int):
         with self._data_lock:
-            setattr(self._data, field, value)
+            self._data[field] = value
             self._record_change(field, value)
 
     def get_all(self) -> Dict[str, Any]:
         with self._data_lock:
-            return asdict(self._data)
+            return {field.value: value for field, value in self._data.items()}
 
     def get_log(self) -> List[Dict[str, Any]]:
         with self._data_lock:
@@ -69,10 +88,6 @@ class Metrics:
 
     def _push_loop(self):
         while True:
-            for field in ['msg_sent', 'payload_sent', 'msg_recv', 'errors']:
-                amount = random.randint(1, 10)
-                self.increment(field, amount)
-
             time.sleep(1.0)
             data = self.get_log()
             if not data:
@@ -86,4 +101,3 @@ class Metrics:
                     logging.error(f"Push failed with status {response.status_code}: {response.text}")
             except Exception as e:
                 logging.error(f"Exception during metrics push: {e}")
-

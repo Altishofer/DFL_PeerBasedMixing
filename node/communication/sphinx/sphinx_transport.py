@@ -13,6 +13,8 @@ from communication.sphinx.sphinx_router import SphinxRouter
 from node.communication.tcp_server import TcpServer
 from utils.config_store import ConfigStore
 from utils.exception_decorator import log_exceptions
+from metrics.node_metrics import metrics, MetricField
+
 
 
 class SphinxTransport:
@@ -83,12 +85,15 @@ class SphinxTransport:
 
     @log_exceptions
     async def __handle_incoming(self, data: bytes):
+        metrics().increment(MetricField.FRAGMENT_RECEIVED)
+        metrics().increment(MetricField.BYTES_RECEIVED, len(data))
         unpacked = self.sphinx_router.process_incoming(data)
         await self.__handle_routing_decision(*unpacked)
 
     @log_exceptions
     async def __handle_routing_decision(self, routing, header, delta, mac_key):
         if routing[0] == Relay_flag:
+            metrics().increment(MetricField.FRAGMENTS_FORWARDED)
             await self._peer.send(routing[1], pack_message(self._params, (header, delta)))
         elif routing[0] == Dest_flag:
             dest, msg = receive_forward(self._params, mac_key, delta)

@@ -1,6 +1,8 @@
 import functools
 import logging
 import asyncio
+from metrics.node_metrics import metrics, MetricField
+
 
 def log_exceptions(func):
     if asyncio.iscoroutinefunction(func):
@@ -9,6 +11,7 @@ def log_exceptions(func):
             try:
                 return await func(*args, **kwargs)
             except Exception:
+                metrics().increment(MetricField.ERRORS)
                 logging.error(f"Exception in {func.__qualname__}", exc_info=True)
     else:
         @functools.wraps(func)
@@ -16,5 +19,6 @@ def log_exceptions(func):
             try:
                 return func(*args, **kwargs)
             except Exception:
+                metrics().increment(MetricField.ERRORS)
                 logging.error(f"Exception in {func.__qualname__}", exc_info=True)
     return wrapper

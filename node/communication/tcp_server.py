@@ -3,6 +3,7 @@ import logging
 
 from communication.connection import Connection
 from utils.exception_decorator import log_exceptions
+from metrics.node_metrics import metrics, MetricField
 
 
 class TcpServer:
@@ -36,6 +37,8 @@ class TcpServer:
 
     @log_exceptions
     async def send(self, peer_id, message: bytes):
+        metrics().increment(MetricField.MSG_SENT)
+        metrics().increment(MetricField.BYTES_SENT, len(message))
         connection = self.connections[peer_id]
         await connection.send(message)
 
