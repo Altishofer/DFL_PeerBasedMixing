@@ -1,9 +1,14 @@
 import logging
 import pickle
+from asyncio import get_running_loop, sleep, QueueEmpty
 from collections import defaultdict
+<<<<<<< HEAD
 
 from utils.exception_decorator import log_exceptions
 
+=======
+import zlib
+>>>>>>> linn
 
 class MessageManager:
     def __init__(self, node_id, total_peers, transport, model_handler):
@@ -11,13 +16,14 @@ class MessageManager:
         self._total_peers = total_peers
         self._transport = transport
         self._model_handler = model_handler
-        self._incoming_parts = defaultdict(lambda: defaultdict(dict))
-        self._model_buffer = defaultdict(list)
+        self._incoming_parts = []
+        self._model_chunk_buffer = defaultdict(list)
 
     @log_exceptions
     async def send_model(self, current_round):
-        model_data = self._model_handler.serialize_model()
-        chunks = self._model_handler.chunk(model_data, 600)
+        model = self._model_handler.get_model()
+        coef, intercepts = self._model_handler.chunk_model(model, 600)
+        chunks = coef + intercepts
 
         for peer_id in range(self._total_peers):
             if peer_id == self._node_id:
@@ -26,11 +32,11 @@ class MessageManager:
                 msg = {
                     "type": "model_part",
                     "round": current_round,
-                    "sender": self._node_id,
                     "part_idx": idx,
                     "total_parts": len(chunks),
-                    "data": chunk
+                    "content": chunk
                 }
+<<<<<<< HEAD
                 await self._transport.send(msg, peer_id)
 
         logging.info(f"Sent model in {len(chunks)} parts each")
@@ -38,25 +44,36 @@ class MessageManager:
     @log_exceptions
     async def collect_models(self, current_round, own_model):
         self._model_buffer[current_round].append(own_model)
+=======
+                await self._transport.send(self._serialize_msg(msg), peer_id)
 
-        while len(self._model_buffer[current_round]) < self._total_peers:
-            msg = await self._transport.receive()
-            parsed = pickle.loads(msg)
+        logging.info(f"Sent model in {len(chunks)} parts each")
 
-            if parsed["type"] == "model_part":
-                sender = parsed["sender"]
-                part_idx = parsed["part_idx"]
-                total_parts = parsed["total_parts"]
-                msg_round = parsed["round"]
-                self._incoming_parts[msg_round][sender][part_idx] = parsed["data"]
+    async def collect_models(self, current_round):
+        #TODO: better stopping condition
+        t = 30.0
+        start_time = get_running_loop().time()
+        while get_running_loop().time() - start_time < t:
+            try:
+                msg = self._transport._incoming_queue.get_nowait()
+                parsed = self._deserialize_msg(msg)
+>>>>>>> linn
 
-                current_parts = self._incoming_parts[msg_round][sender]
-                logging.debug(f"Received part {part_idx+1}/{total_parts} from Node {sender} for round {msg_round}")
+                if parsed["type"] == "model_part":
+                    part_idx = parsed["part_idx"]
+                    total_parts = parsed["total_parts"]
+                    msg_round = parsed["round"]
 
-                if len(current_parts) == total_parts and set(current_parts.keys()) == set(range(total_parts)):
-                    full_data = b"".join(current_parts[i] for i in range(total_parts))
-                    model = self._model_handler.deserialize_model(full_data)
-                    self._model_buffer[msg_round].append(model)
-                    logging.info(f"Reassembled full model from Node {sender} for round {msg_round}")
-
-        return self._model_buffer[current_round]
+                    self._model_chunk_buffer[current_round].append(parsed["content"])
+                    logging.debug(f"Received part {part_idx+1}/{total_parts} for round {msg_round}")
+            except QueueEmpty:
+                await sleep(0.1)
+                    
+        logging.debug("Finished collecting models")
+        return self._model_chunk_buffer[current_round]
+    
+    def _serialize_msg(self, msg):
+        return zlib.compress(pickle.dumps(msg))
+    
+    def _deserialize_msg(self, msg):
+        return pickle.loads(zlib.decompress(msg))
