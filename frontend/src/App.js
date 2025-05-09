@@ -1,4 +1,3 @@
-// src/App.js
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import {
@@ -12,6 +11,18 @@ const API_BASE_URL = 'http://localhost:8000';
 const CHART_PALETTE = ['#2980b9', '#27ae60', '#f39c12', '#e74c3c', '#8e44ad', '#16a085', '#c0392b', '#d35400'];
 const DATA_LIMIT = 200;
 const POLL_INTERVAL = 1000;
+
+const formatUptime = (startedAt, frozen = false) => {
+  const start = new Date(startedAt);
+  const end = frozen ? new Date(startedAt) : new Date();
+  const diffMs = end - start;
+
+  const seconds = Math.floor(diffMs / 1000) % 60;
+  const minutes = Math.floor(diffMs / (1000 * 60)) % 60;
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+
+  return `${hours}h ${minutes}m ${seconds}s`;
+};
 
 const Dashboard = () => {
   const [nodeCount, setNodeCount] = useState(2);
@@ -68,6 +79,11 @@ const Dashboard = () => {
 
   const stopNodes = useCallback(
     () => manageNodes('/stop', 'Failed to stop nodes. Please check backend logs.'),
+    [manageNodes]
+  );
+
+  const clearStats = useCallback(
+    () => manageNodes('/clear', 'Failed to clear stats. Please check backend logs.'),
     [manageNodes]
   );
 
@@ -132,50 +148,55 @@ const Dashboard = () => {
         {!chartData.length ? (
           <p className="no-data">No data available for {title.toLowerCase()}</p>
         ) : (
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={chartData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-grid)" />
-              <XAxis
-                dataKey="timestamp"
-                fontSize="0.75rem"
-                tick={{ fill: 'var(--color-text-muted)' }}
-                stroke="var(--color-border)"
-              />
-              <YAxis
-                allowDecimals={false}
-                fontSize="0.75rem"
-                tick={{ fill: 'var(--color-text-muted)' }}
-                stroke="var(--color-border)"
-                tickFormatter={(value) => typeof value === 'number' ? value.toLocaleString() : value}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'var(--color-surface)',
-                  borderColor: 'var(--color-border)',
-                  borderRadius: 'var(--border-radius-sm)',
-                  boxShadow: 'var(--shadow-sm)'
-                }}
-                itemStyle={{ color: 'var(--color-text)' }}
-                cursor={{ stroke: 'var(--color-primary)', strokeWidth: 1, strokeDasharray: '3 3' }}
-              />
-              <Legend wrapperStyle={{ fontSize: "0.85rem", paddingTop: "10px" }} />
-              {nodeNames.map((node, index) => (
-                <Area
-                  key={node}
-                  type="monotoneX"
-                  dataKey={node}
-                  name={node}
-                  stroke={getNodeColor(index)}
-                  strokeWidth={2}
-                  fill={getNodeColor(index)}
-                  fillOpacity={0.25}
-                  activeDot={{ r: 6, strokeWidth: 1, stroke: getNodeColor(index), fill: '#fff' }}
-                  connectNulls={true}
-                  dot={false}
+          <div style={{ width: '100%', height: '280px' }}>
+            <ResponsiveContainer>
+              <AreaChart
+                data={chartData}
+                margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-grid)" />
+                <XAxis
+                  dataKey="timestamp"
+                  fontSize="0.75rem"
+                  tick={{ fill: 'var(--color-text-muted)' }}
+                  stroke="var(--color-border)"
                 />
-              ))}
-            </AreaChart>
-          </ResponsiveContainer>
+                <YAxis
+                  allowDecimals={false}
+                  fontSize="0.75rem"
+                  tick={{ fill: 'var(--color-text-muted)' }}
+                  stroke="var(--color-border)"
+                  tickFormatter={(value) => typeof value === 'number' ? value.toLocaleString() : value}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-surface)',
+                    borderColor: 'var(--color-border)',
+                    borderRadius: 'var(--border-radius-sm)',
+                    boxShadow: 'var(--shadow-sm)'
+                  }}
+                  itemStyle={{ color: 'var(--color-text)' }}
+                  cursor={{ stroke: 'var(--color-primary)', strokeWidth: 1, strokeDasharray: '3 3' }}
+                />
+                <Legend wrapperStyle={{ fontSize: "0.85rem", paddingTop: "10px" }} />
+                {nodeNames.map((node, index) => (
+                  <Area
+                    key={node}
+                    type="monotoneX"
+                    dataKey={node}
+                    name={node}
+                    stroke={getNodeColor(index)}
+                    strokeWidth={2}
+                    fill={getNodeColor(index)}
+                    fillOpacity={0.25}
+                    activeDot={{ r: 6, strokeWidth: 1, stroke: getNodeColor(index), fill: '#fff' }}
+                    connectNulls={true}
+                    dot={false}
+                  />
+                ))}
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         )}
       </div>
     );
@@ -205,18 +226,13 @@ const Dashboard = () => {
           />
         </div>
         <div className="action-buttons">
-          <button
-            className="action-button start-button"
-            onClick={startNodes}
-            disabled={isLoading}
-          >
+          <button className="action-button start-button" onClick={startNodes} disabled={isLoading}>
             {isLoading ? 'Starting...' : 'Start Network'}
           </button>
-          <button
-            className="action-button stop-button"
-            onClick={stopNodes}
-            disabled={isLoading}
-          >
+          <button className="action-button clear-button" onClick={clearStats} disabled={isLoading}>
+            {isLoading ? 'Cleaning...' : 'Clear Stats'}
+          </button>
+          <button className="action-button stop-button" onClick={stopNodes} disabled={isLoading}>
             {isLoading ? 'Stopping...' : 'Stop Network'}
           </button>
         </div>
@@ -237,22 +253,29 @@ const Dashboard = () => {
                   <tr>
                     <th>Node</th>
                     <th>Status</th>
+                    <th>Uptime</th>
                   </tr>
                 </thead>
                 <tbody>
                   {nodeNames.length > 0 ? nodeNames.map((node, index) => {
                     const statusInfo = nodeStatus.find(({ name }) => name === node);
+                    const isRunning = statusInfo?.status === 'running';
+                    const uptime = statusInfo?.started_at
+                      ? formatUptime(statusInfo.started_at, !isRunning)
+                      : 'N/A';
+
                     return (
                       <tr key={node}>
                         <td style={{ color: getNodeColor(index), fontWeight: '500' }}>{node}</td>
                         <td className={`status-${statusInfo?.status?.toLowerCase() ?? 'unknown'}`}>
                           {statusInfo?.status ?? 'Unknown'}
                         </td>
+                        <td>{uptime}</td>
                       </tr>
                     );
                   }) : (
                     <tr>
-                      <td colSpan="2" className="no-data">Fetching status or no nodes configured.</td>
+                      <td colSpan="3" className="no-data">Fetching status or no nodes configured.</td>
                     </tr>
                   )}
                 </tbody>
@@ -268,6 +291,7 @@ const Dashboard = () => {
           return renderMetricChart(title, metricKey);
         })}
       </main>
+
       <footer className="dashboard-footer">
         <p>Data polls every {POLL_INTERVAL / 1000}s. Displaying last {DATA_LIMIT} data points per metric.</p>
       </footer>

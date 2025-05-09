@@ -1,9 +1,11 @@
 import os
-
 import docker
 import pickle
+import asyncio
+import datetime
+import json
+import aiofiles
 from sphinxmix.SphinxParams import SphinxParams
-
 
 client = docker.from_env()
 IMAGE = "dfl_node"
@@ -11,7 +13,8 @@ NETWORK = "dflnet"
 BASE_IP_PREFIX = "192.168.0"
 SUBNET = "192.168.0.0/24"
 GATEWAY = "192.168.0.254"
-
+METRICS_DIR = "metrics"
+os.makedirs(METRICS_DIR, exist_ok=True)
 
 def generate_keys(n):
     params = SphinxParams()
@@ -32,7 +35,6 @@ def generate_keys(n):
     with open("../secrets/pki_pub.pkl", "wb") as f:
         pickle.dump(pkiPub_raw, f)
 
-
 def create_network():
     try:
         client.networks.get(NETWORK)
@@ -49,7 +51,6 @@ def start_nodes(n):
     for i in range(n):
         name = f"node_{i}"
         ip = f"{BASE_IP_PREFIX}{i}"
-
         print(f"Starting {name} @ {ip}")
         client.containers.run(
             IMAGE,
@@ -90,8 +91,61 @@ def stop_nodes():
             print(f"[!] Failed to stop/remove {c.name}: {e}")
 
 def get_status():
+    containers = client.containers.list(all=True)
     return [
-        {"name": c.name, "status": c.status}
-        for c in client.containers.list(all=True)
+        {
+            "name": c.name,
+            "status": c.status,
+            "started_at": c.attrs["State"]["StartedAt"]
+        }
+        for c in containers
         if c.name.startswith("node")
     ]
+
+async def collect_resource_metrics():
+    while True:
+        containers = client.containers.list()
+        active_nodes = [c for c in containers if c.name.startswith("node_")]
+
+        if not active_nodes:
+            await asyncio.sleep(1)
+            continue
+
+        timestamp_day = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")
+        filename = os.path.join(METRICS_DIR, f"metrics_{timestamp_day}.jsonl")
+        timestamp_now = datetime.datetime.utcnow().isoformat() + "Z"
+        lines = []
+
+        for c in active_nodes:
+            try:
+                stats = c.stats(stream=False)
+
+                cpu_total_ns = stats["cpu_stats"]["cpu_usage"]["total_usage"] / 10e9
+                memory_usage = stats["memory_stats"]["usage"]
+
+                node = c.name
+
+                lines.append({
+                    "timestamp": timestamp_now,
+                    "field": "cpu_total_ns",
+                    "value": cpu_total_ns,
+                    "node": node
+                })
+                lines.append({
+                    "timestamp": timestamp_now,
+                    "field": "memory_mb",
+                    "value": round(memory_usage / (1024 * 1024), 2),
+                    "node": node
+                })
+
+            except Exception as e:
+                print(f"[metrics] Error reading stats for {c.name}: {e}")
+                continue
+
+        if lines:
+            print(f"[metrics] Writing {len(lines)} entries to {filename}")
+            async with aiofiles.open(filename, "a") as f:
+                for entry in lines:
+                    await f.write(json.dumps(entry, separators=(",", ":")) + "\n")
+
+        await asyncio.sleep(1)

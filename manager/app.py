@@ -1,15 +1,35 @@
+import asyncio
 import datetime
 import json
 import os
 
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from docker_utils import collect_resource_metrics
+
+
 import aiofiles
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from docker_utils import start_nodes, stop_nodes, get_status
+from docker_utils import start_nodes, stop_nodes, get_status, collect_resource_metrics
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+)
 
 METRICS_DIR = "metrics"
 os.makedirs(METRICS_DIR, exist_ok=True)
-app = FastAPI()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(collect_resource_metrics())
+    yield
+    task.cancel()
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,12 +51,12 @@ def start(count: int):
 
 
 @app.post("/clear")
-def clear(count: int):
+def clear():
     timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")
     filename = os.path.join(METRICS_DIR, f"metrics_{timestamp}.jsonl")
     if os.path.exists(filename):
         os.remove(filename)
-    return {"status": "started", "nodes": count}
+    return {"status": "cleared"}
 
 @app.post("/stop")
 def stop():
