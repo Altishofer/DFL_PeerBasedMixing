@@ -2,17 +2,21 @@ import asyncio
 import datetime
 import json
 import os
-
+import logging
+from collections import deque
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from docker_utils import collect_resource_metrics
-
 
 import aiofiles
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from docker_utils import start_nodes, stop_nodes, get_status, collect_resource_metrics
-import logging
+
+from docker_utils import (
+    collect_resource_metrics,
+    append_metrics_to_file,
+    start_nodes,
+    stop_nodes,
+    get_status
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -21,11 +25,12 @@ logging.basicConfig(
 
 METRICS_DIR = "metrics"
 os.makedirs(METRICS_DIR, exist_ok=True)
-
+recent_metrics = deque(maxlen=10000)
+websockets = set()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    task = asyncio.create_task(collect_resource_metrics())
+    task = asyncio.create_task(collect_resource_metrics(recent_metrics))
     yield
     task.cancel()
 
@@ -42,18 +47,15 @@ app.add_middleware(
 @app.post("/start/{count}")
 def start(count: int):
     stop_nodes()
-    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")
-    filename = os.path.join(METRICS_DIR, f"metrics_{timestamp}.jsonl")
+    filename = os.path.join(METRICS_DIR, "metrics.jsonl")
     if os.path.exists(filename):
         os.remove(filename)
     start_nodes(count)
     return {"status": "started", "nodes": count}
 
-
 @app.post("/clear")
 def clear():
-    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")
-    filename = os.path.join(METRICS_DIR, f"metrics_{timestamp}.jsonl")
+    filename = os.path.join(METRICS_DIR, "metrics.jsonl")
     if os.path.exists(filename):
         os.remove(filename)
     return {"status": "cleared"}
@@ -71,38 +73,39 @@ def status():
 async def receive_metrics(request: Request):
     try:
         metrics = await request.json()
-        if not isinstance(metrics, list):
-            return {"error": "Expected a list of metrics"}
-
-        timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")
-        filename = os.path.join(METRICS_DIR, f"metrics_{timestamp}.jsonl")
-
-        async with aiofiles.open(filename, "a") as f:
-            for entry in metrics:
-                await f.write(json.dumps(entry, separators=(",", ":")) + "\n")
-
+        logging.info(f"/receive_metrics received {len(metrics)} entries")
+        await append_metrics_to_file(metrics, recent_metrics)
         return {"status": "ok", "received": len(metrics)}
     except Exception as e:
+        logging.error(f"/receive_metrics failed: {e}")
         return {"error": str(e)}
+
+@app.websocket("/ws/metrics")
+async def metrics_websocket(websocket: WebSocket):
+    await websocket.accept()
+    websockets.add(websocket)
+
+    try:
+        await websocket.send_text(json.dumps(list(recent_metrics)))
+
+        while True:
+            await asyncio.sleep(1)
+            if recent_metrics:
+                await websocket.send_text(json.dumps(list(recent_metrics)[-10:]))
+    except WebSocketDisconnect:
+        websockets.discard(websocket)
+    except Exception as e:
+        logging.error(f"WebSocket error: {e}")
+        websockets.discard(websocket)
 
 @app.get("/metrics")
-async def get_metrics():
-    try:
-        filename = os.path.join(
-            METRICS_DIR,
-            f"metrics_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')}.jsonl"
-        )
-        if not os.path.exists(filename):
-            return []
+async def get_all_metrics():
+    filename = os.path.join(METRICS_DIR, "metrics.jsonl")
+    if not os.path.exists(filename):
+        return []
 
-        metrics = []
-        async with aiofiles.open(filename, "r") as f:
-            async for line in f:
-                try:
-                    metrics.append(json.loads(line.strip()))
-                except json.JSONDecodeError:
-                    continue
-
-        return metrics
-    except Exception as e:
-        return {"error": str(e)}
+    metrics = []
+    async with aiofiles.open(filename, "r") as f:
+        async for line in f:
+            metrics.append(json.loads(line.strip()))
+    return metrics

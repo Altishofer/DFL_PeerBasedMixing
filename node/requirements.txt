@@ -12,3 +12,4 @@ colorlog
 rich
 aiofiles
 httpx
+uvicorn[standard]

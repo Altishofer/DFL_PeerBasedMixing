@@ -1,4 +1,6 @@
 import os
+import uuid
+
 import docker
 import pickle
 import asyncio
@@ -102,7 +104,7 @@ def get_status():
         if c.name.startswith("node")
     ]
 
-async def collect_resource_metrics():
+async def collect_resource_metrics(recent_metrics):
     while True:
         containers = client.containers.list()
         active_nodes = [c for c in containers if c.name.startswith("node_")]
@@ -111,8 +113,6 @@ async def collect_resource_metrics():
             await asyncio.sleep(1)
             continue
 
-        timestamp_day = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")
-        filename = os.path.join(METRICS_DIR, f"metrics_{timestamp_day}.jsonl")
         timestamp_now = datetime.datetime.utcnow().isoformat() + "Z"
         lines = []
 
@@ -138,14 +138,24 @@ async def collect_resource_metrics():
                     "node": node
                 })
 
+                recent_metrics.extend(lines)
+
             except Exception as e:
                 print(f"[metrics] Error reading stats for {c.name}: {e}")
                 continue
 
-        if lines:
-            print(f"[metrics] Writing {len(lines)} entries to {filename}")
-            async with aiofiles.open(filename, "a") as f:
-                for entry in lines:
-                    await f.write(json.dumps(entry, separators=(",", ":")) + "\n")
+        await append_metrics_to_file(lines, recent_metrics)
 
         await asyncio.sleep(1)
+
+
+async def append_metrics_to_file(metrics, recent_metrics):
+    if not metrics:
+        return
+
+    filename = os.path.join(METRICS_DIR, f"metrics.jsonl")
+    async with aiofiles.open(filename, "a") as f:
+        for entry in metrics:
+            entry["id"] = str(uuid.uuid1())
+            recent_metrics.append(entry)
+            await f.write(json.dumps(entry, separators=(",", ":")) + "\n")

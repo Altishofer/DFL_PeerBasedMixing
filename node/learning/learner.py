@@ -3,10 +3,11 @@ import logging
 
 from node.learning.message_manager import MessageManager
 from node.learning.model_handler import ModelHandler
+from metrics.node_metrics import metrics, MetricField
 
 
 class Learner:
-    def __init__(self, node_id, transport, total_peers, total_rounds=5):
+    def __init__(self, node_id, transport, total_peers, total_rounds=40):
         self._node_id = node_id
         self._transport = transport
         self._total_peers = total_peers
@@ -24,6 +25,7 @@ class Learner:
             self._model_handler.aggregate(model_chunks)
             acc_after = self._model_handler.evaluate()
             self._log_footer(acc_before, acc_after)
+            metrics().set(MetricField.CURRENT_ROUND, self._current_round)
             self._current_round += 1
 
         logging.info(f"Completed all {self._total_rounds} training rounds")

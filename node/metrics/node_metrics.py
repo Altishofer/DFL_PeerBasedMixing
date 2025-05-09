@@ -17,6 +17,8 @@ class MetricField(Enum):
     SURB_RECEIVED = "surb_received"
     FRAGMENT_RECEIVED = "fragment_received"
     BYTES_RECEIVED = "bytes_received"
+    CURRENT_ROUND = "current_round"
+    ACCURACY = "accuracy"
 
     FRAGMENT_RESENT = "fragment_resent"
     BYTES_SENT = "bytes_sent"
@@ -37,7 +39,6 @@ def metrics():
         raise RuntimeError("Metrics not initialized. Call init_metrics() first.")
     return _metrics_instance
 
-
 class Metrics:
     _instance = None
     _lock = Lock()
@@ -54,11 +55,13 @@ class Metrics:
         self._data: Dict[MetricField, int] = {field: 0 for field in MetricField}
         self._data_lock = Lock()
         self._change_log: List[Dict[str, Any]] = []
+        self._metrics_buffer: Dict[MetricField, int] = {}
         self._controller_url = controller_url
         self._host = host_name
+
         if controller_url:
-            thread = Thread(target=self._push_loop, daemon=True)
-            thread.start()
+            Thread(target=self._push_loop, daemon=True).start()
+            Thread(target=self._flush_buffer_loop, daemon=True).start()
 
     def _record_change(self, field: MetricField, value: Any):
         self._change_log.append({
@@ -71,12 +74,28 @@ class Metrics:
     def increment(self, field: MetricField, amount: int = 1):
         with self._data_lock:
             self._data[field] += amount
-            self._record_change(field, self._data[field])
+            current = self._metrics_buffer.get(field, 0)
+            self._metrics_buffer[field] = max(current, self._data[field])
 
     def set(self, field: MetricField, value: int):
         with self._data_lock:
             self._data[field] = value
-            self._record_change(field, value)
+            current = self._metrics_buffer.get(field, value)
+            self._metrics_buffer[field] = max(current, value)
+
+    def _flush_buffer_loop(self):
+        while True:
+            time.sleep(0.5)
+            now = datetime.now(timezone.utc).isoformat()
+            with self._data_lock:
+                for field, value in self._metrics_buffer.items():
+                    self._change_log.append({
+                        "timestamp": now,
+                        "field": field.value,
+                        "value": value,
+                        "node": self._host
+                    })
+                self._metrics_buffer.clear()
 
     def get_all(self) -> Dict[str, Any]:
         with self._data_lock:
@@ -88,7 +107,8 @@ class Metrics:
 
     def _push_loop(self):
         while True:
-            time.sleep(1.0)
+            jitter = random.uniform(-1.0, 1.0)
+            time.sleep(3.0 + jitter)
             data = self.get_log()
             if not data:
                 continue

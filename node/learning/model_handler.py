@@ -8,6 +8,8 @@ from sklearn.exceptions import ConvergenceWarning
 import warnings
 from math import ceil
 from utils.exception_decorator import log_exceptions
+from metrics.node_metrics import metrics, MetricField
+
 
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
@@ -31,7 +33,9 @@ class ModelHandler:
 
     @log_exceptions
     def evaluate(self):
-        return self._model.score(self._X_val, self._y_val)
+        accuracy = self._model.score(self._X_val, self._y_val)
+        metrics().set(MetricField.ACCURACY, accuracy)
+        return accuracy
 
     @log_exceptions
     def set_model(self, model):
