@@ -7,6 +7,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.exceptions import ConvergenceWarning
 import warnings
 from math import ceil
+from utils.exception_decorator import log_exceptions
 
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
@@ -22,25 +23,31 @@ class ModelHandler:
         )
         self._X, self._y, self._X_val, self._y_val = self._load_partition(node_id, total_peers)
 
+    @log_exceptions
     def train(self):
         logging.info(f"Started training...")
         self._model.fit(self._X, self._y)
         return self.evaluate()
 
+    @log_exceptions
     def evaluate(self):
         return self._model.score(self._X_val, self._y_val)
 
+    @log_exceptions
     def set_model(self, model):
         self._model.coefs_ = model.coefs_
         self._model.intercepts_ = model.intercepts_
 
+    @log_exceptions
     def get_model(self):
         return self._model
     
+    @log_exceptions
     def _aggregate_chunk(self, chunk, aggregate, counter):
         aggregate[chunk["start"]:chunk["end"]] += chunk["data"]
         counter[chunk["start"]:chunk["end"]] += 1
 
+    @log_exceptions
     def aggregate(self, model_chunks):
         agg_coefs = self._flatten(self._model.coefs_)
         agg_intercepts = self._flatten(self._model.intercepts_)
@@ -56,9 +63,11 @@ class ModelHandler:
         self._model.coefs_ = self._unflatten_coefs(agg_coefs / n_coefs, self._model)
         self._model.intercepts_ = self._unflatten_intercepts(agg_intercepts / n_intercepts, self._model)
 
+    @log_exceptions
     def _flatten(self, ls):
        return np.concatenate([arr.ravel() for arr in ls])
     
+    @log_exceptions
     def _unflatten_coefs(self, flat_coefs, model):
         coefs = []
         pointer = 0
@@ -70,6 +79,7 @@ class ModelHandler:
 
         return coefs
     
+    @log_exceptions
     def _unflatten_intercepts(self, flat_intercepts, model):
         intercepts = []
 
@@ -82,6 +92,7 @@ class ModelHandler:
 
         return intercepts
 
+    @log_exceptions
     def _chunk_array(self, data, type, chunk_size):
         pkgs = []
         i = 0
@@ -112,6 +123,7 @@ class ModelHandler:
 
         return pkgs
 
+    @log_exceptions
     def chunk_model(self, data, chunk_size):
         coefs = self._flatten(data.coefs_)
         intercepts = self._flatten(data.intercepts_)
@@ -121,6 +133,7 @@ class ModelHandler:
             
         return coef_chunks, intercept_chunks
     
+    @log_exceptions
     def _load_partition(self, node_id, total_peers, val_ratio=0.2):
         data = load_digits()
         X = data.data
