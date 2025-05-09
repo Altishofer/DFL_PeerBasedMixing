@@ -9,76 +9,97 @@ import './App.css';
 
 const API_BASE_URL = 'http://localhost:8000';
 const CHART_PALETTE = ['#3182CE', '#38A169', '#DD6B20', '#805AD5', '#E53E3E', '#D69E2E', '#319795', '#00B5D8'];
-const POLL_INTERVAL = 1000;
 const MAX_NODES = 10;
 
+const METRIC_FIELDS = {
+  msg_sent: 'Messages Sent',
+  payload_sent: 'Payload Sent',
+  msg_recv: 'Messages Received',
+  errors: 'Errors',
+  time_stamp: 'Timestamp',
+  surb_received: 'SURBs Received',
+  fragment_received: 'Fragments Received',
+  bytes_received: 'Bytes Received',
+  current_round: 'Current Round',
+  accuracy: 'Accuracy',
+  fragment_resent: 'Fragments Resent',
+  bytes_sent: 'Bytes Sent',
+  fragments_forwarded: 'Fragments Forwarded'
+};
 
-const formatMetricTitle = (key) =>
-  key
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase())
-    .replace(/\bCpu\b/, 'CPU')
-    .replace(/\bRam\b/, 'RAM');
+const METRIC_KEYS = Object.keys(METRIC_FIELDS);
+const getDisplayName = key => METRIC_FIELDS[key] || key;
 
 const Dashboard = () => {
   const [nodeCount, setNodeCount] = useState(4);
   const [nodeStatus, setNodeStatus] = useState([]);
-  const [now, setNow] = useState(Date.now());
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
   const [metrics, setMetrics] = useState([]);
   const [selectedMetrics, setSelectedMetrics] = useState([]);
-  const seenIdsRef = useRef(new Set());
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [nodeUptimes, setNodeUptimes] = useState({});
+  const [config, setConfig] = useState({ displayMode: 'raw' });
 
-  const getNodeColor = useCallback(index => CHART_PALETTE[index % CHART_PALETTE.length], []);
+  const seenIdsRef = useRef(new Set());
+  const wsRef = useRef(null);
 
   const nodeNames = useMemo(() => {
-    const uniqueNodes = new Set();
-    metrics.forEach(metric => metric.node && uniqueNodes.add(metric.node));
-    return Array.from(uniqueNodes).sort();
+    const nodes = new Set();
+    metrics.forEach(metric => metric.node && nodes.add(metric.node));
+    return Array.from(nodes).sort();
   }, [metrics]);
 
-  const formatUptime = (startedAt, isRunning) => {
-  if (!startedAt) return 'N/A';
-  const start = new Date(startedAt);
-  const end = isRunning ? new Date(now) : start;
-  const diffMs = end - start;
-
-  const seconds = Math.floor(diffMs / 1000) % 60;
-  const minutes = Math.floor(diffMs / (1000 * 60)) % 60;
-  const hours = Math.floor(diffMs / (1000 * 60 * 60));
-
-  return `${hours}h ${minutes}m ${seconds}s`;
-};
-
-  const uniqueMetricFields = useMemo(() => {
-    return [...new Set(metrics.map(m => m.field))].sort();
-  }, [metrics]);
-
-  const fetchData = useCallback(async (endpoint, setData, errorMessage) => {
+  const fetchNodeStatus = useCallback(async () => {
     try {
-      const { data } = await axios.get(`${API_BASE_URL}${endpoint}`);
-      setData(data?.node_status || data || []);
+      const { data } = await axios.get(`${API_BASE_URL}/status`);
+      const newStatus = data?.node_status || data || [];
+      setNodeStatus(newStatus);
       setError('');
+
+      setNodeUptimes(prev => {
+        const updated = { ...prev };
+        for (const { name, status, started_at } of newStatus) {
+          if (!name) continue;
+          const isRunning = status === 'running';
+          const startTime = started_at ? new Date(started_at).getTime() : null;
+          if (!updated[name]) {
+            updated[name] = {
+              startTime,
+              elapsedMs: 0,
+              isRunning
+            };
+          } else {
+            updated[name] = {
+              ...updated[name],
+              startTime,
+              isRunning
+            };
+          }
+        }
+        return updated;
+      });
     } catch (err) {
-      console.error(`Error fetching ${endpoint}:`, err);
-      setError(errorMessage);
+      console.error('Error fetching node status:', err);
+      setError('Failed to fetch node status');
     }
   }, []);
 
-  const fetchNodeStatus = useCallback(
-    () => fetchData('/status', setNodeStatus, 'Failed to fetch node status'),
-    [fetchData]
-  );
-
   useEffect(() => {
-  const interval = setInterval(() => {
-    fetchNodeStatus();
-  }, 2000);
-
-  return () => clearInterval(interval);
-}, [fetchNodeStatus]);
-
+    const interval = setInterval(() => {
+      setNodeUptimes(prev => {
+        const now = Date.now();
+        const updated = {};
+        for (const [node, info] of Object.entries(prev)) {
+          updated[node] = {
+            ...info,
+            elapsedMs: info.isRunning && info.startTime ? now - info.startTime : info.elapsedMs
+          };
+        }
+        return updated;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const manageNodes = useCallback(async (endpoint, errorMessage) => {
     try {
@@ -97,138 +118,83 @@ const Dashboard = () => {
   const startNodes = useCallback(async () => {
     setMetrics([]);
     seenIdsRef.current = new Set();
+    setSelectedMetrics([]);
     await manageNodes(`/start/${nodeCount}`, 'Failed to start nodes');
   }, [manageNodes, nodeCount]);
 
-  const stopNodes = useCallback(
-    () => manageNodes('/stop', 'Failed to stop nodes'),
-    [manageNodes]
-  );
+  const stopNodes = useCallback(() => manageNodes('/stop', 'Failed to stop nodes'), [manageNodes]);
 
-  const clearStats = useCallback(async () => {
-    setMetrics([]);
-    seenIdsRef.current = new Set();
-    await manageNodes('/clear', 'Failed to clear stats');
-  }, [manageNodes]);
-
-  useEffect(() => {
-  const interval = setInterval(() => {
-    setNow(Date.now());
-  }, 1000);
-  return () => clearInterval(interval);
-}, []);
-
-
-  useEffect(() => {
-    if (uniqueMetricFields.length && selectedMetrics.length === 0) {
-      setSelectedMetrics(uniqueMetricFields.slice(0, 2));
-    }
-  }, [uniqueMetricFields]);
-
-  useEffect(() => {
-    const loadInitialMetrics = async () => {
-      try {
-        const { data } = await axios.get(`${API_BASE_URL}/metrics`);
-        const unique = [];
-        const ids = new Set();
-
-        for (const entry of data) {
-          if (entry.id && !ids.has(entry.id)) {
-            ids.add(entry.id);
-            unique.push(entry);
-          }
-        }
-
-        seenIdsRef.current = ids;
-        setMetrics(unique);
-      } catch (err) {
-        console.error("Failed to load initial metrics:", err);
-        setError("Error loading metrics from server");
+  const loadInitialState = useCallback(async () => {
+  try {
+    setIsLoading(true);
+    const { data } = await axios.get(`${API_BASE_URL}/metrics`);
+    const unique = [];
+    const ids = new Set();
+    data.forEach(entry => {
+      if (entry.id && !ids.has(entry.id)) {
+        ids.add(entry.id);
+        unique.push(entry);
       }
-    };
+    });
+    seenIdsRef.current = ids;
+    setMetrics(unique);
+    await fetchNodeStatus();
+  } catch (err) {
+    console.error("Failed to load initial state:", err);
+    setError("Error loading metrics from server");
+  } finally {
+    setIsLoading(false);
+  }
+}, [fetchNodeStatus]);
 
-    loadInitialMetrics();
-    fetchNodeStatus();
-  }, [fetchNodeStatus]);
 
-  useEffect(() => {
-    fetchNodeStatus();
-
-    const ws = new WebSocket('ws://localhost:8000/ws/metrics');
-
-    ws.onmessage = (event) => {
-      try {
-        const newMetrics = JSON.parse(event.data);
-        if (!Array.isArray(newMetrics) || newMetrics.length === 0) return;
-
-        setMetrics(prev => {
-          const filtered = [];
-
-          for (const entry of newMetrics) {
-            if (entry.id && !seenIdsRef.current.has(entry.id)) {
-              seenIdsRef.current.add(entry.id);
-              filtered.push(entry);
-            }
-          }
-
-          if (filtered.length === 0) return prev;
-          return [...prev, ...filtered];
-        });
-      } catch (err) {
-        console.error("Failed to parse WebSocket message:", err);
-        setError("Error processing metrics stream");
-      }
-    };
-
-    ws.onerror = (err) => {
-      console.error("WebSocket error:", err);
-      setError("WebSocket connection error");
-    };
-
-    ws.onclose = () => {
-      console.warn("WebSocket connection closed");
-    };
-
-    return () => ws.close();
-  }, [fetchNodeStatus]);
+const clearStats = useCallback(async () => {
+  await loadInitialState();
+}, [loadInitialState]);
 
   const buildChartData = useCallback((metricType) => {
-    const groupedData = {};
+    const timeMap = new Map();
+    const nodePrevValues = {};
 
     metrics.forEach(({ timestamp, field, node, value }) => {
       if (!timestamp || field !== metricType) return;
 
       const dateObj = new Date(timestamp);
-      const timeKey = dateObj.toISOString();
+      const timeKey = dateObj.getTime();
 
-      if (!groupedData[timeKey]) {
-        groupedData[timeKey] = {
+      if (!timeMap.has(timeKey)) {
+        timeMap.set(timeKey, {
           timestamp: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          originalTimestamp: dateObj,
-        };
+          originalTimestamp: dateObj
+        });
       }
 
+      const timeEntry = timeMap.get(timeKey);
       if (node && value !== undefined) {
-        groupedData[timeKey][node] = Number(value);
+        const numVal = Number(value);
+        if (config.displayMode === 'delta') {
+          const delta = nodePrevValues[node] !== undefined ? numVal - nodePrevValues[node] : 0;
+          timeEntry[node] = delta;
+          nodePrevValues[node] = numVal;
+        } else {
+          timeEntry[node] = numVal;
+        }
       }
     });
 
-    return Object.values(groupedData)
-      .sort((a, b) => a.originalTimestamp - b.originalTimestamp)
-      .map(row => {
-        nodeNames.forEach(node => {
-          if (!(node in row)) {
-            row[node] = null;
-          }
-        });
-        delete row.originalTimestamp;
-        return row;
+    const result = Array.from(timeMap.values()).sort((a, b) => a.originalTimestamp - b.originalTimestamp);
+    result.forEach(row => {
+      nodeNames.forEach(node => {
+        if (!(node in row)) row[node] = null;
       });
-  }, [metrics, nodeNames]);
+      delete row.originalTimestamp;
+    });
+    return result;
+  }, [metrics, nodeNames, config.displayMode]);
 
-  const renderMetricChart = (metricKey) => {
+  const renderMetricChart = useCallback((metricKey) => {
     const chartData = buildChartData(metricKey);
-    const title = formatMetricTitle(metricKey);
+    const title = getDisplayName(metricKey);
 
     return (
       <div className="dashboard-card" key={metricKey}>
@@ -261,11 +227,11 @@ const Dashboard = () => {
                     type="monotoneX"
                     dataKey={node}
                     name={node}
-                    stroke={getNodeColor(index)}
+                    stroke={CHART_PALETTE[index % CHART_PALETTE.length]}
                     strokeWidth={2}
-                    fill={getNodeColor(index)}
+                    fill={CHART_PALETTE[index % CHART_PALETTE.length]}
                     fillOpacity={0.2}
-                    activeDot={{ r: 6, strokeWidth: 1, stroke: getNodeColor(index), fill: '#fff' }}
+                    activeDot={{ r: 6 }}
                     connectNulls
                     dot={false}
                   />
@@ -276,7 +242,58 @@ const Dashboard = () => {
         )}
       </div>
     );
+  }, [buildChartData, nodeNames]);
+
+
+  useEffect(() => {
+  loadInitialState();
+
+  const statusInterval = setInterval(fetchNodeStatus, 2000);
+  wsRef.current = new WebSocket('ws://localhost:8000/ws/metrics');
+
+  wsRef.current.onmessage = (event) => {
+    try {
+      const newMetrics = JSON.parse(event.data);
+      if (!Array.isArray(newMetrics)) return;
+
+      setMetrics(prev => {
+        const filtered = [];
+        const newIds = new Set(seenIdsRef.current);
+        newMetrics.forEach(entry => {
+          if (entry.id && !newIds.has(entry.id)) {
+            newIds.add(entry.id);
+            filtered.push(entry);
+          }
+        });
+        if (!filtered.length) return prev;
+        seenIdsRef.current = newIds;
+        return [...prev, ...filtered];
+      });
+    } catch (err) {
+      console.error("Failed to parse WebSocket message:", err);
+    }
   };
+
+  wsRef.current.onerror = (err) => {
+    console.error("WebSocket error:", err);
+    setError("WebSocket connection error");
+  };
+
+  return () => {
+    clearInterval(statusInterval);
+    if (wsRef.current) wsRef.current.close();
+  };
+}, [fetchNodeStatus, loadInitialState]);
+
+
+
+  const handleMetricToggle = useCallback((field) => {
+    setSelectedMetrics(prev =>
+      prev.includes(field)
+        ? prev.filter(m => m !== field)
+        : [...prev, field]
+    );
+  }, []);
 
   return (
     <div className="dashboard-container">
@@ -303,26 +320,28 @@ const Dashboard = () => {
         </div>
 
         <div className="control-group">
+          <label>Display Mode</label>
+          <select
+            value={config.displayMode}
+            onChange={(e) => setConfig(prev => ({ ...prev, displayMode: e.target.value }))}
+          >
+            <option value="raw">Raw Values</option>
+            <option value="delta">Difference</option>
+          </select>
+        </div>
+
+        <div className="control-group">
           <label>Metrics Display</label>
           <div className="metric-toggle-container">
-            {uniqueMetricFields.map(field => {
-              const isActive = selectedMetrics.includes(field);
-              return (
-                <button
-                  key={field}
-                  className={`metric-toggle ${isActive ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedMetrics(prev =>
-                      isActive
-                        ? prev.filter(m => m !== field)
-                        : [...prev, field]
-                    );
-                  }}
-                >
-                  {formatMetricTitle(field)}
-                </button>
-              );
-            })}
+            {METRIC_KEYS.map(field => (
+              <button
+                key={field}
+                className={`metric-toggle ${selectedMetrics.includes(field) ? 'active' : ''}`}
+                onClick={() => handleMetricToggle(field)}
+              >
+                {getDisplayName(field)}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -331,7 +350,7 @@ const Dashboard = () => {
             {isLoading ? 'Starting...' : 'Start Network'}
           </button>
           <button className="action-button clear-button" onClick={clearStats} disabled={isLoading}>
-            Clear Stats
+            Reset
           </button>
           <button className="action-button stop-button" onClick={stopNodes} disabled={isLoading}>
             Stop Network
@@ -339,7 +358,13 @@ const Dashboard = () => {
         </div>
       </section>
 
-      {isLoading && <div className="status-message loading">Processing request...</div>}
+      {isLoading && (
+        <div className="overlay-loading">
+          <div className="spinner" />
+          <div>Loading...</div>
+        </div>
+      )}
+
       {error && <div className="status-message error">{error}</div>}
 
       <main className="dashboard-grid">
@@ -358,15 +383,22 @@ const Dashboard = () => {
                 <tbody>
                   {nodeNames.map((node, index) => {
                     const statusInfo = nodeStatus.find(({ name }) => name === node);
-                    const isRunning = statusInfo?.status === 'running';
+                    const uptimeInfo = nodeUptimes[node];
+                    const displayUptime = uptimeInfo ? (() => {
+                      const totalMs = uptimeInfo.elapsedMs;
+                      const seconds = Math.floor(totalMs / 1000) % 60;
+                      const minutes = Math.floor(totalMs / (1000 * 60)) % 60;
+                      const hours = Math.floor(totalMs / (1000 * 60 * 60));
+                      return `${hours}h ${minutes}m ${seconds}s`;
+                    })() : 'N/A';
 
                     return (
                       <tr key={node}>
-                        <td style={{ color: getNodeColor(index), fontWeight: 500 }}>{node}</td>
+                        <td style={{ color: CHART_PALETTE[index % CHART_PALETTE.length], fontWeight: 500 }}>{node}</td>
                         <td className={`status-${statusInfo?.status?.toLowerCase() ?? 'unknown'}`}>
                           {statusInfo?.status ?? 'Unknown'}
                         </td>
-                        <td>{formatUptime(statusInfo?.started_at, isRunning)}</td>
+                        <td>{displayUptime}</td>
                       </tr>
                     );
                   })}
@@ -382,7 +414,7 @@ const Dashboard = () => {
       </main>
 
       <footer className="dashboard-footer">
-        <p>Data refreshes every {POLL_INTERVAL / 1000} seconds | All entries are streamed with deduplication</p>
+        <p>Data refreshes every 2 seconds | All entries are streamed with deduplication</p>
       </footer>
     </div>
   );
