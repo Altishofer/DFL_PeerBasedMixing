@@ -111,7 +111,7 @@ class Metrics:
             if not data:
                 continue
             try:
-                response = requests.post(f"{self._controller_url}/receive_metrics", json=data)
+                response = requests.post(f"{self._controller_url}/metrics/push", json=data)
                 if response.status_code == 200:
                     with self._data_lock:
                         self._change_log.clear()
