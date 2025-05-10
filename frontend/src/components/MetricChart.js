@@ -5,7 +5,7 @@ import {
   CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 
-const MetricChart = ({ metricKey, title, chartData, nodeNames, palette, displayMode }) => {
+const MetricChart = React.memo(({ metricKey, title, chartData, nodeNames, palette, displayMode }) => {
   return (
     <div className="dashboard-card" key={metricKey}>
       <h3>{title}</h3>
@@ -52,6 +52,6 @@ const MetricChart = ({ metricKey, title, chartData, nodeNames, palette, displayM
       )}
     </div>
   );
-};
+});
 
 export default MetricChart;

@@ -22,7 +22,7 @@ GATEWAY = "192.168.0.254"
 METRICS_DIR = "metrics"
 os.makedirs(METRICS_DIR, exist_ok=True)
 
-recent_metrics = deque(maxlen=10000)
+recent_metrics = deque(maxlen=100000)
 
 class NodeService:
     def start_nodes(self, n):
@@ -163,7 +163,7 @@ class MetricsService:
                 recent_metrics.clear()
 
             while True:
-                await asyncio.sleep(1)
+                await asyncio.sleep(3)
                 if recent_metrics:
                     await websocket.send_text(json.dumps(list(recent_metrics)))
                     recent_metrics.clear()
@@ -175,6 +175,7 @@ class MetricsService:
     async def get_all_metrics(self):
         filename = os.path.join(METRICS_DIR, "metrics.jsonl")
         if not os.path.exists(filename):
+            logging.error(f"Metrics file {filename} not found")
             return []
 
         metrics = []
@@ -189,7 +190,7 @@ class MetricsService:
             active_nodes = [c for c in containers if c.name.startswith("node_")]
 
             if not active_nodes:
-                await asyncio.sleep(1)
+                await asyncio.sleep(3)
                 continue
 
             timestamp_now = datetime.datetime.utcnow().isoformat() + "Z"
@@ -225,4 +226,4 @@ class MetricsService:
                 recent_metrics.extend(lines)
                 await self.append_metrics_to_file(lines)
 
-            await asyncio.sleep(1)
+            await asyncio.sleep(3)

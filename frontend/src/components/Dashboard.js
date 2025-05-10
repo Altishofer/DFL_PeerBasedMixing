@@ -117,35 +117,49 @@ const Dashboard = () => {
   }, [calculateElapsedTime]);
 
   useEffect(() => {
-    const savedNodeUptimes = localStorage.getItem('nodeUptimes');
-    if (savedNodeUptimes) {
-      setNodeUptimes(JSON.parse(savedNodeUptimes));
-    }
+  console.log("Setting up intervals...");
 
-    const interval = setInterval(() => {
-      const now = Date.now();
-      setNodeUptimes(prev => {
-        const updated = {};
-        for (const [node, info] of Object.entries(prev)) {
-          let elapsedMs = info.elapsedMs;
-          let lastUpdate = info.lastUpdate;
+  const savedNodeUptimes = localStorage.getItem('nodeUptimes');
+  if (savedNodeUptimes) {
+    setNodeUptimes(JSON.parse(savedNodeUptimes));
+  }
 
-          if (info.isRunning && lastUpdate) {
-            elapsedMs += now - lastUpdate;
-            lastUpdate = now;
-          }
+  const uptimeInterval = setInterval(() => {
+    const now = Date.now();
+    setNodeUptimes(prev => {
+      const updated = {};
+      for (const [node, info] of Object.entries(prev)) {
+        let elapsedMs = info.elapsedMs;
+        let lastUpdate = info.lastUpdate;
 
-          updated[node] = {
-            ...info,
-            elapsedMs,
-            lastUpdate: info.isRunning ? lastUpdate : info.lastUpdate
-          };
+        if (info.isRunning && lastUpdate) {
+          elapsedMs += now - lastUpdate;
+          lastUpdate = now;
         }
-        return updated;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+
+        updated[node] = {
+          ...info,
+          elapsedMs,
+          lastUpdate: info.isRunning ? lastUpdate : info.lastUpdate
+        };
+      }
+      return updated;
+    });
+  }, 1000);
+
+  // Fetching node status every 5 seconds
+  const statusInterval = setInterval(() => {
+    console.log("Fetching node status...");
+    fetchNodeStatus();
+  }, 5000);
+
+  return () => {
+    clearInterval(uptimeInterval);
+    clearInterval(statusInterval);
+    console.log("Intervals cleared.");
+  };
+}, []);
+
 
   const manageNodes = useCallback(async (endpoint, errorMessage) => {
     try {
@@ -190,7 +204,7 @@ const Dashboard = () => {
     setSelectedMetrics([]);
     await manageNodes(`/start/${nodeCount}`, 'Failed to start nodes');
     setWsTrigger(prev => prev + 1);
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 2000));
     await loadInitialState();
   }, [manageNodes, nodeCount, loadInitialState]);
 
@@ -247,8 +261,12 @@ const Dashboard = () => {
     });
     delete row.originalTimestamp;
   });
+
   return result;
 }, [metrics, nodeNames, config.displayMode]);
+
+
+
 
   const handleMetricToggle = useCallback((field) => {
     setSelectedMetrics(prev =>
@@ -258,48 +276,64 @@ const Dashboard = () => {
     );
   }, []);
 
-  useEffect(() => {
-    loadInitialState();
-    const statusInterval = setInterval(fetchNodeStatus, 2000);
+useEffect(() => {
+  loadInitialState().then(r => console.log("downloaded initial state"));
+  const connectWebSocket = () => {
     wsRef.current = new WebSocket('ws://localhost:8000/ws/metrics');
 
+    let lastUpdateTime = Date.now();
+
     wsRef.current.onmessage = (event) => {
-  try {
-    const newMetrics = JSON.parse(event.data);
-    if (!Array.isArray(newMetrics)) return;
+      try {
+        const newMetrics = JSON.parse(event.data);
+        if (!Array.isArray(newMetrics)) return;
 
-    setMetrics(prev => {
-      const newIds = new Set(seenIdsRef.current);
-      const filtered = [];
-      newMetrics.forEach(entry => {
-        if (entry.id && !newIds.has(entry.id)) {
-          newIds.add(entry.id);
-          filtered.push(entry);
+        const now = Date.now();
+        if (now - lastUpdateTime < 3000) {
+          return;
         }
-      });
+        lastUpdateTime = now;
 
-      if (!filtered.length) return prev;
+        setMetrics(prev => {
+          const newIds = new Set(seenIdsRef.current);
+          const filtered = [];
+          newMetrics.forEach(entry => {
+            if (entry.id && !newIds.has(entry.id)) {
+              newIds.add(entry.id);
+              filtered.push(entry);
+            }
+          });
 
-      seenIdsRef.current = newIds;
+          if (!filtered.length) return prev;
 
-      return [...prev, ...filtered];
-    });
-  } catch (err) {
-    console.error("Failed to parse WebSocket message:", err);
-  }
-};
+          seenIdsRef.current = newIds;
 
+          return [...prev, ...filtered];
+        });
+      } catch (err) {
+        console.error("Failed to parse WebSocket message:", err);
+      }
+    };
 
     wsRef.current.onerror = (err) => {
       console.error("WebSocket error:", err);
       setError("WebSocket connection error");
     };
 
-    return () => {
-      clearInterval(statusInterval);
-      if (wsRef.current) wsRef.current.close();
+    wsRef.current.onclose = (event) => {
+      console.log("WebSocket disconnected, attempting to reconnect...");
+      setError("WebSocket disconnected, attempting to reconnect...");
+      setTimeout(connectWebSocket, 2000);
     };
-  }, [fetchNodeStatus, loadInitialState, wsTrigger]);
+  };
+
+  connectWebSocket();
+
+  return () => {
+    if (wsRef.current) wsRef.current.close();
+  };
+}, []);
+
 
   return (
     <div className="dashboard-container">

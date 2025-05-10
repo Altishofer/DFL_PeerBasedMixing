@@ -102,8 +102,8 @@ class Metrics:
 
     def _push_loop(self):
         while True:
-            jitter = random.uniform(-0.1, 0.1)
-            time.sleep(1 + jitter)
+            jitter = random.uniform(-0.3, 0.3)
+            time.sleep(3 + jitter)
             data = self.get_log()
             if not data:
                 continue
