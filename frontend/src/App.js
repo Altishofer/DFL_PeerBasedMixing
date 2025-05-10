@@ -12,8 +12,18 @@ const CHART_PALETTE = ['#3182CE', '#38A169', '#DD6B20', '#805AD5', '#E53E3E', '#
 const MAX_NODES = 10;
 
 const METRIC_FIELDS = {
-  cpu_total_ns: 'CPU Usage (ns)',
-  memory_mb: 'Memory Usage (MB)'
+  msg_sent: 'Messages Sent',
+  errors: 'Errors',
+  surb_received: 'SURBs Received',
+  fragment_received: 'Fragments Received',
+  bytes_received: 'Bytes Received',
+  current_round: 'Current Round',
+  accuracy: 'Accuracy',
+  fragment_resent: 'Fragments Resent',
+  bytes_sent: 'Bytes Sent',
+  fragments_forwarded: 'Fragments Forwarded',
+  cpu_total_ns: 'CPU Total Ns',
+  memory_mb: 'Memory (MB)',
 };
 
 const METRIC_KEYS = Object.keys(METRIC_FIELDS);
@@ -33,46 +43,57 @@ const Dashboard = () => {
   const seenIdsRef = useRef(new Set());
   const wsRef = useRef(null);
 
-  const nodeNames = useMemo(() => {
-    const nodes = new Set();
-    metrics.forEach(metric => metric.node && nodes.add(metric.node));
-    return Array.from(nodes).sort();
-  }, [metrics]);
+  // Debugging state
+  const [lastWsMessage, setLastWsMessage] = useState(null);
+  const [metricsCount, setMetricsCount] = useState(0);
+
+const nodeNames = useMemo(() => {
+  const nodesFromMetrics = new Set();
+  metrics.forEach(metric => metric.node && nodesFromMetrics.add(metric.node));
+
+  const nodesFromStatus = new Set(nodeStatus.map(({ name }) => name));
+
+  // Combine nodes from both metrics and status, ensure all nodes are shown
+  return Array.from(new Set([...nodesFromMetrics, ...nodesFromStatus])).sort();
+}, [metrics, nodeStatus]);
+
 
   const fetchNodeStatus = useCallback(async () => {
-    try {
-      const { data } = await axios.get(`${API_BASE_URL}/nodes/status`);
-      const newStatus = Array.isArray(data) ? data : [];
-      setNodeStatus(newStatus);
-      setError('');
+  try {
+    const { data } = await axios.get(`${API_BASE_URL}/nodes/status`);
+    const newStatus = Array.isArray(data) ? data : [];
 
-      setNodeUptimes(prev => {
-        const updated = { ...prev };
-        for (const { name, status, started_at } of newStatus) {
-          if (!name) continue;
-          const isRunning = status?.toLowerCase() === 'running';
-          const startTime = started_at ? new Date(started_at).getTime() : null;
-          if (!updated[name]) {
-            updated[name] = {
-              startTime,
-              elapsedMs: 0,
-              isRunning
-            };
-          } else {
-            updated[name] = {
-              ...updated[name],
-              startTime,
-              isRunning
-            };
-          }
+    setNodeStatus(newStatus);
+    setError('');
+
+    // Update node uptimes based on the newStatus
+    setNodeUptimes(prev => {
+      const updated = { ...prev };
+      for (const { name, status, started_at } of newStatus) {
+        if (!name) continue;
+        const isRunning = status?.toLowerCase() === 'running';
+        const startTime = started_at ? new Date(started_at).getTime() : null;
+        if (!updated[name]) {
+          updated[name] = {
+            startTime,
+            elapsedMs: 0,
+            isRunning
+          };
+        } else {
+          updated[name] = {
+            ...updated[name],
+            startTime,
+            isRunning
+          };
         }
-        return updated;
-      });
-    } catch (err) {
-      console.error('Error fetching node status:', err);
-      setError('Failed to fetch node status');
-    }
-  }, []);
+      }
+      return updated;
+    });
+  } catch (err) {
+    console.error('Error fetching node status:', err);
+    setError('Failed to fetch node status');
+  }
+}, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -93,41 +114,18 @@ const Dashboard = () => {
   }, []);
 
   const manageNodes = useCallback(async (endpoint, errorMessage, data = {}) => {
-  try {
-    setIsLoading(true);
-    setError('');
-    await axios.post(`${API_BASE_URL}${endpoint}`, data);
-    await fetchNodeStatus();
-  } catch (err) {
-    console.error(`Error managing nodes (${endpoint}):`, err);
-    if (err.response) {
-      setError(`Request failed with status ${err.response.status}: ${err.response.data.detail || errorMessage}`);
-    } else {
-      setError(errorMessage);
-    }
-  } finally {
-    setIsLoading(false);
-  }
-}, [fetchNodeStatus]);
-
-  const loadInitialState = useCallback(async () => {
     try {
       setIsLoading(true);
-      const { data } = await axios.get(`${API_BASE_URL}/metrics`);
-      const unique = [];
-      const ids = new Set();
-      data.forEach(entry => {
-        if (entry.id && !ids.has(entry.id)) {
-          ids.add(entry.id);
-          unique.push(entry);
-        }
-      });
-      seenIdsRef.current = ids;
-      setMetrics(unique);
+      setError('');
+      await axios.post(`${API_BASE_URL}${endpoint}`, data);
       await fetchNodeStatus();
     } catch (err) {
-      console.error("Failed to load initial state:", err);
-      setError("Error loading metrics from server");
+      console.error(`Error managing nodes (${endpoint}):`, err);
+      if (err.response) {
+        setError(`Request failed with status ${err.response.status}: ${err.response.data.detail || errorMessage}`);
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -139,10 +137,8 @@ const Dashboard = () => {
     setSelectedMetrics([]);
     await manageNodes(`/nodes/start`, 'Failed to start nodes', { count: nodeCount });
     setWsTrigger(prev => prev + 1);
-
     await new Promise(resolve => setTimeout(resolve, 500));
-    await loadInitialState();
-  }, [manageNodes, nodeCount, loadInitialState]);
+  }, [manageNodes, nodeCount]);
 
   const stopNodes = useCallback(() => manageNodes('/nodes/stop', 'Failed to stop nodes'), [manageNodes]);
 
@@ -152,13 +148,17 @@ const Dashboard = () => {
     setNodeUptimes({});
     seenIdsRef.current = new Set();
     setSelectedMetrics([]);
+    setMetricsCount(0);
   }, []);
 
   const buildChartData = useCallback((metricType) => {
+
     const timeMap = new Map();
     const nodePrevValues = {};
 
-    metrics.forEach(({ timestamp, field, node, value }) => {
+    metrics.forEach((metric) => {
+      const { timestamp, field, node, value } = metric;
+
       if (!timestamp || field !== metricType) return;
 
       const dateObj = new Date(timestamp);
@@ -172,8 +172,13 @@ const Dashboard = () => {
       }
 
       const timeEntry = timeMap.get(timeKey);
-      if (node && value !== undefined) {
+      if (node && value !== undefined && value !== null) {
         const numVal = Number(value);
+        if (isNaN(numVal)) {
+          console.warn('Invalid metric value:', value, 'for node', node);
+          return;
+        }
+
         if (config.displayMode === 'delta') {
           const delta = nodePrevValues[node] !== undefined ? numVal - nodePrevValues[node] : 0;
           timeEntry[node] = delta;
@@ -185,106 +190,69 @@ const Dashboard = () => {
     });
 
     const result = Array.from(timeMap.values()).sort((a, b) => a.originalTimestamp - b.originalTimestamp);
+
+    // Ensure all nodes are represented in each time entry
     result.forEach(row => {
       nodeNames.forEach(node => {
         if (!(node in row)) row[node] = null;
       });
       delete row.originalTimestamp;
     });
+
     return result;
   }, [metrics, nodeNames, config.displayMode]);
 
   const renderMetricChart = useCallback((metricKey) => {
-    const chartData = buildChartData(metricKey);
-    const title = getDisplayName(metricKey);
+  const chartData = buildChartData(metricKey);
+  const title = getDisplayName(metricKey);
 
-    return (
-      <div className="dashboard-card" key={metricKey}>
-        <h3>{title}</h3>
-        {!chartData.length ? (
-          <p className="no-data">No data available</p>
-        ) : (
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={chartData} margin={{ top: 20, right: 20, left: 20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-grid)" />
-                <XAxis dataKey="timestamp" tick={{ fill: 'var(--color-text-muted)' }} stroke="var(--color-border)" />
-                <YAxis
-                  tick={{ fill: 'var(--color-text-muted)' }}
-                  stroke="var(--color-border)"
-                  tickFormatter={value => typeof value === 'number' ? value.toLocaleString() : value}
+  return (
+    <div className="dashboard-card" key={metricKey}>
+      <h3>{title}</h3>
+      {!chartData.length ? (
+        <p className="no-data">No data available</p>
+      ) : (
+        <div className="chart-container">
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart data={chartData} margin={{ top: 20, right: 20, left: 20, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-grid)" />
+              <XAxis dataKey="timestamp" tick={{ fill: 'var(--color-text-muted)' }} stroke="var(--color-border)" />
+              <YAxis
+                tick={{ fill: 'var(--color-text-muted)' }}
+                stroke="var(--color-border)"
+                tickFormatter={value => typeof value === 'number' ? value.toLocaleString() : value}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'var(--color-surface)',
+                  borderColor: 'var(--color-border)',
+                  borderRadius: 'var(--border-radius-sm)',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+              />
+              <Legend />
+              {nodeNames.map((node, index) => (
+                <Area
+                  key={node}
+                  type="monotoneX"
+                  dataKey={node}
+                  name={node}
+                  stroke={CHART_PALETTE[index % CHART_PALETTE.length]}
+                  strokeWidth={2}
+                  fill={CHART_PALETTE[index % CHART_PALETTE.length]}
+                  fillOpacity={0.2}
+                  activeDot={{ r: 6 }}
+                  connectNulls
+                  dot={{ r: 1 }}
                 />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--color-surface)',
-                    borderColor: 'var(--color-border)',
-                    borderRadius: 'var(--border-radius-sm)',
-                    boxShadow: 'var(--shadow-sm)'
-                  }}
-                />
-                <Legend />
-                {nodeNames.map((node, index) => (
-                  <Area
-                    key={node}
-                    type="monotoneX"
-                    dataKey={node}
-                    name={node}
-                    stroke={CHART_PALETTE[index % CHART_PALETTE.length]}
-                    strokeWidth={2}
-                    fill={CHART_PALETTE[index % CHART_PALETTE.length]}
-                    fillOpacity={0.2}
-                    activeDot={{ r: 6 }}
-                    connectNulls
-                    dot={{ r: 1 }}
-                  />
-                ))}
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
-    );
-  }, [buildChartData, nodeNames]);
-
-  useEffect(() => {
-    loadInitialState();
-
-    const statusInterval = setInterval(fetchNodeStatus, 5000);
-    wsRef.current = new WebSocket('ws://localhost:8000/metrics/ws');
-
-    wsRef.current.onmessage = (event) => {
-      try {
-        const newMetrics = JSON.parse(event.data);
-        if (!Array.isArray(newMetrics)) return;
-
-        setMetrics(prev => {
-          const filtered = [];
-          const newIds = new Set(seenIdsRef.current);
-          newMetrics.forEach(entry => {
-            if (entry.id && !newIds.has(entry.id)) {
-              newIds.add(entry.id);
-              filtered.push(entry);
-            }
-          });
-          if (!filtered.length) return prev;
-          seenIdsRef.current = newIds;
-          return [...prev, ...filtered];
-        });
-      } catch (err) {
-        console.error("Failed to parse WebSocket message:", err);
-      }
-    };
-
-    wsRef.current.onerror = (err) => {
-      console.error("WebSocket error:", err);
-      setError("WebSocket connection error");
-    };
-
-    return () => {
-      clearInterval(statusInterval);
-      if (wsRef.current) wsRef.current.close();
-    };
-  }, [fetchNodeStatus, loadInitialState, wsTrigger]);
+              ))}
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+}, [buildChartData, nodeNames]);
 
   const handleMetricToggle = useCallback((field) => {
     setSelectedMetrics(prev =>
@@ -294,12 +262,97 @@ const Dashboard = () => {
     );
   }, []);
 
+  useEffect(() => {
+    const statusInterval = setInterval(fetchNodeStatus, 5000);
+
+    // WebSocket connection management
+    const setupWebSocket = () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+
+      const ws = new WebSocket('ws://localhost:8000/metrics/ws');
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        setError('');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          setLastWsMessage(event.data);
+          const newMetrics = JSON.parse(event.data);
+
+          if (!Array.isArray(newMetrics)) {
+            console.error('WebSocket message is not an array:', newMetrics);
+            return;
+          }
+
+
+          setMetrics(prev => {
+            const newIds = new Set(seenIdsRef.current);
+            const filtered = [];
+
+            newMetrics.forEach(entry => {
+              if (!entry.timestamp) {
+                console.warn('Metric missing timestamp:', entry);
+                return;
+              }
+
+              if (!newIds.has(entry.timestamp)) {
+                newIds.add(entry.timestamp);
+                filtered.push(entry);
+              }
+            });
+
+            if (filtered.length) {
+              seenIdsRef.current = newIds;
+              const updated = [...prev, ...filtered];
+              setMetricsCount(updated.length);
+              return updated;
+            }
+            return prev;
+          });
+        } catch (err) {
+          console.error("Failed to parse WebSocket message:", err, "Data:", event.data);
+          setError("Failed to parse metrics data");
+        }
+      };
+
+      ws.onerror = (err) => {
+        console.error("WebSocket error:", err);
+        setError("WebSocket connection error");
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+      };
+    };
+
+    setupWebSocket();
+
+    return () => {
+      clearInterval(statusInterval);
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [fetchNodeStatus, wsTrigger]);
+
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
         <h1>DFL Mixnet Dashboard</h1>
         <p>Real-time network monitoring and control</p>
       </header>
+
+      {/* Debugging information - can be removed in production */}
+      <div className="debug-info">
+        <p>Metrics received: {metricsCount}</p>
+        <p>Nodes detected: {nodeNames.length}</p>
+        <p>Last WS message: {lastWsMessage ? 'Received' : 'None'}</p>
+      </div>
 
       <section className="control-panel">
         <div className="control-group">
