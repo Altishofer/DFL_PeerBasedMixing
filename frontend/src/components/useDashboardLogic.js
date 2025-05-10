@@ -34,11 +34,10 @@ export default function useDashboardLogic() {
   const seenIdsRef = useRef(new Set());
   const wsRef = useRef(null);
 
-  const nodeNames = useMemo(() => {
-    const nodes = new Set();
-    metrics.forEach(metric => metric.node && nodes.add(metric.node));
-    return Array.from(nodes).sort();
-  }, [metrics]);
+const nodeNames = useMemo(() => {
+  return nodeStatus.map(n => n.name).filter(Boolean).sort();
+}, [nodeStatus]);
+
 
   const fetchNodeStatus = useCallback(async () => {
     try {
@@ -59,28 +58,28 @@ export default function useDashboardLogic() {
           seen.add(name);
 
           if (!updated[name]) {
-            updated[name] = {
-              startTime,
-              elapsedMs: 0,
-              isRunning,
-              lastUpdate: now
-            };
-          } else {
-            const prevInfo = updated[name];
-            let elapsedMs = prevInfo.elapsedMs;
+  updated[name] = {
+    startTime,
+    elapsedMs: startTime && isRunning ? now - startTime : 0,
+    isRunning,
+    lastUpdate: now
+  };
+} else {
+  const prevInfo = updated[name];
+  let elapsedMs = prevInfo.elapsedMs;
 
-            if (prevInfo.isRunning && !isRunning) {
-              elapsedMs += now - prevInfo.lastUpdate;
-            }
+  if (prevInfo.isRunning && !isRunning) {
+    elapsedMs += now - prevInfo.lastUpdate;
+  }
 
-            updated[name] = {
-              ...prevInfo,
-              startTime: startTime ?? prevInfo.startTime,
-              elapsedMs,
-              isRunning,
-              lastUpdate: now
-            };
-          }
+  updated[name] = {
+    ...prevInfo,
+    startTime: startTime ?? prevInfo.startTime,
+    elapsedMs,
+    isRunning,
+    lastUpdate: now
+  };
+}
         }
 
         for (const name of Object.keys(updated)) {
@@ -213,7 +212,7 @@ export default function useDashboardLogic() {
 
   useEffect(() => {
     loadInitialState();
-    const statusInterval = setInterval(fetchNodeStatus, 2000);
+    const statusInterval = setInterval(fetchNodeStatus, 7000);
     wsRef.current = new WebSocket('ws://localhost:8000/ws/metrics');
 
     wsRef.current.onmessage = (event) => {

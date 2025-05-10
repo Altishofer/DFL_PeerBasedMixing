@@ -2,6 +2,7 @@ import os
 import uuid
 
 import docker
+from docker.errors import NotFound, APIError
 import pickle
 import asyncio
 import datetime
@@ -17,6 +18,7 @@ SUBNET = "192.168.0.0/24"
 GATEWAY = "192.168.0.254"
 METRICS_DIR = "metrics"
 os.makedirs(METRICS_DIR, exist_ok=True)
+METRICS_FILE = os.path.join(METRICS_DIR, "metrics.ljson")
 
 def generate_keys(n):
     params = SphinxParams()
@@ -153,14 +155,25 @@ async def append_metrics_to_file(metrics, recent_metrics):
     if not metrics:
         return
 
-    filename = os.path.join(METRICS_DIR, f"metrics.jsonl")
-    async with aiofiles.open(filename, "a") as f:
+    async with aiofiles.open(METRICS_FILE, "a") as f:
         for entry in metrics:
             entry["id"] = str(uuid.uuid1())
             recent_metrics.append(entry)
             await f.write(json.dumps(entry, separators=(",", ":")) + "\n")
 
 async def delete_file():
-    filename = os.path.join(METRICS_DIR, "metrics.jsonl")
-    if os.path.exists(filename):
-        os.remove(filename)
+    if os.path.exists(METRICS_FILE):
+        os.remove(METRICS_FILE)
+
+
+def container_exists_and_running(name):
+    try:
+        container = client.containers.get(name)
+        if container.status == "running":
+            return True, container.status
+        return False, container.status
+    except NotFound:
+        return False, None
+    except APIError as e:
+        print(f"[docker_utils] API error while checking container {name}: {e}")
+        return False, None

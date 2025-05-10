@@ -1,11 +1,13 @@
-// DashboardContainer.js
-import React from 'react';
+import React, { useState } from 'react';
 import NodeStatus from './NodeStatus';
 import MetricChart from './MetricChart';
 import ControlPanel from './ControlPanel';
+import LogsViewer from './LogsViewer';
 import useDashboardLogic from './useDashboardLogic';
 
 const DashboardContainer = () => {
+  const [selectedNode, setSelectedNode] = useState(null);
+
   const {
     nodeCount, setNodeCount, config, setConfig, selectedMetrics,
     handleMetricToggle, startNodes, stopNodes, clearStats,
@@ -50,6 +52,7 @@ const DashboardContainer = () => {
           nodeStatus={nodeStatus}
           nodeUptimes={nodeUptimes}
           palette={CHART_PALETTE}
+          onNodeClick={setSelectedNode}
         />
 
         {selectedMetrics.map(metricKey => (
@@ -64,6 +67,12 @@ const DashboardContainer = () => {
           />
         ))}
       </main>
+
+      {selectedNode && (
+        <section className="logs-panel">
+          <LogsViewer containerName={selectedNode} />
+        </section>
+      )}
 
       <footer className="dashboard-footer">
         <p>Data refreshes every 2 seconds | All entries are streamed with deduplication</p>

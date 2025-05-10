@@ -16,7 +16,7 @@ const ControlPanel = ({
   metricKeys,
   getDisplayName
 }) => (
-  <section className="control-panel">
+  <div className="control-panel">
     <div className="control-group">
       <label htmlFor="nodeCount">Nodes to Start</label>
       <input
@@ -25,10 +25,7 @@ const ControlPanel = ({
         min="1"
         max={MAX_NODES}
         value={nodeCount}
-        onChange={(e) => {
-          const value = Math.min(MAX_NODES, Math.max(1, parseInt(e.target.value, 10) || 1));
-          setNodeCount(value);
-        }}
+        onChange={(e) => setNodeCount(Math.min(MAX_NODES, Math.max(1, parseInt(e.target.value, 10) || 1)))}
         disabled={isLoading}
       />
     </div>
@@ -70,7 +67,7 @@ const ControlPanel = ({
         Stop Network
       </button>
     </div>
-  </section>
+  </div>
 );
 
 export default ControlPanel;

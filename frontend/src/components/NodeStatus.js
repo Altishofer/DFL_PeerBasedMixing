@@ -7,7 +7,7 @@ const formatUptime = (ms) => {
   return `${minutes}m ${seconds}s`;
 };
 
-const NodeStatus = ({ nodeNames, nodeStatus, nodeUptimes, palette }) => {
+const NodeStatus = ({ nodeNames, nodeStatus, nodeUptimes, palette, onNodeClick }) => {
   return (
     <div className="dashboard-card">
       <h3>Node Status</h3>
@@ -30,11 +30,10 @@ const NodeStatus = ({ nodeNames, nodeStatus, nodeUptimes, palette }) => {
                   : '---';
 
                 return (
-                  <tr key={node}>
+                  <tr key={node} onClick={() => onNodeClick(node)} style={{ cursor: 'pointer' }}>
                     <td style={{ color: palette[index % palette.length], fontWeight: 500 }}>
                       {node.replace(/^node_/, 'Node ')}
                     </td>
-
                     <td className={`status-${statusInfo?.status?.toLowerCase() ?? 'unknown'}`}>
                       {statusInfo?.status ?? 'Unknown'}
                     </td>

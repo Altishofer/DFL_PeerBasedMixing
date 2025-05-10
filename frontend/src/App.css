@@ -428,3 +428,49 @@ td.status-unknown { color: var(--color-text-muted); font-weight: 500; }
   to { transform: rotate(360deg); }
 }
 
+select {
+  transition: var(--transition);
+  border-radius: var(--border-radius-sm);
+  padding: 0.5rem;
+  background-color: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  font-size: var(--font-size-base);
+}
+select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.15);
+  outline: none;
+}
+
+
+.metric-toggle-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+}
+
+.metric-chip {
+  padding: 0.4rem 0.875rem;
+  border-radius: 999px;
+  border: var(--border-width) solid var(--color-border);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  user-select: none;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+
+.metric-chip:hover {
+  background-color: var(--color-grid);
+}
+
+.metric-chip.active {
+  background-color: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+  font-weight: 500;
+}
+

@@ -54,38 +54,15 @@ def start(count: int):
     start_nodes(count)
     return {"status": "started", "nodes": count}
 
-@app.websocket("/ws/logs/{container_name}")
-async def container_logs(websocket: WebSocket, container_name: str):
-    await websocket.accept()
-    process = subprocess.Popen(
-        ['docker', 'logs', '-f', container_name],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True
-    )
-
-    try:
-        while True:
-            line = process.stdout.readline()
-            if not line:
-                await asyncio.sleep(0.1)
-                continue
-            await websocket.send_text(line.strip())
-    except WebSocketDisconnect:
-        pass
-    finally:
-        process.kill()
-        await websocket.close()
-
-
 @app.post("/stop")
 def stop():
     stop_nodes()
     return {"status": "stopped"}
 
 @app.get("/status")
-def status():
-    return get_status()
+async def status():
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, get_status)
 
 @app.post("/receive_metrics")
 async def receive_metrics(request: Request):
@@ -131,3 +108,47 @@ async def get_all_metrics():
         async for line in f:
             metrics.append(json.loads(line.strip()))
     return metrics
+
+
+from docker_utils import container_exists_and_running
+
+@app.websocket("/ws/logs/{container_name}")
+async def container_logs(websocket: WebSocket, container_name: str):
+    logging.info(f"Log WebSocket requested for container: {container_name}")
+    await websocket.accept()
+
+    exists, status = container_exists_and_running(container_name)
+    if not exists:
+        message = (
+            f"Container '{container_name}' does not exist."
+            if status is None else
+            f"Container '{container_name}' is not running (status: {status})"
+        )
+        logging.warning(message)
+        await websocket.send_text(f"Error: {message}")
+        return
+
+    try:
+        process = subprocess.Popen(
+            ['docker', 'logs', '-f', container_name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+        logging.info(f"Started log streaming subprocess for '{container_name}'")
+
+        while True:
+            line = process.stdout.readline()
+            if not line:
+                await asyncio.sleep(0.1)
+                continue
+            await websocket.send_text(line.strip())
+
+    except WebSocketDisconnect:
+        logging.info(f"WebSocket disconnected for container: {container_name}")
+    except Exception as e:
+        logging.error(f"Unexpected error in log stream for '{container_name}': {e}")
+    finally:
+        if 'process' in locals():
+            process.kill()
+            logging.info(f"Stopped log streaming process for '{container_name}'")
