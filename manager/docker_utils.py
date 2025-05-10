@@ -93,7 +93,7 @@ def stop_nodes():
             print(f"[!] Failed to stop/remove {c.name}: {e}")
 
 def get_status():
-    containers = client.containers.list(all=True)
+    containers = client.containers.list(all=False)
     return [
         {
             "name": c.name,
@@ -159,3 +159,8 @@ async def append_metrics_to_file(metrics, recent_metrics):
             entry["id"] = str(uuid.uuid1())
             recent_metrics.append(entry)
             await f.write(json.dumps(entry, separators=(",", ":")) + "\n")
+
+async def delete_file():
+    filename = os.path.join(METRICS_DIR, "metrics.jsonl")
+    if os.path.exists(filename):
+        os.remove(filename)

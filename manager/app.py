@@ -17,7 +17,8 @@ from docker_utils import (
     append_metrics_to_file,
     start_nodes,
     stop_nodes,
-    get_status
+    get_status,
+delete_file
 )
 
 logging.basicConfig(
@@ -49,9 +50,7 @@ app.add_middleware(
 @app.post("/start/{count}")
 def start(count: int):
     stop_nodes()
-    filename = os.path.join(METRICS_DIR, "metrics.jsonl")
-    if os.path.exists(filename):
-        os.remove(filename)
+    delete_file()
     start_nodes(count)
     return {"status": "started", "nodes": count}
 

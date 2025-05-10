@@ -2,7 +2,7 @@ import React from 'react';
 import {
   AreaChart, Area,
   XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend
+  CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 
 const MetricChart = ({ metricKey, title, chartData, nodeNames, palette, displayMode }) => {

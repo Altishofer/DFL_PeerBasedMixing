@@ -46,58 +46,98 @@ const Dashboard = () => {
   }, [metrics]);
 
   const fetchNodeStatus = useCallback(async () => {
-    try {
-      const { data } = await axios.get(`${API_BASE_URL}/status`);
-      const newStatus = data?.node_status || data || [];
-      setNodeStatus(newStatus);
-      setError('');
+  try {
+    const { data } = await axios.get(`${API_BASE_URL}/status`);
+    const newStatus = data?.node_status || data || [];
+    setNodeStatus(newStatus);
+    setError('');
 
-      setNodeUptimes(prev => {
-        const updated = { ...prev };
-        for (const { name, status, started_at } of newStatus) {
-          if (!name) continue;
-          const isRunning = status?.toLowerCase() === 'running';
-          const startTime = started_at ? new Date(started_at).getTime() : null;
-          if (!updated[name]) {
+    const now = Date.now();
+    setNodeUptimes(prev => {
+      const updated = { ...prev };
+      const seen = new Set();
+
+      for (const { name, status, started_at } of newStatus) {
+        if (!name) continue;
+        const isRunning = status?.toLowerCase() === 'running';
+        const startTime = started_at ? new Date(started_at).getTime() : null;
+
+        seen.add(name);
+
+        if (!updated[name]) {
+          updated[name] = {
+            startTime,
+            elapsedMs: 0,
+            isRunning,
+            lastUpdate: now
+          };
+        } else {
+          const prevInfo = updated[name];
+          let elapsedMs = prevInfo.elapsedMs;
+
+          if (prevInfo.isRunning && !isRunning) {
+            elapsedMs += now - prevInfo.lastUpdate;
+          }
+
+          updated[name] = {
+            ...prevInfo,
+            startTime: startTime ?? prevInfo.startTime,
+            elapsedMs,
+            isRunning,
+            lastUpdate: now
+          };
+        }
+      }
+
+      // For any node we previously tracked but didn't see in this status response,
+      // mark it as not running and freeze the timer.
+      for (const name of Object.keys(updated)) {
+        if (!seen.has(name)) {
+          const info = updated[name];
+          if (info.isRunning) {
             updated[name] = {
-              startTime,
-              elapsedMs: 0,
-              isRunning
-            };
-          } else {
-            updated[name] = {
-              ...updated[name],
-              startTime,
-              isRunning
+              ...info,
+              isRunning: false,
+              elapsedMs: info.elapsedMs + (now - info.lastUpdate),
+              lastUpdate: now
             };
           }
         }
-        return updated;
-      });
-    } catch (err) {
-      console.error('Error fetching node status:', err);
-      setError('Failed to fetch node status');
-    }
-  }, []);
+      }
+
+      return updated;
+    });
+  } catch (err) {
+    console.error('Error fetching node status:', err);
+    setError('Failed to fetch node status');
+  }
+}, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setNodeUptimes(prev => {
-      const now = Date.now();
+  const interval = setInterval(() => {
+    const now = Date.now();
+    setNodeUptimes(prev => {
       const updated = {};
       for (const [node, info] of Object.entries(prev)) {
-        const shouldUpdate = info.isRunning && info.startTime;
+        let elapsedMs = info.elapsedMs;
+        let lastUpdate = info.lastUpdate;
+
+        if (info.isRunning && lastUpdate) {
+          elapsedMs += now - lastUpdate;
+          lastUpdate = now;
+        }
+
         updated[node] = {
           ...info,
-          elapsedMs: shouldUpdate ? now - info.startTime : info.elapsedMs
+          elapsedMs,
+          lastUpdate: info.isRunning ? lastUpdate : info.lastUpdate
         };
       }
       return updated;
     });
-
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  }, 1000);
+  return () => clearInterval(interval);
+}, []);
 
   const manageNodes = useCallback(async (endpoint, errorMessage) => {
     try {
@@ -142,9 +182,7 @@ const Dashboard = () => {
     setSelectedMetrics([]);
     await manageNodes(`/start/${nodeCount}`, 'Failed to start nodes');
     setWsTrigger(prev => prev + 1);
-
     await new Promise(resolve => setTimeout(resolve, 500));
-
     await loadInitialState();
   }, [manageNodes, nodeCount, loadInitialState]);
 
@@ -208,7 +246,6 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadInitialState();
-
     const statusInterval = setInterval(fetchNodeStatus, 2000);
     wsRef.current = new WebSocket('ws://localhost:8000/ws/metrics');
 

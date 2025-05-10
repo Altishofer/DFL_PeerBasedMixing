@@ -1,5 +1,12 @@
 import React from 'react';
 
+const formatUptime = (ms) => {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${seconds}s`;
+};
+
 const NodeStatus = ({ nodeNames, nodeStatus, nodeUptimes, palette }) => {
   return (
     <div className="dashboard-card">
@@ -18,17 +25,16 @@ const NodeStatus = ({ nodeNames, nodeStatus, nodeUptimes, palette }) => {
               {nodeNames.map((node, index) => {
                 const statusInfo = nodeStatus.find(({ name }) => name === node);
                 const uptimeInfo = nodeUptimes[node];
-                const displayUptime = uptimeInfo ? (() => {
-                  const totalMs = uptimeInfo.elapsedMs;
-                  const seconds = Math.floor(totalMs / 1000) % 60;
-                  const minutes = Math.floor(totalMs / (1000 * 60)) % 60;
-                  const hours = Math.floor(totalMs / (1000 * 60 * 60));
-                  return `${hours}h ${minutes}m ${seconds}s`;
-                })() : '---';
+                const displayUptime = uptimeInfo?.elapsedMs != null
+                  ? formatUptime(uptimeInfo.elapsedMs)
+                  : '---';
 
                 return (
                   <tr key={node}>
-                    <td style={{ color: palette[index % palette.length], fontWeight: 500 }}>{node}</td>
+                    <td style={{ color: palette[index % palette.length], fontWeight: 500 }}>
+                      {node.replace(/^node_/, 'Node ')}
+                    </td>
+
                     <td className={`status-${statusInfo?.status?.toLowerCase() ?? 'unknown'}`}>
                       {statusInfo?.status ?? 'Unknown'}
                     </td>
