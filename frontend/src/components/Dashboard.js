@@ -211,44 +211,44 @@ const Dashboard = () => {
   }, [loadInitialState]);
 
   const buildChartData = useCallback((metricType) => {
-    const timeMap = new Map();
-    const nodePrevValues = {};
+  const timeMap = new Map();
+  const nodePrevValues = {};
 
-    metrics.forEach(({ timestamp, field, node, value }) => {
-      if (!timestamp || field !== metricType) return;
+  metrics.forEach(({ timestamp, field, node, value }) => {
+    if (!timestamp || field !== metricType) return;
 
-      const dateObj = new Date(timestamp);
-      const timeKey = dateObj.getTime();
+    const dateObj = new Date(timestamp);
+    const timeKey = dateObj.getTime();
 
-      if (!timeMap.has(timeKey)) {
-        timeMap.set(timeKey, {
-          timestamp: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          originalTimestamp: dateObj
-        });
-      }
-
-      const timeEntry = timeMap.get(timeKey);
-      if (node && value !== undefined) {
-        const numVal = Number(value);
-        if (config.displayMode === 'delta') {
-          const delta = nodePrevValues[node] !== undefined ? numVal - nodePrevValues[node] : 0;
-          timeEntry[node] = delta;
-          nodePrevValues[node] = numVal;
-        } else {
-          timeEntry[node] = numVal;
-        }
-      }
-    });
-
-    const result = Array.from(timeMap.values()).sort((a, b) => a.originalTimestamp - b.originalTimestamp);
-    result.forEach(row => {
-      nodeNames.forEach(node => {
-        if (!(node in row)) row[node] = null;
+    if (!timeMap.has(timeKey)) {
+      timeMap.set(timeKey, {
+        timestamp: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        originalTimestamp: dateObj
       });
-      delete row.originalTimestamp;
+    }
+
+    const timeEntry = timeMap.get(timeKey);
+    if (node && value !== undefined) {
+      const numVal = Number(value);
+      if (config.displayMode === 'delta') {
+        const delta = nodePrevValues[node] !== undefined ? numVal - nodePrevValues[node] : 0;
+        timeEntry[node] = delta;
+        nodePrevValues[node] = numVal;
+      } else {
+        timeEntry[node] = numVal;
+      }
+    }
+  });
+
+  const result = Array.from(timeMap.values()).sort((a, b) => a.originalTimestamp - b.originalTimestamp);
+  result.forEach(row => {
+    nodeNames.forEach(node => {
+      if (!(node in row)) row[node] = null;
     });
-    return result;
-  }, [metrics, nodeNames, config.displayMode]);
+    delete row.originalTimestamp;
+  });
+  return result;
+}, [metrics, nodeNames, config.displayMode]);
 
   const handleMetricToggle = useCallback((field) => {
     setSelectedMetrics(prev =>
@@ -264,27 +264,31 @@ const Dashboard = () => {
     wsRef.current = new WebSocket('ws://localhost:8000/ws/metrics');
 
     wsRef.current.onmessage = (event) => {
-      try {
-        const newMetrics = JSON.parse(event.data);
-        if (!Array.isArray(newMetrics)) return;
+  try {
+    const newMetrics = JSON.parse(event.data);
+    if (!Array.isArray(newMetrics)) return;
 
-        setMetrics(prev => {
-          const filtered = [];
-          const newIds = new Set(seenIdsRef.current);
-          newMetrics.forEach(entry => {
-            if (entry.id && !newIds.has(entry.id)) {
-              newIds.add(entry.id);
-              filtered.push(entry);
-            }
-          });
-          if (!filtered.length) return prev;
-          seenIdsRef.current = newIds;
-          return [...prev, ...filtered];
-        });
-      } catch (err) {
-        console.error("Failed to parse WebSocket message:", err);
-      }
-    };
+    setMetrics(prev => {
+      const newIds = new Set(seenIdsRef.current);
+      const filtered = [];
+      newMetrics.forEach(entry => {
+        if (entry.id && !newIds.has(entry.id)) {
+          newIds.add(entry.id);
+          filtered.push(entry);
+        }
+      });
+
+      if (!filtered.length) return prev;
+
+      seenIdsRef.current = newIds;
+
+      return [...prev, ...filtered];
+    });
+  } catch (err) {
+    console.error("Failed to parse WebSocket message:", err);
+  }
+};
+
 
     wsRef.current.onerror = (err) => {
       console.error("WebSocket error:", err);
