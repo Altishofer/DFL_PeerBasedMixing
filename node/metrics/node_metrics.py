@@ -10,10 +10,7 @@ from enum import Enum
 
 class MetricField(Enum):
     MSG_SENT = "msg_sent"
-    PAYLOAD_SENT = "payload_sent"
-    MSG_RECV = "msg_recv"
     ERRORS = "errors"
-    TIME_STAMP = "time_stamp"
     SURB_RECEIVED = "surb_received"
     FRAGMENT_RECEIVED = "fragment_received"
     BYTES_RECEIVED = "bytes_received"
@@ -111,7 +108,7 @@ class Metrics:
             if not data:
                 continue
             try:
-                response = requests.post(f"{self._controller_url}/receive_metrics", json=data)
+                response = requests.post(f"{self._controller_url}/report_metrics", json=data)
                 if response.status_code == 200:
                     with self._data_lock:
                         self._change_log.clear()

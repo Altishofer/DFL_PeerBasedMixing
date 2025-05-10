@@ -19,8 +19,11 @@ const METRIC_FIELDS = {
   accuracy: 'Accuracy',
   fragment_resent: 'Fragments Resent',
   bytes_sent: 'Bytes Sent',
-  fragments_forwarded: 'Fragments Forwarded'
+  fragments_forwarded: 'Fragments Forwarded',
+  cpu_total_ns: 'CPU Total Ns',
+  memory_mb: 'Memory (MB)',
 };
+
 
 const METRIC_KEYS = Object.keys(METRIC_FIELDS);
 const getDisplayName = key => METRIC_FIELDS[key] || null;
@@ -45,99 +48,107 @@ const Dashboard = () => {
     return Array.from(nodes).sort();
   }, [metrics]);
 
+  const calculateElapsedTime = useCallback((startTime) => {
+    return Date.now() - startTime;
+  }, []);
+
   const fetchNodeStatus = useCallback(async () => {
-  try {
-    const { data } = await axios.get(`${API_BASE_URL}/status`);
-    const newStatus = data?.node_status || data || [];
-    setNodeStatus(newStatus);
-    setError('');
+    try {
+      const { data } = await axios.get(`${API_BASE_URL}/status`);
+      const newStatus = data?.node_status || data || [];
+      setNodeStatus(newStatus);
+      setError('');
 
-    const now = Date.now();
-    setNodeUptimes(prev => {
-      const updated = { ...prev };
-      const seen = new Set();
+      const now = Date.now();
+      setNodeUptimes(prev => {
+        const updated = { ...prev };
+        const seen = new Set();
 
-      for (const { name, status, started_at } of newStatus) {
-        if (!name) continue;
-        const isRunning = status?.toLowerCase() === 'running';
-        const startTime = started_at ? new Date(started_at).getTime() : null;
+        for (const { name, status, started_at } of newStatus) {
+          if (!name) continue;
+          const isRunning = status?.toLowerCase() === 'running';
+          const startTime = started_at ? new Date(started_at).getTime() : null;
 
-        seen.add(name);
+          seen.add(name);
 
-        if (!updated[name]) {
-          updated[name] = {
-            startTime,
-            elapsedMs: 0,
-            isRunning,
-            lastUpdate: now
-          };
-        } else {
-          const prevInfo = updated[name];
-          let elapsedMs = prevInfo.elapsedMs;
-
-          if (prevInfo.isRunning && !isRunning) {
-            elapsedMs += now - prevInfo.lastUpdate;
-          }
-
-          updated[name] = {
-            ...prevInfo,
-            startTime: startTime ?? prevInfo.startTime,
-            elapsedMs,
-            isRunning,
-            lastUpdate: now
-          };
-        }
-      }
-
-      // For any node we previously tracked but didn't see in this status response,
-      // mark it as not running and freeze the timer.
-      for (const name of Object.keys(updated)) {
-        if (!seen.has(name)) {
-          const info = updated[name];
-          if (info.isRunning) {
+          if (!updated[name]) {
             updated[name] = {
-              ...info,
-              isRunning: false,
-              elapsedMs: info.elapsedMs + (now - info.lastUpdate),
+              startTime,
+              elapsedMs: isRunning ? calculateElapsedTime(startTime) : 0,
+              isRunning,
+              lastUpdate: now
+            };
+          } else {
+            const prevInfo = updated[name];
+            let elapsedMs = prevInfo.elapsedMs;
+
+            if (prevInfo.isRunning && !isRunning) {
+              elapsedMs += now - prevInfo.lastUpdate;
+            }
+
+            updated[name] = {
+              ...prevInfo,
+              startTime: startTime ?? prevInfo.startTime,
+              elapsedMs,
+              isRunning,
               lastUpdate: now
             };
           }
         }
-      }
 
-      return updated;
-    });
-  } catch (err) {
-    console.error('Error fetching node status:', err);
-    setError('Failed to fetch node status');
-  }
-}, []);
-
-  useEffect(() => {
-  const interval = setInterval(() => {
-    const now = Date.now();
-    setNodeUptimes(prev => {
-      const updated = {};
-      for (const [node, info] of Object.entries(prev)) {
-        let elapsedMs = info.elapsedMs;
-        let lastUpdate = info.lastUpdate;
-
-        if (info.isRunning && lastUpdate) {
-          elapsedMs += now - lastUpdate;
-          lastUpdate = now;
+        for (const name of Object.keys(updated)) {
+          if (!seen.has(name)) {
+            const info = updated[name];
+            if (info.isRunning) {
+              updated[name] = {
+                ...info,
+                isRunning: false,
+                elapsedMs: info.elapsedMs + (now - info.lastUpdate),
+                lastUpdate: now
+              };
+            }
+          }
         }
 
-        updated[node] = {
-          ...info,
-          elapsedMs,
-          lastUpdate: info.isRunning ? lastUpdate : info.lastUpdate
-        };
-      }
-      return updated;
-    });
-  }, 1000);
-  return () => clearInterval(interval);
-}, []);
+        localStorage.setItem('nodeUptimes', JSON.stringify(updated));
+        return updated;
+      });
+    } catch (err) {
+      console.error('Error fetching node status:', err);
+      setError('Failed to fetch node status');
+    }
+  }, [calculateElapsedTime]);
+
+  useEffect(() => {
+    const savedNodeUptimes = localStorage.getItem('nodeUptimes');
+    if (savedNodeUptimes) {
+      setNodeUptimes(JSON.parse(savedNodeUptimes));
+    }
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setNodeUptimes(prev => {
+        const updated = {};
+        for (const [node, info] of Object.entries(prev)) {
+          let elapsedMs = info.elapsedMs;
+          let lastUpdate = info.lastUpdate;
+
+          if (info.isRunning && lastUpdate) {
+            elapsedMs += now - lastUpdate;
+            lastUpdate = now;
+          }
+
+          updated[node] = {
+            ...info,
+            elapsedMs,
+            lastUpdate: info.isRunning ? lastUpdate : info.lastUpdate
+          };
+        }
+        return updated;
+      });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const manageNodes = useCallback(async (endpoint, errorMessage) => {
     try {
@@ -194,6 +205,7 @@ const Dashboard = () => {
     setNodeUptimes({});
     seenIdsRef.current = new Set();
     setSelectedMetrics([]);
+    localStorage.removeItem('nodeUptimes');
   }, []);
 
   const buildChartData = useCallback((metricType) => {
@@ -311,8 +323,7 @@ const Dashboard = () => {
           <label>Display Mode</label>
           <select
             value={config.displayMode}
-            onChange={(e) => setConfig(prev => ({ ...prev, displayMode: e.target.value }))}
-          >
+            onChange={(e) => setConfig(prev => ({ ...prev, displayMode: e.target.value }))}>
             <option value="raw">Raw Values</option>
             <option value="delta">Difference</option>
           </select>
