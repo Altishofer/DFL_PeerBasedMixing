@@ -24,7 +24,6 @@ const METRIC_FIELDS = {
   memory_mb: 'Memory (MB)',
 };
 
-
 const METRIC_KEYS = Object.keys(METRIC_FIELDS);
 const getDisplayName = key => METRIC_FIELDS[key] || null;
 
@@ -43,10 +42,8 @@ const Dashboard = () => {
   const wsRef = useRef(null);
 
   const nodeNames = useMemo(() => {
-    const nodes = new Set();
-    metrics.forEach(metric => metric.node && nodes.add(metric.node));
-    return Array.from(nodes).sort();
-  }, [metrics]);
+    return nodeStatus.map(node => node.name);
+  }, [nodeStatus]);
 
   const calculateElapsedTime = useCallback((startTime) => {
     return Date.now() - startTime;
@@ -89,7 +86,7 @@ const Dashboard = () => {
             updated[name] = {
               ...prevInfo,
               startTime: startTime ?? prevInfo.startTime,
-              elapsedMs,
+              elapsedMs: isRunning ? calculateElapsedTime(startTime) : elapsedMs,
               isRunning,
               lastUpdate: now
             };
@@ -146,7 +143,7 @@ const Dashboard = () => {
         }
         return updated;
       });
-    }, 5000);
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -200,13 +197,18 @@ const Dashboard = () => {
   const stopNodes = useCallback(() => manageNodes('/stop', 'Failed to stop nodes'), [manageNodes]);
 
   const clearStats = useCallback(() => {
-    setMetrics([]);
+    setNodeCount(4);
     setNodeStatus([]);
+    setMetrics([]);
+    setSelectedMetrics([]);
+    setIsLoading(false);
+    setError('');
     setNodeUptimes({});
     seenIdsRef.current = new Set();
-    setSelectedMetrics([]);
+    setConfig({ displayMode: 'raw' });
     localStorage.removeItem('nodeUptimes');
-  }, []);
+    loadInitialState();
+  }, [loadInitialState]);
 
   const buildChartData = useCallback((metricType) => {
     const timeMap = new Map();
