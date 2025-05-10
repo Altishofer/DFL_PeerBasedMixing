@@ -50,6 +50,7 @@ async def container_logs(websocket: WebSocket, container_name: str):
 @app.post("/stop")
 def stop():
     node_service.stop_nodes()
+    node_service.delete_file()
     return {"status": "stopped"}
 
 

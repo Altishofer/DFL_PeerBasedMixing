@@ -9,7 +9,7 @@ const MetricChart = React.memo(({ metricKey, title, chartData, nodeNames, palett
   return (
     <div className="dashboard-card" key={metricKey}>
       <h3>{title}</h3>
-      {!chartData.length ? (
+      {!chartData || chartData.length === 0 ? (
         <p className="no-data">No data available</p>
       ) : (
         <div className="chart-container">
@@ -20,7 +20,7 @@ const MetricChart = React.memo(({ metricKey, title, chartData, nodeNames, palett
               <YAxis
                 tick={{ fill: 'var(--color-text-muted)' }}
                 stroke="var(--color-border)"
-                tickFormatter={value => typeof value === 'number' ? value.toLocaleString() : value}
+                tickFormatter={value => (typeof value === 'number' ? value.toLocaleString() : value)}
               />
               <Tooltip
                 contentStyle={{

@@ -81,6 +81,11 @@ cd manager
 uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
+
+```
+uvicorn app:app --host 0.0.0.0 --port 8000 --workers 10
+```
+
 Backend runs at [http://localhost:8000](http://localhost:8000).
 
 ### 5. Install Node.js and set up the React frontend

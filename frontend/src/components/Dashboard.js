@@ -277,43 +277,50 @@ const Dashboard = () => {
   }, []);
 
 useEffect(() => {
-  loadInitialState().then(r => console.log("downloaded initial state"));
   const connectWebSocket = () => {
+    if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
+      // If there's already an open or connecting WebSocket, do not create a new one
+      console.log("WebSocket is already connected or connecting.");
+      return;
+    }
+
+    console.log("Attempting to connect to WebSocket...");
     wsRef.current = new WebSocket('ws://localhost:8000/ws/metrics');
 
     let lastUpdateTime = Date.now();
 
-    wsRef.current.onmessage = (event) => {
-      try {
-        const newMetrics = JSON.parse(event.data);
-        if (!Array.isArray(newMetrics)) return;
-
-        const now = Date.now();
-        if (now - lastUpdateTime < 3000) {
-          return;
-        }
-        lastUpdateTime = now;
-
-        setMetrics(prev => {
-          const newIds = new Set(seenIdsRef.current);
-          const filtered = [];
-          newMetrics.forEach(entry => {
-            if (entry.id && !newIds.has(entry.id)) {
-              newIds.add(entry.id);
-              filtered.push(entry);
-            }
-          });
-
-          if (!filtered.length) return prev;
-
-          seenIdsRef.current = newIds;
-
-          return [...prev, ...filtered];
-        });
-      } catch (err) {
-        console.error("Failed to parse WebSocket message:", err);
-      }
+    wsRef.current.onopen = () => {
+      console.log("WebSocket connected successfully.");
+      setError('');
     };
+
+    wsRef.current.onmessage = (event) => {
+  try {
+    const newMetrics = JSON.parse(event.data);
+    if (!Array.isArray(newMetrics)) return;
+
+    setMetrics(prev => {
+      const newIds = new Set(seenIdsRef.current);
+      const filtered = [];
+
+      newMetrics.forEach(entry => {
+        if (entry.id && !newIds.has(entry.id)) {
+          newIds.add(entry.id);
+          filtered.push(entry);
+        }
+      });
+
+      if (!filtered.length) return prev;
+
+      seenIdsRef.current = newIds;
+
+      // Return a new reference for metrics to trigger a re-render
+      return [...prev, ...filtered];
+    });
+  } catch (err) {
+    console.error("Failed to parse WebSocket message:", err);
+  }
+};
 
     wsRef.current.onerror = (err) => {
       console.error("WebSocket error:", err);
@@ -323,16 +330,22 @@ useEffect(() => {
     wsRef.current.onclose = (event) => {
       console.log("WebSocket disconnected, attempting to reconnect...");
       setError("WebSocket disconnected, attempting to reconnect...");
-      setTimeout(connectWebSocket, 2000);
+
+      // Retry connection after a longer delay (e.g., 5 seconds)
+      setTimeout(connectWebSocket, 5000);
     };
   };
 
-  connectWebSocket();
+  connectWebSocket();  // Initial connection attempt
 
+  // Cleanup function to close the WebSocket connection when the component unmounts
   return () => {
-    if (wsRef.current) wsRef.current.close();
+    if (wsRef.current) {
+      console.log("Closing WebSocket connection.");
+      wsRef.current.close();
+    }
   };
-}, []);
+}, []); // Only run on mount/unmount
 
 
   return (
