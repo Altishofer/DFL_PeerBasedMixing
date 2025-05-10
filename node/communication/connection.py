@@ -1,7 +1,5 @@
 import asyncio
 import logging
-from contextlib import suppress
-from node.metrics.node_metrics import Metrics
 
 from retry import retry
 

@@ -10,7 +10,7 @@ from sphinxmix.SphinxParams import SphinxParams
 
 from communication.sphinx.cache import Cache
 from communication.sphinx.sphinx_router import SphinxRouter
-from node.communication.tcp_server import TcpServer
+from communication.tcp_server import TcpServer
 from utils.config_store import ConfigStore
 from utils.exception_decorator import log_exceptions
 from metrics.node_metrics import metrics, MetricField

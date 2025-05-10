@@ -9,7 +9,7 @@ from sphinxmix.SphinxClient import (
 from sphinxmix.SphinxNode import sphinx_process
 
 from communication.sphinx.cache import Cache
-from node.communication.sphinx.key_store import KeyStore
+from communication.sphinx.key_store import KeyStore
 from utils.config_store import ConfigStore
 from utils.exception_decorator import log_exceptions
 

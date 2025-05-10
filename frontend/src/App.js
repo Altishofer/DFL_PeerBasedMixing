@@ -12,16 +12,8 @@ const CHART_PALETTE = ['#3182CE', '#38A169', '#DD6B20', '#805AD5', '#E53E3E', '#
 const MAX_NODES = 10;
 
 const METRIC_FIELDS = {
-  msg_sent: 'Messages Sent',
-  errors: 'Errors',
-  surb_received: 'SURBs Received',
-  fragment_received: 'Fragments Received',
-  bytes_received: 'Bytes Received',
-  current_round: 'Current Round',
-  accuracy: 'Accuracy',
-  fragment_resent: 'Fragments Resent',
-  bytes_sent: 'Bytes Sent',
-  fragments_forwarded: 'Fragments Forwarded'
+  cpu_total_ns: 'CPU Usage (ns)',
+  memory_mb: 'Memory Usage (MB)'
 };
 
 const METRIC_KEYS = Object.keys(METRIC_FIELDS);
@@ -36,7 +28,7 @@ const Dashboard = () => {
   const [error, setError] = useState('');
   const [nodeUptimes, setNodeUptimes] = useState({});
   const [config, setConfig] = useState({ displayMode: 'raw' });
-const [wsTrigger, setWsTrigger] = useState(0);
+  const [wsTrigger, setWsTrigger] = useState(0);
 
   const seenIdsRef = useRef(new Set());
   const wsRef = useRef(null);
@@ -49,8 +41,8 @@ const [wsTrigger, setWsTrigger] = useState(0);
 
   const fetchNodeStatus = useCallback(async () => {
     try {
-      const { data } = await axios.get(`${API_BASE_URL}/status`);
-      const newStatus = data?.node_status || data || [];
+      const { data } = await axios.get(`${API_BASE_URL}/nodes/status`);
+      const newStatus = Array.isArray(data) ? data : [];
       setNodeStatus(newStatus);
       setError('');
 
@@ -85,85 +77,82 @@ const [wsTrigger, setWsTrigger] = useState(0);
   useEffect(() => {
     const interval = setInterval(() => {
       setNodeUptimes(prev => {
-      const now = Date.now();
-      const updated = {};
-      for (const [node, info] of Object.entries(prev)) {
-        const shouldUpdate = info.isRunning && info.startTime;
-        updated[node] = {
-          ...info,
-          elapsedMs: shouldUpdate ? now - info.startTime : info.elapsedMs
-        };
-      }
-      return updated;
-    });
-
+        const now = Date.now();
+        const updated = {};
+        for (const [node, info] of Object.entries(prev)) {
+          const shouldUpdate = info.isRunning && info.startTime;
+          updated[node] = {
+            ...info,
+            elapsedMs: shouldUpdate ? now - info.startTime : info.elapsedMs
+          };
+        }
+        return updated;
+      });
     }, 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const manageNodes = useCallback(async (endpoint, errorMessage) => {
-    try {
-      setIsLoading(true);
-      setError('');
-      await axios.post(`${API_BASE_URL}${endpoint}`);
-      await fetchNodeStatus();
-    } catch (err) {
-      console.error(`Error managing nodes (${endpoint}):`, err);
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fetchNodeStatus]);
-
-  const loadInitialState = useCallback(async () => {
+  const manageNodes = useCallback(async (endpoint, errorMessage, data = {}) => {
   try {
     setIsLoading(true);
-    const { data } = await axios.get(`${API_BASE_URL}/metrics`);
-    const unique = [];
-    const ids = new Set();
-    data.forEach(entry => {
-      if (entry.id && !ids.has(entry.id)) {
-        ids.add(entry.id);
-        unique.push(entry);
-      }
-    });
-    seenIdsRef.current = ids;
-    setMetrics(unique);
+    setError('');
+    await axios.post(`${API_BASE_URL}${endpoint}`, data);
     await fetchNodeStatus();
   } catch (err) {
-    console.error("Failed to load initial state:", err);
-    setError("Error loading metrics from server");
+    console.error(`Error managing nodes (${endpoint}):`, err);
+    if (err.response) {
+      setError(`Request failed with status ${err.response.status}: ${err.response.data.detail || errorMessage}`);
+    } else {
+      setError(errorMessage);
+    }
   } finally {
     setIsLoading(false);
   }
 }, [fetchNodeStatus]);
 
+  const loadInitialState = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const { data } = await axios.get(`${API_BASE_URL}/metrics`);
+      const unique = [];
+      const ids = new Set();
+      data.forEach(entry => {
+        if (entry.id && !ids.has(entry.id)) {
+          ids.add(entry.id);
+          unique.push(entry);
+        }
+      });
+      seenIdsRef.current = ids;
+      setMetrics(unique);
+      await fetchNodeStatus();
+    } catch (err) {
+      console.error("Failed to load initial state:", err);
+      setError("Error loading metrics from server");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchNodeStatus]);
 
-const startNodes = useCallback(async () => {
-  setMetrics([]);
-  seenIdsRef.current = new Set();
-  setSelectedMetrics([]);
-  await manageNodes(`/start/${nodeCount}`, 'Failed to start nodes');
-setWsTrigger(prev => prev + 1);
+  const startNodes = useCallback(async () => {
+    setMetrics([]);
+    seenIdsRef.current = new Set();
+    setSelectedMetrics([]);
+    await manageNodes(`/nodes/start`, 'Failed to start nodes', { count: nodeCount });
+    setWsTrigger(prev => prev + 1);
 
-  await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 500));
+    await loadInitialState();
+  }, [manageNodes, nodeCount, loadInitialState]);
 
-  await loadInitialState();
-}, [manageNodes, nodeCount, loadInitialState]);
+  const stopNodes = useCallback(() => manageNodes('/nodes/stop', 'Failed to stop nodes'), [manageNodes]);
 
-
-  const stopNodes = useCallback(() => manageNodes('/stop', 'Failed to stop nodes'), [manageNodes]);
-
-
-const clearStats = useCallback(() => {
-  setMetrics([]);
-  setNodeStatus([]);
-  setNodeUptimes({});
-  seenIdsRef.current = new Set();
-  setSelectedMetrics([]);
-}, []);
-
-
+  const clearStats = useCallback(() => {
+    setMetrics([]);
+    setNodeStatus([]);
+    setNodeUptimes({});
+    seenIdsRef.current = new Set();
+    setSelectedMetrics([]);
+  }, []);
 
   const buildChartData = useCallback((metricType) => {
     const timeMap = new Map();
@@ -257,48 +246,45 @@ const clearStats = useCallback(() => {
     );
   }, [buildChartData, nodeNames]);
 
-
   useEffect(() => {
-  loadInitialState();
+    loadInitialState();
 
-  const statusInterval = setInterval(fetchNodeStatus, 2000);
-  wsRef.current = new WebSocket('ws://localhost:8000/ws/metrics');
+    const statusInterval = setInterval(fetchNodeStatus, 5000);
+    wsRef.current = new WebSocket('ws://localhost:8000/metrics/ws');
 
-  wsRef.current.onmessage = (event) => {
-    try {
-      const newMetrics = JSON.parse(event.data);
-      if (!Array.isArray(newMetrics)) return;
+    wsRef.current.onmessage = (event) => {
+      try {
+        const newMetrics = JSON.parse(event.data);
+        if (!Array.isArray(newMetrics)) return;
 
-      setMetrics(prev => {
-        const filtered = [];
-        const newIds = new Set(seenIdsRef.current);
-        newMetrics.forEach(entry => {
-          if (entry.id && !newIds.has(entry.id)) {
-            newIds.add(entry.id);
-            filtered.push(entry);
-          }
+        setMetrics(prev => {
+          const filtered = [];
+          const newIds = new Set(seenIdsRef.current);
+          newMetrics.forEach(entry => {
+            if (entry.id && !newIds.has(entry.id)) {
+              newIds.add(entry.id);
+              filtered.push(entry);
+            }
+          });
+          if (!filtered.length) return prev;
+          seenIdsRef.current = newIds;
+          return [...prev, ...filtered];
         });
-        if (!filtered.length) return prev;
-        seenIdsRef.current = newIds;
-        return [...prev, ...filtered];
-      });
-    } catch (err) {
-      console.error("Failed to parse WebSocket message:", err);
-    }
-  };
+      } catch (err) {
+        console.error("Failed to parse WebSocket message:", err);
+      }
+    };
 
-  wsRef.current.onerror = (err) => {
-    console.error("WebSocket error:", err);
-    setError("WebSocket connection error");
-  };
+    wsRef.current.onerror = (err) => {
+      console.error("WebSocket error:", err);
+      setError("WebSocket connection error");
+    };
 
-  return () => {
-    clearInterval(statusInterval);
-    if (wsRef.current) wsRef.current.close();
-  };
-}, [fetchNodeStatus, loadInitialState, wsTrigger]);
-
-
+    return () => {
+      clearInterval(statusInterval);
+      if (wsRef.current) wsRef.current.close();
+    };
+  }, [fetchNodeStatus, loadInitialState, wsTrigger]);
 
   const handleMetricToggle = useCallback((field) => {
     setSelectedMetrics(prev =>
@@ -346,17 +332,16 @@ const clearStats = useCallback(() => {
         <div className="control-group">
           <label>Metrics Display</label>
           <div className="metric-toggle-container">
-          {METRIC_KEYS.filter(field => getDisplayName(field)).map(field => (
-            <button
-              key={field}
-              className={`metric-toggle ${selectedMetrics.includes(field) ? 'active' : ''}`}
-              onClick={() => handleMetricToggle(field)}
-            >
-              {getDisplayName(field)}
-            </button>
-          ))}
-        </div>
-
+            {METRIC_KEYS.filter(field => getDisplayName(field)).map(field => (
+              <button
+                key={field}
+                className={`metric-toggle ${selectedMetrics.includes(field) ? 'active' : ''}`}
+                onClick={() => handleMetricToggle(field)}
+              >
+                {getDisplayName(field)}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="action-buttons">

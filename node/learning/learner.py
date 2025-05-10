@@ -1,8 +1,8 @@
 import asyncio
 import logging
 
-from node.learning.message_manager import MessageManager
-from node.learning.model_handler import ModelHandler
+from learning.message_manager import MessageManager
+from learning.model_handler import ModelHandler
 from metrics.node_metrics import metrics, MetricField
 
 
