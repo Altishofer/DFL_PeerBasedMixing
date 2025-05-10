@@ -2,31 +2,11 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import axios from 'axios';
 import { ResponsiveContainer } from 'recharts';
 import '../App.css';
-import NodeStatus from './NodeStatus';
-import MetricChart from './MetricChart';
+import ControlPanel from './ControlPanel';
+import NodeMetrics from './NodeMetrics';
 
 const API_BASE_URL = 'http://localhost:8000';
 const CHART_PALETTE = ['#3182CE', '#38A169', '#DD6B20', '#805AD5', '#E53E3E', '#D69E2E', '#319795', '#00B5D8'];
-const MAX_NODES = 10;
-
-const METRIC_FIELDS = {
-  msg_sent: 'Messages Sent',
-  errors: 'Errors',
-  surb_received: 'SURBs Received',
-  fragment_received: 'Fragments Received',
-  bytes_received: 'Bytes Received',
-  current_round: 'Current Round',
-  accuracy: 'Accuracy',
-  fragment_resent: 'Fragments Resent',
-  bytes_sent: 'Bytes Sent',
-  fragments_forwarded: 'Fragments Forwarded',
-  cpu_total_ns: 'CPU Total Ns',
-  memory_mb: 'Memory (MB)',
-};
-
-
-const METRIC_KEYS = Object.keys(METRIC_FIELDS);
-const getDisplayName = key => METRIC_FIELDS[key] || null;
 
 const Dashboard = () => {
   const [nodeCount, setNodeCount] = useState(4);
@@ -119,51 +99,6 @@ const Dashboard = () => {
     }
   }, [calculateElapsedTime]);
 
-  useEffect(() => {
-    const savedNodeUptimes = localStorage.getItem('nodeUptimes');
-    if (savedNodeUptimes) {
-      setNodeUptimes(JSON.parse(savedNodeUptimes));
-    }
-
-    const interval = setInterval(() => {
-      const now = Date.now();
-      setNodeUptimes(prev => {
-        const updated = {};
-        for (const [node, info] of Object.entries(prev)) {
-          let elapsedMs = info.elapsedMs;
-          let lastUpdate = info.lastUpdate;
-
-          if (info.isRunning && lastUpdate) {
-            elapsedMs += now - lastUpdate;
-            lastUpdate = now;
-          }
-
-          updated[node] = {
-            ...info,
-            elapsedMs,
-            lastUpdate: info.isRunning ? lastUpdate : info.lastUpdate
-          };
-        }
-        return updated;
-      });
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const manageNodes = useCallback(async (endpoint, errorMessage) => {
-    try {
-      setIsLoading(true);
-      setError('');
-      await axios.post(`${API_BASE_URL}${endpoint}`);
-      await fetchNodeStatus();
-    } catch (err) {
-      console.error(`Error managing nodes (${endpoint}):`, err);
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fetchNodeStatus]);
-
   const loadInitialState = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -182,6 +117,21 @@ const Dashboard = () => {
     } catch (err) {
       console.error("Failed to load initial state:", err);
       setError("Error loading metrics from server");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchNodeStatus]);
+
+  // Define manageNodes here
+  const manageNodes = useCallback(async (endpoint, errorMessage) => {
+    try {
+      setIsLoading(true);
+      setError('');
+      await axios.post(`${API_BASE_URL}${endpoint}`);
+      await fetchNodeStatus();
+    } catch (err) {
+      console.error(`Error managing nodes (${endpoint}):`, err);
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -302,60 +252,18 @@ const Dashboard = () => {
         <p>Real-time network monitoring and control</p>
       </header>
 
-      <section className="control-panel">
-        <div className="control-group">
-          <label htmlFor="nodeCount">Nodes to Start</label>
-          <input
-            id="nodeCount"
-            type="number"
-            min="1"
-            max={MAX_NODES}
-            value={nodeCount}
-            onChange={(e) => {
-              const value = Math.min(MAX_NODES, Math.max(1, parseInt(e.target.value, 10) || 1));
-              setNodeCount(value);
-            }}
-            disabled={isLoading}
-          />
-        </div>
-
-        <div className="control-group">
-          <label>Display Mode</label>
-          <select
-            value={config.displayMode}
-            onChange={(e) => setConfig(prev => ({ ...prev, displayMode: e.target.value }))}>
-            <option value="raw">Raw Values</option>
-            <option value="delta">Difference</option>
-          </select>
-        </div>
-
-        <div className="control-group">
-          <label>Metrics Display</label>
-          <div className="metric-toggle-container">
-            {METRIC_KEYS.filter(field => getDisplayName(field)).map(field => (
-              <button
-                key={field}
-                className={`metric-toggle ${selectedMetrics.includes(field) ? 'active' : ''}`}
-                onClick={() => handleMetricToggle(field)}
-              >
-                {getDisplayName(field)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="action-buttons">
-          <button className="action-button start-button" onClick={startNodes} disabled={isLoading}>
-            {isLoading ? 'Starting...' : 'Start Network'}
-          </button>
-          <button className="action-button clear-button" onClick={clearStats} disabled={isLoading}>
-            Reset
-          </button>
-          <button className="action-button stop-button" onClick={stopNodes} disabled={isLoading}>
-            Stop Network
-          </button>
-        </div>
-      </section>
+      <ControlPanel
+        nodeCount={nodeCount}
+        setNodeCount={setNodeCount}
+        config={config}
+        setConfig={setConfig}
+        selectedMetrics={selectedMetrics}
+        handleMetricToggle={handleMetricToggle}
+        startNodes={startNodes}
+        stopNodes={stopNodes}
+        clearStats={clearStats}
+        isLoading={isLoading}
+      />
 
       {isLoading && (
         <div className="overlay-loading">
@@ -366,26 +274,15 @@ const Dashboard = () => {
 
       {error && <div className="status-message error">{error}</div>}
 
-      <main className="dashboard-grid">
-        <NodeStatus
-          nodeNames={nodeNames}
-          nodeStatus={nodeStatus}
-          nodeUptimes={nodeUptimes}
-          palette={CHART_PALETTE}
-        />
-
-        {selectedMetrics.map(metricKey => (
-          <MetricChart
-            key={metricKey}
-            metricKey={metricKey}
-            title={getDisplayName(metricKey)}
-            chartData={buildChartData(metricKey)}
-            nodeNames={nodeNames}
-            palette={CHART_PALETTE}
-            displayMode={config.displayMode}
-          />
-        ))}
-      </main>
+      <NodeMetrics
+        nodeNames={nodeNames}
+        nodeStatus={nodeStatus}
+        nodeUptimes={nodeUptimes}
+        selectedMetrics={selectedMetrics}
+        buildChartData={buildChartData}
+        config={config}
+        CHART_PALETTE={CHART_PALETTE}
+      />
 
       <footer className="dashboard-footer">
         <p>Data refreshes every 2 seconds | All entries are streamed with deduplication</p>
