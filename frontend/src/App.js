@@ -49,12 +49,17 @@ const Dashboard = () => {
 
 const nodeNames = useMemo(() => {
   const nodesFromMetrics = new Set();
-  metrics.forEach(metric => metric.node && nodesFromMetrics.add(metric.node));
+  metrics.forEach(metric => {
+    if (metric.node) {
+      nodesFromMetrics.add(metric.node);
+    }
+  });
 
   const nodesFromStatus = new Set(nodeStatus.map(({ name }) => name));
 
-  // Combine nodes from both metrics and status, ensure all nodes are shown
-  return Array.from(new Set([...nodesFromMetrics, ...nodesFromStatus])).sort();
+  // Combine and deduplicate
+  const allNodes = new Set([...nodesFromMetrics, ...nodesFromStatus]);
+  return Array.from(allNodes).sort();
 }, [metrics, nodeStatus]);
 
 
@@ -152,59 +157,108 @@ const nodeNames = useMemo(() => {
   }, []);
 
   const buildChartData = useCallback((metricType) => {
+  const timeMap = new Map();
+  const nodePrevValues = {};
 
-    const timeMap = new Map();
-    const nodePrevValues = {};
+  metrics.forEach((metric) => {
+    const { timestamp, field, node, value } = metric;
 
-    metrics.forEach((metric) => {
-      const { timestamp, field, node, value } = metric;
+    // Skip if not the metric we're looking for
+    if (field !== metricType) return;
 
-      if (!timestamp || field !== metricType) return;
+    // Skip if missing critical fields
+    if (!timestamp || node === undefined || value === undefined) {
+      console.warn('Skipping metric with missing fields:', metric);
+      return;
+    }
 
-      const dateObj = new Date(timestamp);
-      const timeKey = dateObj.getTime();
-
-      if (!timeMap.has(timeKey)) {
-        timeMap.set(timeKey, {
-          timestamp: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          originalTimestamp: dateObj
-        });
+    // Normalize timestamp (handle both formats)
+    let dateObj;
+    try {
+      const normalizedTimestamp = timestamp.includes('Z') ? timestamp : timestamp.replace('+00:00', '');
+      dateObj = new Date(normalizedTimestamp);
+      if (isNaN(dateObj.getTime())) {
+        console.warn('Invalid timestamp:', timestamp);
+        return;
       }
+    } catch (e) {
+      console.warn('Failed to parse timestamp:', timestamp, e);
+      return;
+    }
 
-      const timeEntry = timeMap.get(timeKey);
-      if (node && value !== undefined && value !== null) {
-        const numVal = Number(value);
-        if (isNaN(numVal)) {
-          console.warn('Invalid metric value:', value, 'for node', node);
-          return;
-        }
+    const timeKey = dateObj.getTime();
 
-        if (config.displayMode === 'delta') {
-          const delta = nodePrevValues[node] !== undefined ? numVal - nodePrevValues[node] : 0;
-          timeEntry[node] = delta;
-          nodePrevValues[node] = numVal;
-        } else {
-          timeEntry[node] = numVal;
-        }
-      }
-    });
-
-    const result = Array.from(timeMap.values()).sort((a, b) => a.originalTimestamp - b.originalTimestamp);
-
-    // Ensure all nodes are represented in each time entry
-    result.forEach(row => {
-      nodeNames.forEach(node => {
-        if (!(node in row)) row[node] = null;
+    if (!timeMap.has(timeKey)) {
+      timeMap.set(timeKey, {
+        timestamp: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        originalTimestamp: dateObj
       });
-      delete row.originalTimestamp;
+    }
+
+    const timeEntry = timeMap.get(timeKey);
+    const numVal = Number(value);
+
+    if (isNaN(numVal)) {
+      console.warn('Invalid metric value:', value, 'for node', node);
+      return;
+    }
+
+    if (config.displayMode === 'delta') {
+      const delta = nodePrevValues[node] !== undefined ? numVal - nodePrevValues[node] : 0;
+      timeEntry[node] = delta;
+      nodePrevValues[node] = numVal;
+    } else {
+      timeEntry[node] = numVal;
+    }
+  });
+
+  const result = Array.from(timeMap.values()).sort((a, b) => a.originalTimestamp - b.originalTimestamp);
+
+  // Ensure all nodes are represented in each time entry
+  result.forEach(row => {
+    nodeNames.forEach(node => {
+      if (!(node in row)) row[node] = null;
     });
+    delete row.originalTimestamp;
+  });
 
-    return result;
-  }, [metrics, nodeNames, config.displayMode]);
+  console.log(`Built chart data for ${metricType}`, result);
+  return result;
+}, [metrics, nodeNames, config.displayMode]);
 
-  const renderMetricChart = useCallback((metricKey) => {
+
+
+
+const renderMetricChart = useCallback((metricKey) => {
   const chartData = buildChartData(metricKey);
   const title = getDisplayName(metricKey);
+
+  console.log(`Rendering chart for ${metricKey}`, {
+    metricKey,
+    title,
+    chartData,
+    nodeNames,
+    metricsCount: metrics.length,
+    sampleMetrics: metrics.slice(0, 3)
+  });
+
+  if (!chartData.length) {
+    return (
+      <div className="dashboard-card" key={metricKey}>
+        <h3>{title}</h3>
+        <p className="no-data">No data available (debug: metric exists but no chart data)</p>
+        <div className="debug-metrics">
+          <p>Relevant metrics:</p>
+          <pre>
+            {JSON.stringify(
+              metrics.filter(m => m.field === metricKey).slice(0, 5),
+              null, 2
+            )}
+          </pre>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-card" key={metricKey}>
@@ -279,46 +333,27 @@ const nodeNames = useMemo(() => {
         setError('');
       };
 
-      ws.onmessage = (event) => {
-        try {
-          setLastWsMessage(event.data);
-          const newMetrics = JSON.parse(event.data);
+      ws.onmessage = e => {
+  const incoming = JSON.parse(e.data);
+  if (!Array.isArray(incoming)) return;
 
-          if (!Array.isArray(newMetrics)) {
-            console.error('WebSocket message is not an array:', newMetrics);
-            return;
-          }
+  setMetrics(prev => {
+    const seen = seenIdsRef.current;
+    const added = [];
 
+    incoming.forEach(m => {
+      if (!m.timestamp) return;
+      const k = `${m.timestamp}|${m.field}|${m.node}`;
+      if (seen.has(k)) return;
+      seen.add(k);
+      added.push(m);
+    });
 
-          setMetrics(prev => {
-            const newIds = new Set(seenIdsRef.current);
-            const filtered = [];
-
-            newMetrics.forEach(entry => {
-              if (!entry.timestamp) {
-                console.warn('Metric missing timestamp:', entry);
-                return;
-              }
-
-              if (!newIds.has(entry.timestamp)) {
-                newIds.add(entry.timestamp);
-                filtered.push(entry);
-              }
-            });
-
-            if (filtered.length) {
-              seenIdsRef.current = newIds;
-              const updated = [...prev, ...filtered];
-              setMetricsCount(updated.length);
-              return updated;
-            }
-            return prev;
-          });
-        } catch (err) {
-          console.error("Failed to parse WebSocket message:", err, "Data:", event.data);
-          setError("Failed to parse metrics data");
-        }
-      };
+    if (!added.length) return prev;
+    setMetricsCount(prev.length + added.length);
+    return [...prev, ...added];
+  });
+};
 
       ws.onerror = (err) => {
         console.error("WebSocket error:", err);

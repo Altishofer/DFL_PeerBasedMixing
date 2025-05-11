@@ -39,7 +39,7 @@ class MetricsService:
         if not active_nodes:
             return []
 
-        timestamp = datetime.datetime.utcnow().isoformat() + "Z"
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         metrics = []
 
         for container in active_nodes:
