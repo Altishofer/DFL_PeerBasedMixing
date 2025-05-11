@@ -48,44 +48,69 @@ const Dashboard = () => {
   }, [metrics, nodeStatus]);
 
   const fetchNodeStatus = useCallback(async () => {
-    try {
-      const { data } = await axios.get(`${API_BASE_URL}/nodes/status`);
-      const newStatus = data?.node_status || data || [];
-      setNodeStatus(newStatus);
-      setError('');
-      setNodeUptimes(prev => {
-        const updated = { ...prev };
-        for (const { name, status, started_at } of newStatus) {
-          if (!name) continue;
+  try {
+    const { data } = await axios.get(`${API_BASE_URL}/nodes/status`);
+    const newStatus = data?.node_status || data || [];
+
+    setNodeStatus(newStatus);
+    setError('');
+
+    setNodeUptimes(prev => {
+      const updated = { ...prev };
+      newStatus.forEach(({ name, status, started_at }) => {
+        if (name) {
           const isRunning = status?.toLowerCase() === 'running';
           const startTime = started_at ? new Date(started_at).getTime() : null;
-          updated[name] = { startTime, isRunning };
+          updated[name] = { startTime, isRunning, elapsedMs: isRunning ? Date.now() - startTime : updated[name]?.elapsedMs };
         }
-        return updated;
       });
-    } catch (err) {
-      console.error('Error fetching node status:', err);
-      setError('Failed to fetch node status');
-    }
-  }, []);
+      return updated;
+    });
+
+  } catch (err) {
+    console.error('Error fetching node status:', err);
+    setError('Failed to fetch node status');
+  }
+}, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setNodeUptimes(prev => {
-        const now = Date.now();
-        const updated = {};
-        for (const [node, info] of Object.entries(prev)) {
-          if (info.isRunning && info.startTime) {
-            updated[node] = { ...info, elapsedMs: now - info.startTime };
+  const interval = setInterval(() => {
+    setNodeUptimes(prev => {
+      const now = Date.now();
+      const updated = {};
+      const activeNodes = new Set(nodeStatus.map(({ name }) => name));
+
+      for (const [node, info] of Object.entries(prev)) {
+        const statusInfo = nodeStatus.find(({ name }) => name === node);
+
+        if (statusInfo) {
+          const isRunning = statusInfo.status.toLowerCase() === 'running';
+          const newStartTime = statusInfo.started_at ? new Date(statusInfo.started_at).getTime() : null;
+
+          if (isRunning && newStartTime !== info.startTime) {
+            updated[node] = { ...info, startTime: newStartTime, elapsedMs: now - newStartTime, isRunning };
+          } else if (isRunning) {
+            updated[node] = { ...info, elapsedMs: now - info.startTime, isRunning };
           } else {
-            updated[node] = info;
+            updated[node] = { ...info, isRunning, elapsedMs: info.elapsedMs };
           }
+        } else {
+          updated[node] = { ...info, isRunning: false, elapsedMs: info.elapsedMs };
         }
-        return updated;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+      }
+
+      for (const node of activeNodes) {
+        if (!prev[node]) {
+          updated[node] = { isRunning: false, elapsedMs: 0 };
+        }
+      }
+
+      return updated;
+    });
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, [nodeStatus]);
 
   const manageNodes = useCallback(async (endpoint, data, errorMessage) => {
     try {
@@ -104,7 +129,7 @@ const Dashboard = () => {
   const startNodes = useCallback(async () => {
     setMetrics([]);
     setSelectedMetrics([]);
-    await manageNodes(`/nodes/start`, {"count":nodeCount}, 'Failed to start nodes');
+    await manageNodes(`/nodes/start`, { count: nodeCount }, 'Failed to start nodes');
     setWsTrigger(prev => prev + 1);
     await new Promise(resolve => setTimeout(resolve, 500));
     await fetchNodeStatus();
@@ -206,8 +231,7 @@ const Dashboard = () => {
           <label>Display Mode</label>
           <select
             value={config.displayMode}
-            onChange={(e) => setConfig(prev => ({ ...prev, displayMode: e.target.value }))}
-          >
+            onChange={(e) => setConfig(prev => ({ ...prev, displayMode: e.target.value }))}>
             <option value="raw">Raw Values</option>
             <option value="delta">Difference</option>
           </select>
@@ -220,8 +244,7 @@ const Dashboard = () => {
               <button
                 key={field}
                 className={`metric-toggle ${selectedMetrics.includes(field) ? 'active' : ''}`}
-                onClick={() => handleMetricToggle(field)}
-              >
+                onClick={() => handleMetricToggle(field)}>
                 {getDisplayName(field)}
               </button>
             ))}

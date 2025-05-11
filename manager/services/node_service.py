@@ -3,7 +3,6 @@ import os
 from typing import List
 from manager.config import settings
 from manager.models.schemas import NodeStatus
-from manager.services.cache_service import cache_service
 from manager.utils.docker_utils import (
     get_docker_client,
     create_network,
@@ -57,16 +56,17 @@ class NodeService:
         )
 
         status = []
+        active_node_names = set()
+
         for c in containers:
             if c.name.startswith("node_"):
+                active_node_names.add(c.name)
                 status.append(NodeStatus(
                     name=c.name,
                     status=c.status,
                     started_at=c.attrs["State"]["StartedAt"]
                 ))
 
-        await cache_service.set_status(status)
         return status
-
 
 node_service = NodeService()
