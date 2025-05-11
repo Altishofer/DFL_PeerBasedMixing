@@ -49,7 +49,7 @@ const Dashboard = () => {
 
   const fetchNodeStatus = useCallback(async () => {
     try {
-      const { data } = await axios.get(`${API_BASE_URL}/status`);
+      const { data } = await axios.get(`${API_BASE_URL}/nodes/status`);
       const newStatus = data?.node_status || data || [];
       setNodeStatus(newStatus);
       setError('');
@@ -87,11 +87,11 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const manageNodes = useCallback(async (endpoint, errorMessage) => {
+  const manageNodes = useCallback(async (endpoint, data, errorMessage) => {
     try {
       setIsLoading(true);
       setError('');
-      await axios.post(`${API_BASE_URL}${endpoint}`);
+      await axios.post(`${API_BASE_URL}${endpoint}`, data);
       await fetchNodeStatus();
     } catch (err) {
       console.error(`Error managing nodes (${endpoint}):`, err);
@@ -104,13 +104,13 @@ const Dashboard = () => {
   const startNodes = useCallback(async () => {
     setMetrics([]);
     setSelectedMetrics([]);
-    await manageNodes(`/start/${nodeCount}`, 'Failed to start nodes');
+    await manageNodes(`/nodes/start`, {"count":nodeCount}, 'Failed to start nodes');
     setWsTrigger(prev => prev + 1);
     await new Promise(resolve => setTimeout(resolve, 500));
     await fetchNodeStatus();
   }, [manageNodes, nodeCount, fetchNodeStatus]);
 
-  const stopNodes = useCallback(() => manageNodes('/stop', 'Failed to stop nodes'), [manageNodes]);
+  const stopNodes = useCallback(() => manageNodes('/nodes/stop', {}, 'Failed to stop nodes'), [manageNodes]);
 
   const clearStats = useCallback(() => {
     setMetrics([]);
@@ -151,7 +151,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     const statusInterval = setInterval(fetchNodeStatus, 2000);
-    wsRef.current = new WebSocket('ws://localhost:8000/ws/metrics');
+    wsRef.current = new WebSocket('ws://localhost:8000/metrics/ws');
 
     wsRef.current.onmessage = (event) => {
       try {

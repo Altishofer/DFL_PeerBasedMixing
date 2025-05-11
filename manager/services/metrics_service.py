@@ -39,7 +39,7 @@ class MetricsService:
         if not active_nodes:
             return []
 
-        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        timestamp = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()
         metrics = []
 
         for container in active_nodes:
@@ -72,7 +72,7 @@ class MetricsService:
             return
 
         try:
-            serialized = msgpack.packb([m.dict() for m in metrics])
+            serialized = msgpack.packb([m.model_dump() for m in metrics])
             async with await asyncio.to_thread(open, settings.METRICS_FILE, "ab") as f:
                 await f.write(serialized)
         except Exception as e:

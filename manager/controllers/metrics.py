@@ -9,24 +9,26 @@ from manager.models.schemas import MetricPoint
 router = APIRouter(prefix="/metrics")
 
 
-@router.get("", response_model=list[MetricPoint])
-async def get_metrics():
-    return await metrics_service.get_all_metrics()
-
-
 @router.websocket("/ws")
 async def metrics_websocket(websocket: WebSocket):
     await websocket.accept()
     try:
+        metrics = await cache_service.get_metrics()
+        if metrics:
+            metrics_dict = [metric.model_dump() for metric in metrics]
+            await websocket.send_json(metrics_dict)
+
         while True:
             metrics = await cache_service.get_metrics()
             if metrics:
-                metrics_dict = [metric.dict() for metric in metrics]
+                metrics_dict = [metric.model_dump() for metric in metrics]
                 await websocket.send_json(metrics_dict)
                 await cache_service.clear_metrics()
+
             await asyncio.sleep(1)
     except WebSocketDisconnect:
         pass
+
 
 @router.post("/push", response_model=List[MetricPoint])
 async def push_metrics(new_metrics: List[MetricPoint]):

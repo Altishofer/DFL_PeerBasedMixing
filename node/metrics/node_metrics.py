@@ -63,7 +63,7 @@ class Metrics:
 
     def _record_change(self, field: MetricField, value: Any):
         self._change_log.append({
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "field": field.value,
             "value": value,
             "node": self._host
@@ -84,7 +84,7 @@ class Metrics:
     def _flush_buffer_loop(self):
         while True:
             time.sleep(0.5)
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
             with self._data_lock:
                 for field, value in self._metrics_buffer.items():
                     self._change_log.append({
