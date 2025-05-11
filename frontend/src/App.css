@@ -427,4 +427,3 @@ td.status-unknown { color: var(--color-text-muted); font-weight: 500; }
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
-
