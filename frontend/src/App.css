@@ -8,7 +8,6 @@
   --color-success: #34c759;
   --color-danger: #ff3b30;
   --color-warning: #ff9500;
-  --color-grid: #e5e5ea;
 
   --font-sans: -apple-system, BlinkMacSystemFont, 'San Francisco', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
@@ -59,6 +58,35 @@ body {
   line-height: 1.4;
 }
 
+.dashboard-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dashboard-main {
+  width: 100%;
+}
+
+.dashboard-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 30px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.node-status-container,
+.docker-logs-container {
+  flex: 1;
+  width: 50%;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 400px;
+  overflow: auto;
+}
+
 .control-panel {
   display: flex;
   flex-direction: column;
@@ -69,6 +97,8 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   margin-bottom: var(--spacing-md);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .control-row {
@@ -185,10 +215,11 @@ body {
   border-color: var(--color-accent);
 }
 
-.dashboard-grid {
+.metric-charts-grid {
   display: grid;
-  gap: var(--spacing-md);
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+  gap: 20px;
+  width: 100%;
 }
 
 .dashboard-card {
@@ -229,12 +260,10 @@ body {
 
 .status-table-container {
   width: 100%;
-  overflow-x: visible;
 }
 
 .status-table {
   width: 100%;
-  table-layout: auto;
   border-collapse: collapse;
   font-size: 0.9rem;
 }
@@ -257,6 +286,10 @@ body {
   border-bottom: none;
 }
 
+.status-table tr:hover {
+  background-color: #f2f2f2;
+}
+
 td.status-running {
   color: var(--color-success);
   font-weight: 500;
@@ -274,30 +307,33 @@ td.status-unknown {
   font-weight: 500;
 }
 
-@media (max-width: 768px) {
-  .dashboard-container {
-    padding: var(--spacing-sm);
-  }
+.docker-logs-container {
+  background: #1c1c1e;
+  padding: var(--spacing-xs);
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
 
-  .control-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
+.docker-logs-header {
+  background-color: #f5f5f7;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-radius: 8px;
+}
 
-  .control-input-limited {
-    max-width: 100%;
-  }
+.docker-logs-header h3 {
+  margin: 0;
+}
 
-  .control-buttons {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .control-buttons .action-button {
-    width: 100%;
-  }
-
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
+.docker-logs-text {
+  flex: 1;
+  overflow-y: auto;
+  color: var(--color-success);
+  font-family: monospace;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  max-height: 100%;
 }

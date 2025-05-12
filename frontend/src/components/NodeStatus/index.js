@@ -1,6 +1,6 @@
 import React from 'react';
 
-const NodeStatus = ({ nodeNames, nodeStatus, nodeUptimes, palette }) => {
+const NodeStatus = ({ nodeNames, nodeStatus, nodeUptimes, palette, onSelectNode }) => {
   return (
     <div className="dashboard-card">
       <h3>Node Status</h3>
@@ -31,7 +31,11 @@ const NodeStatus = ({ nodeNames, nodeStatus, nodeUptimes, palette }) => {
                     : '--';
 
                 return (
-                  <tr key={node}>
+                  <tr
+                    key={node}
+                    onClick={() => onSelectNode?.(node)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <td style={{ color: palette[index % palette.length], fontWeight: 500 }}>
                       {node}
                     </td>

@@ -5,8 +5,6 @@ import os
 import asyncio
 from utils.logging_config import setup_logging
 
-setup_logging(node_id=2)
-
 def handle_exception(loop, context):
     msg = context.get("exception", context["message"])
     logging.error(f"💥 Unhandled exception: {msg}")

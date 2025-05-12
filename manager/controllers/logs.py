@@ -1,18 +1,42 @@
 import asyncio
-import subprocess
+from collections import defaultdict
+from typing import Set, Dict
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 router = APIRouter(prefix="/logs")
 
+log_connections: Dict[str, Set[WebSocket]] = defaultdict(set)
+log_tasks: Dict[str, asyncio.Task] = {}
 
 @router.websocket("/{container_name}")
-async def stream_logs(websocket: WebSocket, container_name: str):
+async def logs_websocket(websocket: WebSocket, container_name: str):
     await websocket.accept()
+    log_connections[container_name].add(websocket)
 
+    if container_name not in log_tasks:
+        log_tasks[container_name] = asyncio.create_task(broadcast_logs(container_name))
+
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        log_connections[container_name].remove(websocket)
+        if not log_connections[container_name]:
+            task = log_tasks.pop(container_name, None)
+            if task:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+            log_connections.pop(container_name, None)
+
+async def broadcast_logs(container_name: str):
     process = await asyncio.create_subprocess_exec(
         'docker', 'logs', '-f', container_name,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT
     )
 
     try:
@@ -21,12 +45,22 @@ async def stream_logs(websocket: WebSocket, container_name: str):
             if not line:
                 await asyncio.sleep(0.1)
                 continue
-            await websocket.send_text(line.decode().strip())
-    except WebSocketDisconnect:
-        pass
-    finally:
+            message = line.decode(errors="ignore").strip()
+            clients = list(log_connections[container_name])
+            send_tasks = [asyncio.create_task(ws.send_text(message)) for ws in clients]
+            results = await asyncio.gather(*send_tasks, return_exceptions=True)
+            for ws, result in zip(clients, results):
+                if isinstance(result, Exception):
+                    log_connections[container_name].remove(ws)
+    except asyncio.CancelledError:
         process.terminate()
         try:
+            await asyncio.wait_for(process.wait(), timeout=3)
+        except asyncio.TimeoutError:
+            process.kill()
             await process.wait()
-        except:
-            pass
+    except Exception as e:
+        print(f"Error broadcasting logs for {container_name}: {e}")
+    finally:
+        if container_name in log_tasks:
+            await log_tasks.pop(container_name, None)
