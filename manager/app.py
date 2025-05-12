@@ -4,14 +4,18 @@ from contextlib import asynccontextmanager
 from manager.controllers import nodes, metrics, logs
 from manager.services.metrics_service import metrics_service
 from manager.config import settings
+from fastapi_cache.backends.inmemory import InMemoryBackend
+from fastapi_cache import FastAPICache
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    FastAPICache.init(InMemoryBackend())
     await metrics_service.start_collecting()
     yield
     await metrics_service.stop_collecting()
 
 app = FastAPI(lifespan=lifespan)
+
 
 # CORS Configuration
 app.add_middleware(

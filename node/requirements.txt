@@ -13,3 +13,4 @@ rich
 aiofiles
 httpx
 uvicorn[standard]
+fastapi-cache2

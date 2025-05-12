@@ -167,3 +167,5 @@ think about experiments
 sudo snap remove --purge docker
 
 https://docs.docker.com/engine/install/ubuntu/
+
+uvicorn app:app  --host 0.0.0.0 --port 8000 --workers 4

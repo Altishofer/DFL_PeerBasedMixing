@@ -10,8 +10,7 @@ class Settings:
     BASE_IP_PREFIX = "192.168.0"
     SUBNET = "192.168.0.0/24"
     GATEWAY = "192.168.0.254"
-    MAX_METRICS_CACHE = 10000
-    METRICS_INTERVAL = 1  # seconds
+    METRICS_INTERVAL = 3
 
     def __init__(self):
         self.METRICS_DIR.mkdir(exist_ok=True)
