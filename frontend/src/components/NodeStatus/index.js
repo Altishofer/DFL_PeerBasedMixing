@@ -1,6 +1,6 @@
 import React from 'react';
 
-const NodeStatus = ({ nodeNames, nodeStatus, nodeUptimes, palette, onSelectNode }) => {
+const NodeStatus = ({ nodeNames, nodeStatus, nodeUptimes, palette, onSelectNode, selectedNode }) => {
   return (
     <div className="dashboard-card">
       <h3>Node Status</h3>
@@ -30,13 +30,20 @@ const NodeStatus = ({ nodeNames, nodeStatus, nodeUptimes, palette, onSelectNode 
                       })()
                     : '--';
 
+                const isSelected = node === selectedNode;
+
                 return (
-                  <tr
-                    key={node}
-                    onClick={() => onSelectNode?.(node)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <td style={{ color: palette[index % palette.length], fontWeight: 500 }}>
+                    <tr
+                      key={node}
+                      onClick={() => onSelectNode?.(node)}
+                      className={isSelected ? 'selected-node' : ''}
+                      style={{ cursor: 'pointer' }}
+                    >
+                    <td
+                      style={{
+                        color: palette[index % palette.length]
+                      }}
+                    >
                       {node}
                     </td>
                     <td className={`status-${statusInfo?.status?.toLowerCase() || 'unknown'}`}>

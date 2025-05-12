@@ -331,6 +331,12 @@ td.status-unknown {
   margin-bottom: 0.5rem;
 }
 
+.selected-node {
+  background-color: rgba(0, 123, 255, 0.1);
+  font-weight: bold;
+}
+
+
 .docker-logs-header h3 {
   margin-bottom: var(--spacing-xs);
 }

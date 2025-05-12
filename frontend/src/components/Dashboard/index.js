@@ -162,7 +162,7 @@ const Dashboard = () => {
           setNodeCount={setNodeCount}
           maxNodes={MAX_NODES}
           displayMode={config.displayMode}
-          setDisplayMode={(mode) => setConfig(prev => ({ ...prev, displayMode: mode }))}
+          setDisplayMode={(mode) => setConfig(prev => ({ ...prev, displayMode: mode })) }
           selectedMetrics={selectedMetrics}
           metricKeys={METRIC_KEYS}
           getDisplayName={getDisplayName}
@@ -191,6 +191,7 @@ const Dashboard = () => {
                 nodeUptimes={nodeUptimes}
                 palette={CHART_PALETTE}
                 onSelectNode={setSelectedNode}
+                selectedNode={selectedNode}
               />
             </div>
             <div className="docker-logs-container">
@@ -198,9 +199,8 @@ const Dashboard = () => {
                 <h3>Node Logs</h3>
                 <strong>{!selectedNode && "Select a node to view logs"}</strong>
               </div>
-                <DockerLogs containerName={selectedNode} />
+              <DockerLogs containerName={selectedNode} />
             </div>
-
           </div>
 
           <div className="metric-charts-grid">
