@@ -6,7 +6,7 @@ const NodeStatus = ({ nodeNames, nodeStatus, nodeUptimes, palette }) => {
       <h3>Node Status</h3>
       {nodeNames.length > 0 ? (
         <div className="status-table-container">
-          <table>
+          <table className="status-table">
             <thead>
               <tr>
                 <th>Node</th>
@@ -18,25 +18,27 @@ const NodeStatus = ({ nodeNames, nodeStatus, nodeUptimes, palette }) => {
               {nodeNames.map((node, index) => {
                 const statusInfo = nodeStatus.find(({ name }) => name === node);
                 const uptimeInfo = nodeUptimes[node];
-                const displayUptime = uptimeInfo && !isNaN(uptimeInfo.elapsedMs)
-                  ? (() => {
-                      const totalMs = uptimeInfo.elapsedMs;
-                      const seconds = Math.floor(totalMs / 1000) % 60;
-                      const minutes = Math.floor(totalMs / (1000 * 60)) % 60;
-                      const hours = Math.floor(totalMs / (1000 * 60 * 60));
-                      return `${hours}h ${minutes}m ${seconds}s`;
-                    })()
-                  : '---';
+                const isRunning = statusInfo?.status?.toLowerCase() === 'running';
+
+                const displayUptime =
+                  uptimeInfo && !isNaN(uptimeInfo.elapsedMs)
+                    ? (() => {
+                        const totalMs = uptimeInfo.elapsedMs;
+                        const seconds = Math.floor(totalMs / 1000) % 60;
+                        const minutes = Math.floor(totalMs / (1000 * 60)) % 60;
+                        return `${minutes}m ${seconds}s`;
+                      })()
+                    : '--';
 
                 return (
                   <tr key={node}>
                     <td style={{ color: palette[index % palette.length], fontWeight: 500 }}>
                       {node}
                     </td>
-                    <td className={`status-${statusInfo?.status?.toLowerCase() ?? 'unknown'}`}>
-                      {statusInfo?.status ?? 'Unknown'}
+                    <td className={`status-${statusInfo?.status?.toLowerCase() || 'unknown'}`}>
+                      {statusInfo?.status || 'Unknown'}
                     </td>
-                    <td>{displayUptime}</td>
+                    <td>{isRunning ? displayUptime : '--'}</td>
                   </tr>
                 );
               })}
