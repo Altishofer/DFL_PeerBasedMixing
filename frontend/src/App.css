@@ -337,3 +337,13 @@ td.status-unknown {
   white-space: pre-wrap;
   max-height: 100%;
 }
+
+
+.docker-logs-placeholder {
+  flex: 1;
+  color: var(--color-success);
+  font-family: monospace;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  max-height: 100%;
+}

@@ -46,7 +46,7 @@ async def broadcast_loop():
                     send_tasks.append(asyncio.create_task(ws.send_json(data)))
                 results = await asyncio.gather(*send_tasks, return_exceptions=True)
                 for i, result in enumerate(results):
-                    if isinstance(result, Exception):
+                    if isinstance(result, Exception) and i < len(active_connections):
                         disconnected_ws = list(active_connections)[i]
                         active_connections.remove(disconnected_ws)
 

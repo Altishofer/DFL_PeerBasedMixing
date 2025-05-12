@@ -1,34 +1,25 @@
 import React, { useEffect, useRef, useState } from 'react';
+import LogService from '../../../services/LogService';
 
-export default function DockerLogs({ containerName }) {
+export default function ContainerLog({ containerName }) {
   const [logs, setLogs] = useState([]);
   const logRef = useRef(null);
-  const wsRef = useRef(null);
+  const serviceRef = useRef(null);
 
   useEffect(() => {
     if (!containerName) return;
 
     setLogs([]);
+    serviceRef.current = new LogService(
+      containerName,
+      (line) => setLogs((prev) => [...prev.slice(-500), line]),
+      (err) => console.error(`LogService error:`, err)
+    );
 
-    const ws = new WebSocket(`ws://localhost:8000/logs/${containerName}`);
-    wsRef.current = ws;
-
-    ws.onmessage = (event) => {
-      setLogs(prev => [...prev.slice(-500), event.data]);
-    };
-
-    ws.onerror = (err) => {
-      console.error(`WebSocket error for container ${containerName}:`, err);
-    };
-
-    ws.onclose = () => {
-      console.log(`WebSocket closed for container ${containerName}`);
-    };
+    serviceRef.current.start();
 
     return () => {
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.close();
-      }
+      serviceRef.current?.stop();
     };
   }, [containerName]);
 
@@ -38,21 +29,11 @@ export default function DockerLogs({ containerName }) {
     }
   }, [logs]);
 
-return (
-  <div className="docker-logs-container">
-    <div className="docker-logs-header">
-      <h3>Node Logs</h3>
-      Viewing logs for: <strong>{containerName}</strong>
-    </div>
+  return (
     <div ref={logRef} className="docker-logs-text">
-      {logs.map((line, index) => (
-        <div key={index}>{line}</div>
+      {logs.map((line, idx) => (
+        <div key={idx}>{line}</div>
       ))}
     </div>
-  </div>
-);
-
-
-
-
+  );
 }

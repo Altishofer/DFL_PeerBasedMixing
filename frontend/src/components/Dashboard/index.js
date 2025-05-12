@@ -80,54 +80,72 @@ const Dashboard = () => {
     );
   };
 
-  useEffect(() => {
-    const interval = setInterval(fetchNodeStatus, 1000);
-    const ws = new WebSocket('ws://localhost:8000/metrics/ws');
-    wsRef.current = ws;
-
-    ws.onmessage = (event) => {
-      try {
-        const newMetrics = JSON.parse(event.data);
-        if (!Array.isArray(newMetrics)) return;
-        setMetrics(prev => [...prev, ...newMetrics]);
-      } catch (err) {
-        console.error('WebSocket message error:', err);
-        setError('Failed to parse WebSocket data');
-      }
-    };
-
-    ws.onerror = () => setError('WebSocket connection error');
-
-    return () => {
-      clearInterval(interval);
-      if (ws) ws.close();
-    };
-  }, [fetchNodeStatus, wsTrigger]);
+  const [counter, setCounter] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setNodeUptimes((prev) => {
-        const now = Date.now();
-        const updated = { ...prev };
-        Object.entries(prev).forEach(([name, info]) => {
-          if (info.isRunning && info.startTime) {
-            updated[name] = {
-              ...info,
-              elapsedMs: now - info.startTime,
-            };
+    let ws;
+    let reconnectTimeout = null;
+    let reconnectAttempts = 0;
+
+    const connect = () => {
+      if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+
+      ws = new WebSocket('ws://localhost:8000/metrics/ws');
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        reconnectAttempts = 0;
+        setError('');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const newMetrics = JSON.parse(event.data);
+          if (Array.isArray(newMetrics)) {
+            setMetrics(prev => [...prev, ...newMetrics]);
           }
-        });
-        return updated;
-      });
+        } catch (err) {
+          console.error('WebSocket message error:', err);
+          setError('Failed to parse WebSocket data');
+        }
+      };
+
+      ws.onerror = () => {
+        setError('WebSocket connection error');
+        ws.close();
+      };
+
+      ws.onclose = () => {
+        setError('WebSocket disconnected. Attempting to reconnect...');
+        reconnectAttempts += 1;
+        const timeout = Math.min(30000, 1000 * 2 ** reconnectAttempts);
+        reconnectTimeout = setTimeout(connect, timeout);
+      };
+    };
+
+    connect();
+    const statusInterval = setInterval(fetchNodeStatus, 5000); // Fetch status every 5 seconds
+
+    const counterInterval = setInterval(() => {
+      setCounter(prev => prev + 1); // Increment counter every second
     }, 1000);
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      clearInterval(statusInterval);
+      clearInterval(counterInterval);
+      clearTimeout(reconnectTimeout);
+      if (ws) {
+        ws.onopen = ws.onmessage = ws.onerror = ws.onclose = null;
+        ws.close();
+      }
+    };
+  }, [fetchNodeStatus, wsTrigger]);
 
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
         <h1>DFL Mixnet Dashboard</h1>
+        <div>Time elapsed: {counter} seconds</div> {/* Display the counter */}
       </header>
 
       <div className="dashboard-content">
@@ -136,7 +154,7 @@ const Dashboard = () => {
           setNodeCount={setNodeCount}
           maxNodes={MAX_NODES}
           displayMode={config.displayMode}
-          setDisplayMode={(mode) => setConfig(prev => ({ ...prev, displayMode: mode }))}
+          setDisplayMode={(mode) => setConfig(prev => ({ ...prev, displayMode: mode })) }
           selectedMetrics={selectedMetrics}
           metricKeys={METRIC_KEYS}
           getDisplayName={getDisplayName}
@@ -168,11 +186,11 @@ const Dashboard = () => {
               />
             </div>
             <div className="docker-logs-container">
-              {selectedNode ? (
+              <div className="docker-logs-header">
+                <h3>Node Logs</h3>
+                <strong>{selectedNode || "Select a node to view logs"}</strong>
+              </div>
                 <DockerLogs containerName={selectedNode} />
-              ) : (
-                <div className="docker-logs-placeholder">Select a node to view logs</div>
-              )}
             </div>
           </div>
 

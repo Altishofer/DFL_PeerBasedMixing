@@ -8,11 +8,15 @@ router = APIRouter(prefix="/logs")
 
 log_connections: Dict[str, Set[WebSocket]] = defaultdict(set)
 log_tasks: Dict[str, asyncio.Task] = {}
+log_buffers: Dict[str, str] = defaultdict(str)
 
 @router.websocket("/{container_name}")
 async def logs_websocket(websocket: WebSocket, container_name: str):
     await websocket.accept()
     log_connections[container_name].add(websocket)
+
+    if container_name in log_buffers:
+        await websocket.send_text(log_buffers[container_name])
 
     if container_name not in log_tasks:
         log_tasks[container_name] = asyncio.create_task(broadcast_logs(container_name))
@@ -46,6 +50,9 @@ async def broadcast_logs(container_name: str):
                 await asyncio.sleep(0.1)
                 continue
             message = line.decode(errors="ignore").strip()
+
+            log_buffers[container_name] += message + "\n"
+
             clients = list(log_connections[container_name])
             send_tasks = [asyncio.create_task(ws.send_text(message)) for ws in clients]
             results = await asyncio.gather(*send_tasks, return_exceptions=True)
