@@ -13,10 +13,7 @@ from utils.config_store import ConfigStore
 
 class MetricField(Enum):
     MSG_SENT = "msg_sent"
-    PAYLOAD_SENT = "payload_sent"
-    MSG_RECV = "msg_recv"
     ERRORS = "errors"
-    TIME_STAMP = "time_stamp"
     SURB_RECEIVED = "surb_received"
     FRAGMENT_RECEIVED = "fragment_received"
     BYTES_RECEIVED = "bytes_received"

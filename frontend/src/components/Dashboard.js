@@ -175,7 +175,7 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    const statusInterval = setInterval(fetchNodeStatus, 20000);
+    const statusInterval = setInterval(fetchNodeStatus, 1000);
     wsRef.current = new WebSocket('ws://localhost:8000/metrics/ws');
 
     wsRef.current.onmessage = (event) => {
