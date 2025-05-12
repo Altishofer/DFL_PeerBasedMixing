@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import NodeStatusService from '../services/NodeStatusService';
 
 const useNodeStatus = (setNodeStatus, setError, setNodeUptimes) =>

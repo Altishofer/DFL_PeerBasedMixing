@@ -80,8 +80,6 @@ const Dashboard = () => {
     );
   };
 
-  const [counter, setCounter] = useState(0);
-
   useEffect(() => {
     let ws;
     let reconnectTimeout = null;
@@ -124,15 +122,26 @@ const Dashboard = () => {
     };
 
     connect();
-    const statusInterval = setInterval(fetchNodeStatus, 5000); // Fetch status every 5 seconds
-
-    const counterInterval = setInterval(() => {
-      setCounter(prev => prev + 1); // Increment counter every second
+    const statusInterval = setInterval(fetchNodeStatus, 10000);
+    const uptimeInterval = setInterval(() => {
+      setNodeUptimes(prev => {
+        const updatedUptimes = {};
+        Object.keys(prev).forEach((name) => {
+          const { startTime, isRunning } = prev[name];
+          if (isRunning && startTime) {
+            updatedUptimes[name] = {
+              ...prev[name],
+              elapsedMs: Date.now() - startTime,
+            };
+          }
+        });
+        return { ...prev, ...updatedUptimes };
+      });
     }, 1000);
 
     return () => {
       clearInterval(statusInterval);
-      clearInterval(counterInterval);
+      clearInterval(uptimeInterval);
       clearTimeout(reconnectTimeout);
       if (ws) {
         ws.onopen = ws.onmessage = ws.onerror = ws.onclose = null;
@@ -145,7 +154,6 @@ const Dashboard = () => {
     <div className="dashboard-container">
       <header className="dashboard-header">
         <h1>DFL Mixnet Dashboard</h1>
-        <div>Time elapsed: {counter} seconds</div> {/* Display the counter */}
       </header>
 
       <div className="dashboard-content">
@@ -154,7 +162,7 @@ const Dashboard = () => {
           setNodeCount={setNodeCount}
           maxNodes={MAX_NODES}
           displayMode={config.displayMode}
-          setDisplayMode={(mode) => setConfig(prev => ({ ...prev, displayMode: mode })) }
+          setDisplayMode={(mode) => setConfig(prev => ({ ...prev, displayMode: mode }))}
           selectedMetrics={selectedMetrics}
           metricKeys={METRIC_KEYS}
           getDisplayName={getDisplayName}
@@ -192,6 +200,7 @@ const Dashboard = () => {
               </div>
                 <DockerLogs containerName={selectedNode} />
             </div>
+
           </div>
 
           <div className="metric-charts-grid">

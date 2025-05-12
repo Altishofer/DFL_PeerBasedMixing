@@ -315,17 +315,16 @@ td.status-unknown {
   flex-direction: column;
   height: 100%;
   width: 100%;
+  border-radius: 8px;
 }
 
 .docker-logs-header {
   color: white;
   padding: 0.5rem;
   margin-bottom: 0.5rem;
-  border-radius: 8px;
 }
 
 .docker-logs-header h3 {
-  margin: 0;
 }
 
 .docker-logs-text {
@@ -341,6 +340,7 @@ td.status-unknown {
 
 .docker-logs-placeholder {
   flex: 1;
+  overflow-y: auto;
   color: var(--color-success);
   font-family: monospace;
   font-size: 0.875rem;
