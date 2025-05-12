@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from collections import deque
 
+from utils.config_store import ConfigStore
+
 
 class MetricField(Enum):
     MSG_SENT = "msg_sent"
@@ -63,12 +65,9 @@ class Metrics:
             self._metrics_buffer[field] = max(self._metrics_buffer.get(field, value), value)
 
     def _flush_buffer_loop(self):
-        interval = 3
         while True:
-            start = time.monotonic()
+            time.sleep(3)
             self._flush_metrics()
-            elapsed = time.monotonic() - start
-            time.sleep(max(0, interval - elapsed))
 
     def _flush_metrics(self):
         timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -91,14 +90,11 @@ class Metrics:
             return list(self._change_log)
 
     def _push_loop(self):
-        base_interval = 3
         while True:
             jitter = random.uniform(-0.1, 0.1)
-            interval = base_interval + jitter
-            start = time.monotonic()
+            interval = ConfigStore.push_metric_interval + jitter
             self._push_metrics()
-            elapsed = time.monotonic() - start
-            time.sleep(max(0, interval - elapsed))
+            time.sleep(interval)
 
     def _push_metrics(self):
         try:

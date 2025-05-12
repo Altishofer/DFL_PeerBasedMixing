@@ -1,13 +1,14 @@
 import asyncio
 import datetime
-import msgpack
 import logging
+import msgpack
 import time
-from pathlib import Path
-from typing import List, Callable, Coroutine, Any
+from typing import List
+
 from manager.config import settings
-from manager.services.cache_service import cache_service
 from manager.models.schemas import MetricPoint
+from manager.services.cache_service import cache_service
+from manager.services.file_service import file_service
 from manager.utils.docker_utils import get_docker_client
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,7 @@ class MetricsService:
 
     async def _writer_loop(self):
         while True:
+            await asyncio.sleep(settings.FLUSH_INTERVAL)
             first_item = await self._write_queue.get()
             batch = [first_item]
 
@@ -61,22 +63,13 @@ class MetricsService:
                 pass
 
             try:
-                start = time.perf_counter()
-                flat_metrics = [m.model_dump() for metrics in batch for m in metrics]
-                serialized = msgpack.packb(flat_metrics)
-                await asyncio.to_thread(self._write_to_file, serialized)
-                duration = (time.perf_counter() - start) * 1000
-                logger.info(f"Wrote {len(flat_metrics)} metrics in {duration:.2f} ms")
+                flat_metrics = [m for metrics in batch for m in metrics]
+                await asyncio.to_thread(file_service.write, flat_metrics)
             except Exception as e:
                 logger.error(f"Failed to write metrics to file: {e}")
 
-    def _write_to_file(self, serialized_data: bytes):
-        with open(settings.METRICS_FILE, "ab") as f:
-            f.write(serialized_data)
-
     async def reset_file(self):
-        with open(settings.METRICS_FILE, "wb") as f:
-            f.truncate(0)
+        await asyncio.to_thread(file_service.reset)
 
     def _collect_metrics(self) -> List[MetricPoint]:
         try:
@@ -109,21 +102,12 @@ class MetricsService:
 
     async def get_all_metrics(self) -> List[dict]:
         try:
-            return await asyncio.to_thread(self._read_all_metrics)
+            return await asyncio.to_thread(file_service.read_all)
         except FileNotFoundError:
             return []
         except Exception as e:
             logger.error(f"Failed to read metrics file: {e}")
             return []
-
-    def _read_all_metrics(self) -> List[dict]:
-        metrics = []
-        with open(settings.METRICS_FILE, "rb") as f:
-            unpacker = msgpack.Unpacker(f, raw=False)
-            for batch in unpacker:
-                for item in batch:
-                    metrics.append(MetricPoint(**item).model_dump())
-        return metrics
 
     async def enqueue_metrics(self, metrics: List[MetricPoint]):
         self._write_queue.put_nowait(metrics)

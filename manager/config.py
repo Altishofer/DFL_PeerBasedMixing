@@ -11,6 +11,7 @@ class Settings:
     SUBNET = "192.168.0.0/24"
     GATEWAY = "192.168.0.254"
     METRICS_INTERVAL = 3
+    FLUSH_INTERVAL = 1
 
     def __init__(self):
         self.METRICS_DIR.mkdir(exist_ok=True)
