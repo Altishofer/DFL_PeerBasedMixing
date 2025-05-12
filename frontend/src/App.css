@@ -317,22 +317,22 @@ td.status-unknown {
 
 .docker-logs-container {
   background: #1c1c1e;
-  padding: var(--spacing-xs);
   max-height: 400px;
   display: flex;
   flex-direction: column;
   height: 100%;
   width: 100%;
   border-radius: 8px;
+  padding: var(--spacing-sm);
 }
 
 .docker-logs-header {
   color: white;
-  padding: 0.5rem;
   margin-bottom: 0.5rem;
 }
 
 .docker-logs-header h3 {
+  margin-bottom: var(--spacing-xs);
 }
 
 .docker-logs-text {

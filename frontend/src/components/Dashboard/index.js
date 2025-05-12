@@ -196,7 +196,7 @@ const Dashboard = () => {
             <div className="docker-logs-container">
               <div className="docker-logs-header">
                 <h3>Node Logs</h3>
-                <strong>{selectedNode || "Select a node to view logs"}</strong>
+                <strong>{!selectedNode && "Select a node to view logs"}</strong>
               </div>
                 <DockerLogs containerName={selectedNode} />
             </div>
