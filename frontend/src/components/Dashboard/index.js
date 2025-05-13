@@ -195,36 +195,36 @@ const Dashboard = () => {
   }, [fetchNodeStatus, wsTrigger]);
 
   return (
-    <div className="dashboard-container">
-      <ToastContainer position="top-right" autoClose={5000} />
+<div className="dashboard-container">
+  <ToastContainer position="top-right" autoClose={5000} />
 
-      <header className="dashboard-header">
-        <div className="header-content">
-          <h1>DFL Mixnet Simulation Dashboard</h1>
-          <p>Monitor and control your decentralized network simulation in real-time</p>
-        </div>
-      </header>
+  <div className="fixed-controls">
+    <BasicControls
+      onStart={startNodes}
+      onStop={stopNodes}
+      onClear={clearStats}
+      isLoading={isLoading}
+    />
+  </div>
+
+  <header className="dashboard-header">
+    <div className="header-content">
+      <h1>Peer-Based Mixing</h1>
+    </div>
+  </header>
+
+
 
       <div className="dashboard-content">
         <Tabs>
   <TabList>
-    <Tab>Basic Controls</Tab>
-    <Tab>Simulation Settings</Tab>
-    <Tab>Metrics Selection</Tab>
-    <Tab>Charts</Tab>
-    <Tab>Node Logs</Tab>
+    <Tab>Nodes</Tab>
+    <Tab>Settings</Tab>
+    <Tab>Metrics</Tab>
   </TabList>
 
 <TabPanel>
   <div className="basic-controls-section">
-    <div className="basic-controls-container">
-      <BasicControls
-        onStart={startNodes}
-        onStop={stopNodes}
-        onClear={clearStats}
-        isLoading={isLoading}
-      />
-    </div>
     <div className="node-status-container">
       <NodeStatus
         nodeNames={nodeNames}
@@ -234,6 +234,13 @@ const Dashboard = () => {
         onSelectNode={setSelectedNode}
         selectedNode={selectedNode}
       />
+    </div>
+        <div className="docker-logs-container">
+      <div className="docker-logs-header">
+        <h3>Node Logs</h3>
+        <strong>{!selectedNode && "Select a node to view logs"}</strong>
+      </div>
+      <DockerLogs containerName={selectedNode} />
     </div>
   </div>
 </TabPanel>
@@ -257,40 +264,41 @@ const Dashboard = () => {
     />
   </TabPanel>
 
-  <TabPanel>
-    <MetricSelection
-      selectedMetrics={selectedMetrics}
-      metricKeys={METRIC_KEYS}
-      getDisplayName={getDisplayName}
-      onToggleMetric={toggleMetric}
-    />
-  </TabPanel>
+<TabPanel>
+  <div className="metrics-two-column">
+    <div className="metrics-column metric-selection-column">
+      <MetricSelection
+        selectedMetrics={selectedMetrics}
+        metricKeys={METRIC_KEYS}
+        getDisplayName={getDisplayName}
+        onToggleMetric={toggleMetric}
+      />
+    </div>
+    <div className="metrics-column metric-chart-column">
+      {selectedMetrics.length === 0 ? (
+        <div className="no-data">Select metrics to display charts</div>
+      ) : (
+        <div className="metric-charts-grid">
+          {selectedMetrics.map((metricKey) => (
+            <MetricChart
+              key={metricKey}
+              metricKey={metricKey}
+              title={getDisplayName(metricKey)}
+              chartData={buildChartData(metrics, metricKey)}
+              nodeNames={nodeNames}
+              palette={CHART_PALETTE}
+              displayMode={config.displayMode}
+              activeRound={activeRound}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</TabPanel>
 
   <TabPanel>
-    <div className="metric-charts-grid">
-      {selectedMetrics.map((metricKey) => (
-        <MetricChart
-          key={metricKey}
-          metricKey={metricKey}
-          title={getDisplayName(metricKey)}
-          chartData={buildChartData(metrics, metricKey)}
-          nodeNames={nodeNames}
-          palette={CHART_PALETTE}
-          displayMode={config.displayMode}
-          activeRound={activeRound}
-        />
-      ))}
-    </div>
-  </TabPanel>
 
-  <TabPanel>
-    <div className="docker-logs-container">
-      <div className="docker-logs-header">
-        <h3>Node Logs</h3>
-        <strong>{!selectedNode && "Select a node to view logs"}</strong>
-      </div>
-      <DockerLogs containerName={selectedNode} />
-    </div>
   </TabPanel>
 </Tabs>
 
@@ -306,13 +314,9 @@ const Dashboard = () => {
 
       <footer className="dashboard-footer">
         <div className="footer-content">
-          <p>DFL Mixnet Simulation Dashboard v1.2.0</p>
+          <p>DFL Mixnet Simulation Dashboard v0.1</p>
           <div className="footer-links">
-            <span>Data refreshes every 2 seconds</span>
-            <span>•</span>
-            <a href="#">Documentation</a>
-            <span>•</span>
-            <a href="#">API Reference</a>
+            <a href="https://github.com/Altishofer/DFL_PeerBasedMixing">Source Code</a>
           </div>
         </div>
       </footer>

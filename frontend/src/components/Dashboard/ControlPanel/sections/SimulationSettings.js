@@ -73,25 +73,7 @@ export default function SimulationSettings({
         </div>
       </div>
 
-      <div className="control-group-box">
-        <h3>Display Settings</h3>
-        <div className="control-row">
-          <div className="control-group control-input-limited">
-            <label htmlFor="displayMode">Display Mode</label>
-            <select
-              id="displayMode"
-              value={displayMode}
-              onChange={(e) => setDisplayMode(e.target.value)}
-              disabled={isLoading}
-            >
-              <option value="raw">Raw Values</option>
-              <option value="delta">Difference</option>
-              <option value="rate">Rate of Change</option>
-              <option value="normalized">Normalized</option>
-            </select>
-          </div>
-        </div>
-      </div>
+
     </>
   );
 }

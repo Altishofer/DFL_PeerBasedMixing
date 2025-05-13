@@ -2,7 +2,6 @@ export default function BasicControls({ onStart, onStop, onClear, isLoading }) {
   return (
     <div className="control-row">
       <div className="control-group">
-        <label>Actions</label>
         <div className="control-buttons">
           <button className="action-button start-button" onClick={onStart} disabled={isLoading}>
             {isLoading ? 'Starting…' : 'Start Simulation'}
