@@ -76,9 +76,7 @@ pip install -r requirements.txt
 ### 4. Start the FastAPI backend
 
 ```bash
-mkdir secrets
-cd manager
-uvicorn app:app --reload --host 0.0.0.0 --port 8000
+uvicorn manager.app:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Backend runs at [http://localhost:8000](http://localhost:8000).
@@ -87,15 +85,13 @@ Backend runs at [http://localhost:8000](http://localhost:8000).
 
 ```bash
 sudo apt install npm
-cd frontend
-npm install
+npm install --prefix frontend
 ```
 
 ### 6. Start the React frontend
 
 ```bash
-cd frontend
-npm start
+npm start --prefix frontend
 ```
 
 Frontend runs at [http://localhost:3000](http://localhost:3000).
@@ -142,10 +138,11 @@ docker inspect --format '{{.State.Pid}}' $(docker ps -q) | xargs -r sudo kill -9
 - Implement more robust fragment-based aggregation
 
 ### Sandrin
-- Use persistent TCP connections (currently, each message uses a new socket)
+✅ Use persistent TCP connections (currently, each message uses a new socket)
 - Add message hashes for payload verification and replay protection
 - Introduce random synonyms for models and fragments to improve unlinkability
-- Real-time node statistics and visualization in the frontend
+✅ Real-time node statistics and visualization in the frontend
+✅ Add resend logic for lost packets
 - job based deployment
 
 
@@ -165,7 +162,6 @@ think about experiments
 ---
 
 sudo snap remove --purge docker
-
 https://docs.docker.com/engine/install/ubuntu/
 
-uvicorn app:app  --host 0.0.0.0 --port 8000 --workers 4
+uvicorn app:app  --host 0.0.0.0 --port 8000 --workers 1

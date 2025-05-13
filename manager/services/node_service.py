@@ -3,15 +3,13 @@ import os
 from typing import List
 from manager.config import settings
 from manager.models.schemas import NodeStatus
+from manager.config import Settings
 from manager.utils.docker_utils import (
     get_docker_client,
     create_network,
     generate_keys,
     stop_all_nodes
 )
-
-config_path = os.path.abspath("../secrets")
-node_path = os.path.abspath("../node")
 
 class NodeService:
     def __init__(self):
@@ -37,8 +35,8 @@ class NodeService:
                     "PORT": "5000"
                 },
                 volumes={
-                    config_path: {"bind": "/config/", "mode": "ro"},
-                    node_path: {"bind": "/node", "mode": "ro"}
+                    Settings.SECRETS_PATH: {"bind": "/config/", "mode": "ro"},
+                    Settings.NODE_PATH: {"bind": "/node", "mode": "ro"}
                 },
                 detach=True,
                 network=settings.NETWORK_NAME,

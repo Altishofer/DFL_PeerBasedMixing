@@ -10,3 +10,4 @@ secrets/
 manager/metrics
 *.jsonl
 *.msgpack
+metrics/

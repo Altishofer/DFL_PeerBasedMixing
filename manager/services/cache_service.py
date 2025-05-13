@@ -1,7 +1,7 @@
 from collections import deque
 import asyncio
 from typing import Deque
-from models.schemas import MetricPoint
+from manager.models.schemas import MetricPoint
 
 class CacheService:
     def __init__(self):

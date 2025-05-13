@@ -18,6 +18,7 @@ class Learner:
 
     async def run(self):
         while self._current_round < self._total_rounds:
+            metrics().set(MetricField.CURRENT_ROUND, self._current_round)
             self._log_header(f"ROUND {self._current_round}")
             acc_before = self._model_handler.train()
             await self._message_manager.send_model(self._current_round)
@@ -25,7 +26,6 @@ class Learner:
             self._model_handler.aggregate(model_chunks)
             acc_after = self._model_handler.evaluate()
             self._log_footer(acc_before, acc_after)
-            metrics().set(MetricField.CURRENT_ROUND, self._current_round)
             self._current_round += 1
 
         logging.info(f"Completed all {self._total_rounds} training rounds")
