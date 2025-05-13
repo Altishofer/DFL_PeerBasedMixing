@@ -4,10 +4,10 @@ export default function BasicControls({ onStart, onStop, onClear, isLoading }) {
       <div className="control-group">
         <div className="control-buttons">
           <button className="action-button start-button" onClick={onStart} disabled={isLoading}>
-            {isLoading ? 'Starting…' : 'Start'}
+            Start
           </button>
           <button className="action-button clear-button" onClick={onClear} disabled={isLoading}>
-            Reset
+            Refresh
           </button>
           <button className="action-button stop-button" onClick={onStop} disabled={isLoading}>
             Stop

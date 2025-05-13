@@ -19,7 +19,8 @@ export const buildChartData = (metrics, metricType) => {
 
     const timeEntry = timeMap.get(timeKey);
     if (node && value !== undefined) {
-      timeEntry[node] = Number(value);
+      const num = Number(value);
+      timeEntry[node] = Number.isFinite(num) ? parseFloat(num.toFixed(4)) : num;
     }
   });
 

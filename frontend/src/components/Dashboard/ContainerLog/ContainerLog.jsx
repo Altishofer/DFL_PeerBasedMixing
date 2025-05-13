@@ -1,10 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import LogService from '../../../services/LogService';
 
-export default function ContainerLog({ containerName }) {
+export default function ContainerLog({ containerName, resetTrigger }) {
   const [logs, setLogs] = useState([]);
   const logRef = useRef(null);
   const serviceRef = useRef(null);
+
+  useEffect(() => {
+    setLogs([]);
+  }, [resetTrigger]);
 
   useEffect(() => {
     if (!containerName) return;

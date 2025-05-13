@@ -30,6 +30,7 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [nodeUptimes, setNodeUptimes] = useState({});
+  const [logsResetCounter, setLogsResetCounter] = useState(0);
   const [config, setConfig] = useState({
     displayMode: 'raw',
     rounds: 10,
@@ -85,17 +86,14 @@ const Dashboard = () => {
     await fetchNodeStatus();
   }, [manageNodes, nodeCount, fetchNodeStatus, config]);
 
-  const stopNodes = useCallback(() => {
-    return manageNodes('/nodes/stop', {}, 'Failed to stop nodes');
-  }, [manageNodes]);
+const stopNodes = useCallback(async () => {
+  await manageNodes('/nodes/stop', {}, 'Failed to stop nodes');
+  resetDashboard();
+}, [manageNodes]);
+
 
   const clearStats = useCallback(() => {
-    setMetrics([]);
-    setNodeStatus([]);
-    setNodeUptimes({});
-    setSelectedMetrics([]);
-    setActiveRound(0);
-    fetchNodeStatus();
+    resetDashboard();
   }, [fetchNodeStatus]);
 
   const toggleMetric = (field) => {
@@ -105,6 +103,31 @@ const Dashboard = () => {
         : [...prev, field]
     );
   };
+
+  const resetDashboard = useCallback(() => {
+  setNodeCount(4);
+  axios.post(`${API_BASE_URL}/logs/clear`);
+  setNodeStatus([]);
+  setMetrics([]);
+  setSelectedMetrics([]);
+  setIsLoading(false);
+  setSelectedNode(null);
+  setLogsResetCounter(prev => prev + 1);
+
+  setError('');
+  setNodeUptimes({});
+  setConfig({
+    displayMode: 'raw',
+    rounds: 10,
+    exitNodes: [],
+    joinNodes: []
+  });
+  setSelectedNode(null);
+  setActiveRound(0);
+  setWsTrigger(prev => prev + 1);
+  fetchNodeStatus();
+}, [fetchNodeStatus]);
+
 
   const updateExitNodes = useCallback((_, count) => {
     setConfig(prev => ({
@@ -259,7 +282,11 @@ const Dashboard = () => {
                   <h3>Node Logs</h3>
                   <strong>{!selectedNode && "Select a node to view logs"}</strong>
                 </div>
-                <DockerLogs containerName={selectedNode} />
+                <DockerLogs
+                  key={selectedNode || 'empty'}
+                  containerName={selectedNode}
+                  resetTrigger={logsResetCounter}
+                />
               </div>
             </div>
           </TabPanel>
