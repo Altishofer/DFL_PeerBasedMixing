@@ -195,113 +195,128 @@ const Dashboard = () => {
   }, [fetchNodeStatus, wsTrigger]);
 
   return (
-<div className="dashboard-container">
-  <ToastContainer position="top-right" autoClose={5000} />
+    <div className="dashboard-container">
+      <ToastContainer position="top-right" autoClose={5000} />
 
-  <div className="fixed-controls">
-    <BasicControls
-      onStart={startNodes}
-      onStop={stopNodes}
-      onClear={clearStats}
-      isLoading={isLoading}
-    />
-  </div>
+      <div className="fixed-controls">
+        <BasicControls
+          onStart={startNodes}
+          onStop={stopNodes}
+          onClear={clearStats}
+          isLoading={isLoading}
+        />
+      </div>
 
-  <header className="dashboard-header">
-    <div className="header-content">
-      <h1>Peer-Based Mixing</h1>
-    </div>
-  </header>
-
-
+      <header className="dashboard-header">
+        <div className="header-content">
+          <h1>Peer-Based Mixing</h1>
+        </div>
+      </header>
 
       <div className="dashboard-content">
-        <Tabs>
-  <TabList>
-    <Tab>Nodes</Tab>
-    <Tab>Settings</Tab>
-    <Tab>Metrics</Tab>
-  </TabList>
+        <Tabs className="custom-tabs">
+          <TabList className="tab-list">
+            <Tab className="tab" selectedClassName="tab--selected">
+              <span className="tab-content">
+                <svg className="tab-icon" viewBox="0 0 24 24">
+                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 12h2v5H7zm4-7h2v12h-2zm4 3h2v9h-2z"/>
+                </svg>
+                Nodes
+              </span>
+            </Tab>
+            <Tab className="tab" selectedClassName="tab--selected">
+              <span className="tab-content">
+                <svg className="tab-icon" viewBox="0 0 24 24">
+                  <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
+                </svg>
+                Settings
+              </span>
+            </Tab>
+            <Tab className="tab" selectedClassName="tab--selected">
+              <span className="tab-content">
+                <svg className="tab-icon" viewBox="0 0 24 24">
+                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                </svg>
+                Metrics
+              </span>
+            </Tab>
+          </TabList>
 
-<TabPanel>
-  <div className="basic-controls-section">
-    <div className="node-status-container">
-      <NodeStatus
-        nodeNames={nodeNames}
-        nodeStatus={nodeStatus}
-        nodeUptimes={nodeUptimes}
-        palette={CHART_PALETTE}
-        onSelectNode={setSelectedNode}
-        selectedNode={selectedNode}
-      />
-    </div>
-        <div className="docker-logs-container">
-      <div className="docker-logs-header">
-        <h3>Node Logs</h3>
-        <strong>{!selectedNode && "Select a node to view logs"}</strong>
-      </div>
-      <DockerLogs containerName={selectedNode} />
-    </div>
-  </div>
-</TabPanel>
+          <TabPanel className="tab-panel">
+            <div className="panel-grid">
+              <div className="node-status-container">
+                <NodeStatus
+                  nodeNames={nodeNames}
+                  nodeStatus={nodeStatus}
+                  nodeUptimes={nodeUptimes}
+                  palette={CHART_PALETTE}
+                  onSelectNode={setSelectedNode}
+                  selectedNode={selectedNode}
+                />
+              </div>
+              <div className="docker-logs-container">
+                <div className="docker-logs-header">
+                  <h3>Node Logs</h3>
+                  <strong>{!selectedNode && "Select a node to view logs"}</strong>
+                </div>
+                <DockerLogs containerName={selectedNode} />
+              </div>
+            </div>
+          </TabPanel>
 
-
-
-  <TabPanel>
-    <SimulationSettings
-      nodeCount={nodeCount}
-      setNodeCount={setNodeCount}
-      maxNodes={MAX_NODES}
-      rounds={config.rounds}
-      setRounds={(r) => setConfig(prev => ({ ...prev, rounds: r }))}
-      exitNodes={config.exitNodes}
-      updateExitNodes={updateExitNodes}
-      joinNodes={config.joinNodes}
-      updateJoinNodes={updateJoinNodes}
-      displayMode={config.displayMode}
-      setDisplayMode={(mode) => setConfig(prev => ({ ...prev, displayMode: mode }))}
-      isLoading={isLoading}
-    />
-  </TabPanel>
-
-<TabPanel>
-  <div className="metrics-two-column">
-    <div className="metrics-column metric-selection-column">
-      <MetricSelection
-        selectedMetrics={selectedMetrics}
-        metricKeys={METRIC_KEYS}
-        getDisplayName={getDisplayName}
-        onToggleMetric={toggleMetric}
-      />
-    </div>
-    <div className="metrics-column metric-chart-column">
-      {selectedMetrics.length === 0 ? (
-        <div className="no-data">Select metrics to display charts</div>
-      ) : (
-        <div className="metric-charts-grid">
-          {selectedMetrics.map((metricKey) => (
-            <MetricChart
-              key={metricKey}
-              metricKey={metricKey}
-              title={getDisplayName(metricKey)}
-              chartData={buildChartData(metrics, metricKey)}
-              nodeNames={nodeNames}
-              palette={CHART_PALETTE}
+          <TabPanel className="tab-panel">
+            <SimulationSettings
+              nodeCount={nodeCount}
+              setNodeCount={setNodeCount}
+              maxNodes={MAX_NODES}
+              rounds={config.rounds}
+              setRounds={(r) => setConfig(prev => ({ ...prev, rounds: r }))}
+              exitNodes={config.exitNodes}
+              updateExitNodes={updateExitNodes}
+              joinNodes={config.joinNodes}
+              updateJoinNodes={updateJoinNodes}
               displayMode={config.displayMode}
-              activeRound={activeRound}
+              setDisplayMode={(mode) => setConfig(prev => ({ ...prev, displayMode: mode }))}
+              isLoading={isLoading}
             />
-          ))}
-        </div>
-      )}
-    </div>
-  </div>
-</TabPanel>
+          </TabPanel>
 
-  <TabPanel>
+          <TabPanel className="tab-panel">
+            <div className="metrics-grid">
+              <div className="metric-selection-container">
+                <MetricSelection
+                  selectedMetrics={selectedMetrics}
+                  metricKeys={METRIC_KEYS}
+                  getDisplayName={getDisplayName}
+                  onToggleMetric={toggleMetric}
+                />
+              </div>
+              <div className="metric-charts-container">
+                {selectedMetrics.length === 0 ? (
+                  <div className="no-metrics-selected">
 
-  </TabPanel>
-</Tabs>
-
+                    <p>Select metrics to display charts</p>
+                  </div>
+                ) : (
+                  <div className="metric-charts-grid">
+                    {selectedMetrics.map((metricKey) => (
+                      <MetricChart
+                        key={metricKey}
+                        metricKey={metricKey}
+                        title={getDisplayName(metricKey)}
+                        chartData={buildChartData(metrics, metricKey)}
+                        nodeNames={nodeNames}
+                        palette={CHART_PALETTE}
+                        displayMode={config.displayMode}
+                        activeRound={activeRound}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabPanel>
+        </Tabs>
 
         {error && <div className="status-message error">{error}</div>}
         {isLoading && (
