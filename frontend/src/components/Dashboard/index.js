@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { Tabs, TabList, Tab, TabPanel } from 'react-tabs';
+import 'react-tabs/style/react-tabs.css';
 import axios from 'axios';
 import NodeStatus from '../NodeStatus';
 import MetricChart from '../MetricChart';
@@ -13,7 +15,9 @@ import {
 import useNodeStatus from '../../hooks/useNodeStatus';
 import { buildChartData } from '../../utils/chartUtils';
 import '../../App.css';
-import DockerLogs from "./ContainerLog/ContainerLog";
+import DockerLogs from './ContainerLog/ContainerLog';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const Dashboard = () => {
   const [nodeCount, setNodeCount] = useState(4);
@@ -23,9 +27,15 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [nodeUptimes, setNodeUptimes] = useState({});
-  const [config, setConfig] = useState({ displayMode: 'raw' });
+  const [config, setConfig] = useState({
+    displayMode: 'raw',
+    rounds: 10,
+    exitNodes: [],
+    joinNodes: []
+  });
   const [wsTrigger, setWsTrigger] = useState(0);
   const [selectedNode, setSelectedNode] = useState(null);
+  const [activeRound, setActiveRound] = useState(0);
   const wsRef = useRef(null);
 
   const fetchNodeStatus = useNodeStatus(setNodeStatus, setError, setNodeUptimes);
@@ -41,11 +51,14 @@ const Dashboard = () => {
     try {
       setIsLoading(true);
       setError('');
-      await axios.post(`${API_BASE_URL}${endpoint}`, data);
+      const response = await axios.post(`${API_BASE_URL}${endpoint}`, data);
       await fetchNodeStatus();
+      return response.data;
     } catch (err) {
       console.error(`Node management error (${endpoint}):`, err);
       setError(errorMessage);
+      toast.error(errorMessage);
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -54,11 +67,20 @@ const Dashboard = () => {
   const startNodes = useCallback(async () => {
     setMetrics([]);
     setSelectedMetrics([]);
-    await manageNodes(`/nodes/start`, { count: nodeCount }, 'Failed to start nodes');
+    setActiveRound(0);
+
+    const data = {
+      count: nodeCount,
+      rounds: config.rounds,
+      exitNodes: config.exitNodes,
+      joinNodes: config.joinNodes
+    };
+
+    await manageNodes(`/nodes/start`, data, 'Failed to start nodes');
     setWsTrigger(prev => prev + 1);
     await new Promise(resolve => setTimeout(resolve, 500));
     await fetchNodeStatus();
-  }, [manageNodes, nodeCount, fetchNodeStatus]);
+  }, [manageNodes, nodeCount, fetchNodeStatus, config]);
 
   const stopNodes = useCallback(() => {
     return manageNodes('/nodes/stop', {}, 'Failed to stop nodes');
@@ -69,8 +91,9 @@ const Dashboard = () => {
     setNodeStatus([]);
     setNodeUptimes({});
     setSelectedMetrics([]);
+    setActiveRound(0);
     fetchNodeStatus();
-  }, []);
+  }, [fetchNodeStatus]);
 
   const toggleMetric = (field) => {
     setSelectedMetrics(prev =>
@@ -79,6 +102,20 @@ const Dashboard = () => {
         : [...prev, field]
     );
   };
+
+  const updateExitNodes = useCallback((_, count) => {
+    setConfig(prev => ({
+      ...prev,
+      exitNodes: count > 0 ? [{ round: 1, count }] : []
+    }));
+  }, []);
+
+  const updateJoinNodes = useCallback((_, count) => {
+    setConfig(prev => ({
+      ...prev,
+      joinNodes: count > 0 ? [{ round: 1, count }] : []
+    }));
+  }, []);
 
   useEffect(() => {
     let ws;
@@ -98,23 +135,27 @@ const Dashboard = () => {
 
       ws.onmessage = (event) => {
         try {
-          const newMetrics = JSON.parse(event.data);
+          const data = JSON.parse(event.data);
+          const newMetrics = Array.isArray(data) ? data : data?.data;
           if (Array.isArray(newMetrics)) {
             setMetrics(prev => [...prev, ...newMetrics]);
           }
         } catch (err) {
           console.error('WebSocket message error:', err);
           setError('Failed to parse WebSocket data');
+          toast.error('Failed to parse WebSocket data');
         }
       };
 
       ws.onerror = () => {
         setError('WebSocket connection error');
+        toast.error('WebSocket connection error');
         ws.close();
       };
 
       ws.onclose = () => {
         setError('WebSocket disconnected. Attempting to reconnect...');
+        toast.warn('WebSocket disconnected. Reconnecting...');
         reconnectAttempts += 1;
         const timeout = Math.min(30000, 1000 * 2 ** reconnectAttempts);
         reconnectTimeout = setTimeout(connect, timeout);
@@ -152,48 +193,65 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
+      <ToastContainer position="top-right" autoClose={5000} />
+
       <header className="dashboard-header">
-        <h1>DFL Mixnet Dashboard</h1>
+        <div className="header-content">
+          <h1>DFL Mixnet Simulation Dashboard</h1>
+          <p>Monitor and control your decentralized network simulation in real-time</p>
+        </div>
       </header>
 
       <div className="dashboard-content">
-        <ControlPanel
-          nodeCount={nodeCount}
-          setNodeCount={setNodeCount}
-          maxNodes={MAX_NODES}
-          displayMode={config.displayMode}
-          setDisplayMode={(mode) => setConfig(prev => ({ ...prev, displayMode: mode })) }
-          selectedMetrics={selectedMetrics}
-          metricKeys={METRIC_KEYS}
-          getDisplayName={getDisplayName}
-          onStart={startNodes}
-          onStop={stopNodes}
-          onClear={clearStats}
-          onToggleMetric={toggleMetric}
-          isLoading={isLoading}
-        />
+        <Tabs>
+          <TabList>
+            <Tab>Controls</Tab>
+            <Tab>Charts</Tab>
+            <Tab>Node Logs</Tab>
+          </TabList>
 
-        {error && <div className="status-message error">{error}</div>}
+          <TabPanel>
+            <ControlPanel
+              nodeCount={nodeCount}
+              setNodeCount={setNodeCount}
+              maxNodes={MAX_NODES}
+              displayMode={config.displayMode}
+              setDisplayMode={(mode) => setConfig(prev => ({ ...prev, displayMode: mode }))}
+              rounds={config.rounds}
+              setRounds={(rounds) => setConfig(prev => ({ ...prev, rounds }))}
+              exitNodes={config.exitNodes}
+              updateExitNodes={updateExitNodes}
+              joinNodes={config.joinNodes}
+              updateJoinNodes={updateJoinNodes}
+              selectedMetrics={selectedMetrics}
+              metricKeys={METRIC_KEYS}
+              getDisplayName={getDisplayName}
+              onStart={startNodes}
+              onStop={stopNodes}
+              onClear={clearStats}
+              onToggleMetric={toggleMetric}
+              isLoading={isLoading}
+            />
+          </TabPanel>
 
-        {isLoading && (
-          <div className="overlay-loading">
-            <div className="spinner" />
-            <div>Loading...</div>
-          </div>
-        )}
-
-        <main className="dashboard-main">
-          <div className="dashboard-row">
-            <div className="node-status-container">
-              <NodeStatus
-                nodeNames={nodeNames}
-                nodeStatus={nodeStatus}
-                nodeUptimes={nodeUptimes}
-                palette={CHART_PALETTE}
-                onSelectNode={setSelectedNode}
-                selectedNode={selectedNode}
-              />
+          <TabPanel>
+            <div className="metric-charts-grid">
+              {selectedMetrics.map((metricKey) => (
+                <MetricChart
+                  key={metricKey}
+                  metricKey={metricKey}
+                  title={getDisplayName(metricKey)}
+                  chartData={buildChartData(metrics, metricKey)}
+                  nodeNames={nodeNames}
+                  palette={CHART_PALETTE}
+                  displayMode={config.displayMode}
+                  activeRound={activeRound}
+                />
+              ))}
             </div>
+          </TabPanel>
+
+          <TabPanel>
             <div className="docker-logs-container">
               <div className="docker-logs-header">
                 <h3>Node Logs</h3>
@@ -201,26 +259,29 @@ const Dashboard = () => {
               </div>
               <DockerLogs containerName={selectedNode} />
             </div>
-          </div>
+          </TabPanel>
+        </Tabs>
 
-          <div className="metric-charts-grid">
-            {selectedMetrics.map((metricKey) => (
-              <MetricChart
-                key={metricKey}
-                metricKey={metricKey}
-                title={getDisplayName(metricKey)}
-                chartData={buildChartData(metrics, metricKey)}
-                nodeNames={nodeNames}
-                palette={CHART_PALETTE}
-                displayMode={config.displayMode}
-              />
-            ))}
+        {error && <div className="status-message error">{error}</div>}
+        {isLoading && (
+          <div className="overlay-loading">
+            <div className="spinner" />
+            <div>Loading...</div>
           </div>
-        </main>
+        )}
       </div>
 
       <footer className="dashboard-footer">
-        <p>Data refreshes every 2 seconds | All metrics cached locally</p>
+        <div className="footer-content">
+          <p>DFL Mixnet Simulation Dashboard v1.2.0</p>
+          <div className="footer-links">
+            <span>Data refreshes every 2 seconds</span>
+            <span>•</span>
+            <a href="#">Documentation</a>
+            <span>•</span>
+            <a href="#">API Reference</a>
+          </div>
+        </div>
       </footer>
     </div>
   );
