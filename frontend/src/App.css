@@ -502,3 +502,16 @@ td.status-unknown {
 .toggle-indicator {
   margin-left: 6px;
 }
+
+.basic-controls-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.node-status-container,
+.basic-controls-container {
+  width: 100%;
+}
+
+

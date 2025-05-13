@@ -1,7 +1,23 @@
 export default function MetricSelection({ selectedMetrics, metricKeys, getDisplayName, onToggleMetric }) {
-  const METRIC_GROUPS = {
-    Communication: [...],
-  };
+const METRIC_GROUPS = {
+  Communication: [
+    'msg_sent',
+    'bytes_sent',
+    'bytes_received',
+    'fragment_received',
+    'fragment_resent',
+    'surb_received',
+    'fragments_forwarded'
+  ],
+  'Computational Resources': [
+    'cpu_total_ns',
+    'memory_mb'
+  ],
+  Learning: [
+    'accuracy',
+    'current_round'
+  ]
+};
 
   const groupedMetrics = (() => {
     const allCategorized = new Set(Object.values(METRIC_GROUPS).flat());

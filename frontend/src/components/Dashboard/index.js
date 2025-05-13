@@ -5,6 +5,9 @@ import axios from 'axios';
 import NodeStatus from '../NodeStatus';
 import MetricChart from '../MetricChart';
 import ControlPanel from './ControlPanel/ControlPanel';
+import BasicControls from "./ControlPanel/sections/BasicControl";
+import SimulationSettings from "./ControlPanel/sections/SimulationSettings";
+import MetricSelection from "./ControlPanel/sections/MetricSelection";
 import {
   API_BASE_URL,
   CHART_PALETTE,
@@ -204,63 +207,93 @@ const Dashboard = () => {
 
       <div className="dashboard-content">
         <Tabs>
-          <TabList>
-            <Tab>Controls</Tab>
-            <Tab>Charts</Tab>
-            <Tab>Node Logs</Tab>
-          </TabList>
+  <TabList>
+    <Tab>Basic Controls</Tab>
+    <Tab>Simulation Settings</Tab>
+    <Tab>Metrics Selection</Tab>
+    <Tab>Charts</Tab>
+    <Tab>Node Logs</Tab>
+  </TabList>
 
-          <TabPanel>
-            <ControlPanel
-              nodeCount={nodeCount}
-              setNodeCount={setNodeCount}
-              maxNodes={MAX_NODES}
-              displayMode={config.displayMode}
-              setDisplayMode={(mode) => setConfig(prev => ({ ...prev, displayMode: mode }))}
-              rounds={config.rounds}
-              setRounds={(rounds) => setConfig(prev => ({ ...prev, rounds }))}
-              exitNodes={config.exitNodes}
-              updateExitNodes={updateExitNodes}
-              joinNodes={config.joinNodes}
-              updateJoinNodes={updateJoinNodes}
-              selectedMetrics={selectedMetrics}
-              metricKeys={METRIC_KEYS}
-              getDisplayName={getDisplayName}
-              onStart={startNodes}
-              onStop={stopNodes}
-              onClear={clearStats}
-              onToggleMetric={toggleMetric}
-              isLoading={isLoading}
-            />
-          </TabPanel>
+<TabPanel>
+  <div className="basic-controls-section">
+    <div className="basic-controls-container">
+      <BasicControls
+        onStart={startNodes}
+        onStop={stopNodes}
+        onClear={clearStats}
+        isLoading={isLoading}
+      />
+    </div>
+    <div className="node-status-container">
+      <NodeStatus
+        nodeNames={nodeNames}
+        nodeStatus={nodeStatus}
+        nodeUptimes={nodeUptimes}
+        palette={CHART_PALETTE}
+        onSelectNode={setSelectedNode}
+        selectedNode={selectedNode}
+      />
+    </div>
+  </div>
+</TabPanel>
 
-          <TabPanel>
-            <div className="metric-charts-grid">
-              {selectedMetrics.map((metricKey) => (
-                <MetricChart
-                  key={metricKey}
-                  metricKey={metricKey}
-                  title={getDisplayName(metricKey)}
-                  chartData={buildChartData(metrics, metricKey)}
-                  nodeNames={nodeNames}
-                  palette={CHART_PALETTE}
-                  displayMode={config.displayMode}
-                  activeRound={activeRound}
-                />
-              ))}
-            </div>
-          </TabPanel>
 
-          <TabPanel>
-            <div className="docker-logs-container">
-              <div className="docker-logs-header">
-                <h3>Node Logs</h3>
-                <strong>{!selectedNode && "Select a node to view logs"}</strong>
-              </div>
-              <DockerLogs containerName={selectedNode} />
-            </div>
-          </TabPanel>
-        </Tabs>
+
+  <TabPanel>
+    <SimulationSettings
+      nodeCount={nodeCount}
+      setNodeCount={setNodeCount}
+      maxNodes={MAX_NODES}
+      rounds={config.rounds}
+      setRounds={(r) => setConfig(prev => ({ ...prev, rounds: r }))}
+      exitNodes={config.exitNodes}
+      updateExitNodes={updateExitNodes}
+      joinNodes={config.joinNodes}
+      updateJoinNodes={updateJoinNodes}
+      displayMode={config.displayMode}
+      setDisplayMode={(mode) => setConfig(prev => ({ ...prev, displayMode: mode }))}
+      isLoading={isLoading}
+    />
+  </TabPanel>
+
+  <TabPanel>
+    <MetricSelection
+      selectedMetrics={selectedMetrics}
+      metricKeys={METRIC_KEYS}
+      getDisplayName={getDisplayName}
+      onToggleMetric={toggleMetric}
+    />
+  </TabPanel>
+
+  <TabPanel>
+    <div className="metric-charts-grid">
+      {selectedMetrics.map((metricKey) => (
+        <MetricChart
+          key={metricKey}
+          metricKey={metricKey}
+          title={getDisplayName(metricKey)}
+          chartData={buildChartData(metrics, metricKey)}
+          nodeNames={nodeNames}
+          palette={CHART_PALETTE}
+          displayMode={config.displayMode}
+          activeRound={activeRound}
+        />
+      ))}
+    </div>
+  </TabPanel>
+
+  <TabPanel>
+    <div className="docker-logs-container">
+      <div className="docker-logs-header">
+        <h3>Node Logs</h3>
+        <strong>{!selectedNode && "Select a node to view logs"}</strong>
+      </div>
+      <DockerLogs containerName={selectedNode} />
+    </div>
+  </TabPanel>
+</Tabs>
+
 
         {error && <div className="status-message error">{error}</div>}
         {isLoading && (
