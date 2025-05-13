@@ -1,17 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  --color-primary: #4a6bff;
+  --color-primary: #3e56bd;
   --color-primary-dark: #3a56cc;
   --color-primary-light: #6b84ff;
   --color-secondary: #00c9a7;
   --color-secondary-dark: #00a58c;
   --color-tertiary: #845ec2;
 
-  --color-success: #28a745;
+  --color-success: #277138;
   --color-warning: #ffc107;
-  --color-danger: #dc3545;
+  --color-danger: #b52d39;
   --color-info: #17a2b8;
+
+  --color-matrix: #46e346;
 
   --color-bg: #f8f9fa;
   --color-surface: #ffffff;
@@ -378,7 +380,7 @@ td.status-unknown {
 .docker-logs-placeholder {
   flex: 1;
   overflow-y: auto;
-  color: var(--color-success);
+  color: var(--color-matrix);
   font-family: var(--font-mono);
   font-size: 0.875rem;
   white-space: pre-wrap;
