@@ -37,9 +37,7 @@ class Learner:
     def _log_footer(self, acc_before, acc_after):
         val_acc = self._model_handler.evaluate()
         delta = acc_after - acc_before
-        logging.info(
-            f"Round {self._current_round} done | "
-            f"Train: {acc_before:.4f} ➜ {acc_after:.4f} | Δ: {delta:+.4f} | "
-            f"[Validation Accuracy: {val_acc:.4f}]"
-        )
+        logging.info(f"Round {self._current_round} done")
+        logging.info(f"Train: {acc_before:.4f} ➜ {acc_after:.4f} | Δ: {delta:+.4f}")
+        logging.info(f"Validation Accuracy: {val_acc:.4f}")
         logging.info("=" * 60)

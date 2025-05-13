@@ -9,6 +9,8 @@ router = APIRouter(prefix="/logs")
 log_connections: Dict[str, Set[WebSocket]] = defaultdict(set)
 log_tasks: Dict[str, asyncio.Task] = {}
 log_buffers: Dict[str, str] = defaultdict(str)
+last_log_line: Dict[str, str] = defaultdict(str)
+
 
 @router.websocket("/{container_name}")
 async def logs_websocket(websocket: WebSocket, container_name: str):
@@ -51,6 +53,10 @@ async def broadcast_logs(container_name: str):
                 continue
             message = line.decode(errors="ignore").strip()
 
+            if message == last_log_line[container_name]:
+                continue
+            last_log_line[container_name] = message
+
             log_buffers[container_name] += message + "\n"
 
             clients = list(log_connections[container_name])
@@ -71,3 +77,9 @@ async def broadcast_logs(container_name: str):
     finally:
         if container_name in log_tasks:
             await log_tasks.pop(container_name, None)
+        last_log_line.pop(container_name, None)
+
+@router.post("/clear")
+async def clear_log_buffers():
+    log_buffers.clear()
+    return {"status": "cleared"}
