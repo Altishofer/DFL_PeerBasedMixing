@@ -132,10 +132,10 @@ docker inspect --format '{{.State.Pid}}' $(docker ps -q) | xargs -r sudo kill -9
 - Wait for the implementation to condensate, start writing again
 
 ### Linn
-- Switch to structured JSON model updates instead of serialized byte streams
+✅ Switch to structured JSON model updates instead of serialized byte streams
 - Implement streaming-based FL aggregation (send parts during each epoch)
-- Aggregation algo which aggregates all model fragments, ignoring any identity and parameter distribution
-- Implement more robust fragment-based aggregation
+✅ Aggregation algo which aggregates all model fragments, ignoring any identity and parameter distribution
+✅ Implement more robust fragment-based aggregation
 
 ### Sandrin
 ✅ Use persistent TCP connections (currently, each message uses a new socket)
