@@ -33,7 +33,7 @@ const Dashboard = () => {
   const [logsResetCounter, setLogsResetCounter] = useState(0);
   const [config, setConfig] = useState({
     displayMode: 'raw',
-    rounds: 10,
+    rounds: 40,
     exitNodes: [],
     joinNodes: []
   });
@@ -82,7 +82,7 @@ const Dashboard = () => {
 
     await manageNodes(`/nodes/start`, data, 'Failed to start nodes');
     setWsTrigger(prev => prev + 1);
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 3000));
     await fetchNodeStatus();
   }, [manageNodes, nodeCount, fetchNodeStatus, config]);
 
@@ -118,7 +118,7 @@ const stopNodes = useCallback(async () => {
   setNodeUptimes({});
   setConfig({
     displayMode: 'raw',
-    rounds: 10,
+    rounds: 40,
     exitNodes: [],
     joinNodes: []
   });
@@ -217,6 +217,21 @@ const stopNodes = useCallback(async () => {
     };
   }, [fetchNodeStatus, wsTrigger]);
 
+  const currentRoundByNode = useMemo(() => {
+  const roundMetrics = metrics
+    .filter(m => m.field === 'current_round')
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // get latest values first
+
+  const latestByNode = {};
+  for (const metric of roundMetrics) {
+    if (!(metric.node in latestByNode)) {
+      latestByNode[metric.node] = metric.value;
+    }
+  }
+  return latestByNode;
+}, [metrics]);
+
+
   return (
     <div className="dashboard-container">
       <ToastContainer position="top-right" autoClose={5000} />
@@ -275,6 +290,8 @@ const stopNodes = useCallback(async () => {
                   palette={CHART_PALETTE}
                   onSelectNode={setSelectedNode}
                   selectedNode={selectedNode}
+                  currentRounds={currentRoundByNode}
+                  totalRounds={config.rounds}
                 />
               </div>
               <div className="docker-logs-container">
@@ -354,14 +371,22 @@ const stopNodes = useCallback(async () => {
         )}
       </div>
 
-      <footer className="dashboard-footer">
-        <div className="footer-content">
-          <p>DFL Mixnet Simulation Dashboard v0.1</p>
-          <div className="footer-links">
-            <a href="https://github.com/Altishofer/DFL_PeerBasedMixing">Source Code</a>
-          </div>
-        </div>
-      </footer>
+<footer className="dashboard-footer">
+  <div className="footer-content">
+    <div className="footer-title">
+      <a href="https://github.com/Altishofer/DFL_PeerBasedMixing">
+        Peer-Based Mixing for DFL v0.1
+      </a>
+    </div>
+    <div className="footer-authors">
+      <a href="https://github.com/Altishofer">Sandrin Hunkeler</a>
+      <span className="separator">·</span>
+      <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">Linn Spitz</a>
+    </div>
+  </div>
+</footer>
+
+
     </div>
   );
 };

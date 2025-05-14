@@ -138,11 +138,11 @@ docker inspect --format '{{.State.Pid}}' $(docker ps -q) | xargs -r sudo kill -9
 - Implement more robust fragment-based aggregation
 
 ### Sandrin
-✅ Use persistent TCP connections (currently, each message uses a new socket)
+- ✅ Use persistent TCP connections (currently, each message uses a new socket)
 - Add message hashes for payload verification and replay protection
 - Introduce random synonyms for models and fragments to improve unlinkability
-✅ Real-time node statistics and visualization in the frontend
-✅ Add resend logic for lost packets
+- ✅ Real-time node statistics and visualization in the frontend
+- ✅ Add resend logic for lost packets
 - job based deployment
 
 

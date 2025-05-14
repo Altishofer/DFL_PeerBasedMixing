@@ -1,10 +1,83 @@
 import React from 'react';
 
-const NodeStatus = ({ nodeNames, nodeStatus, nodeUptimes, palette, onSelectNode, selectedNode }) => {
+const NodeStatus = ({
+  nodeNames,
+  nodeStatus,
+  nodeUptimes,
+  palette,
+  onSelectNode,
+  selectedNode,
+  currentRounds,
+  totalRounds
+}) => {
+  const renderNodeRow = (node, index) => {
+    const statusInfo = nodeStatus.find(({ name }) => name === node);
+    const uptimeInfo = nodeUptimes[node];
+    const isRunning = statusInfo?.status?.toLowerCase() === 'running';
+    const isSelected = node === selectedNode;
+
+    const displayUptime =
+      uptimeInfo && !isNaN(uptimeInfo.elapsedMs)
+        ? (() => {
+            const totalMs = uptimeInfo.elapsedMs;
+            const seconds = Math.floor(totalMs / 1000) % 60;
+            const minutes = Math.floor(totalMs / (1000 * 60)) % 60;
+            return `${minutes}m ${seconds}s`;
+          })()
+        : '--';
+
+    const currentRound = currentRounds?.[node];
+    const displayRound =
+      typeof currentRound === 'number' &&
+      totalRounds &&
+      uptimeInfo?.elapsedMs &&
+      !isNaN(uptimeInfo.elapsedMs)
+        ? `${currentRound}/${totalRounds}`
+        : '--';
+
+    const estimatedRemaining =
+      typeof currentRound === 'number' &&
+      currentRound > 0 &&
+      totalRounds &&
+      uptimeInfo?.elapsedMs &&
+      !isNaN(uptimeInfo.elapsedMs)
+        ? (() => {
+            const elapsed = uptimeInfo.elapsedMs;
+            const estimatedMs = elapsed * (totalRounds - currentRound) / currentRound;
+            let minutes = Math.floor(estimatedMs / 60000);
+            // const seconds = Math.floor((estimatedMs % 60000) / 1000);
+            minutes = Math.max(0, minutes);
+            return `${minutes}m`;
+          })()
+        : '--';
+
+    return (
+      <tr
+        key={node}
+        onClick={() => onSelectNode?.(node)}
+        className={isSelected ? 'selected-node' : ''}
+        style={{ cursor: 'pointer' }}
+      >
+        <td style={{ color: palette[index % palette.length] }}>{node}</td>
+        <td className={`status-${statusInfo?.status?.toLowerCase() || 'unknown'}`}>
+          {statusInfo?.status || 'Unknown'}
+        </td>
+        <td>{isRunning ? displayUptime : '--'}</td>
+        <td>{displayRound}</td>
+        <td>{isRunning ? estimatedRemaining : '--'}</td>
+      </tr>
+    );
+  };
+
+  const filteredNodes = nodeNames.filter(node => {
+    const status = nodeStatus.find(({ name }) => name === node)?.status;
+    return status && status.toLowerCase() !== 'unknown';
+  });
+
   return (
     <div className="dashboard-card">
       <h3>Node Status</h3>
-      {nodeNames.length > 0 ? (
+      {filteredNodes.length > 0 ? (
         <div className="status-table-container">
           <table className="status-table">
             <thead>
@@ -12,47 +85,12 @@ const NodeStatus = ({ nodeNames, nodeStatus, nodeUptimes, palette, onSelectNode,
                 <th>Node</th>
                 <th>Status</th>
                 <th>Uptime</th>
+                <th>Round</th>
+                <th>ETA</th>
               </tr>
             </thead>
             <tbody>
-              {nodeNames.map((node, index) => {
-                const statusInfo = nodeStatus.find(({ name }) => name === node);
-                const uptimeInfo = nodeUptimes[node];
-                const isRunning = statusInfo?.status?.toLowerCase() === 'running';
-
-                const displayUptime =
-                  uptimeInfo && !isNaN(uptimeInfo.elapsedMs)
-                    ? (() => {
-                        const totalMs = uptimeInfo.elapsedMs;
-                        const seconds = Math.floor(totalMs / 1000) % 60;
-                        const minutes = Math.floor(totalMs / (1000 * 60)) % 60;
-                        return `${minutes}m ${seconds}s`;
-                      })()
-                    : '--';
-
-                const isSelected = node === selectedNode;
-
-                return (
-                    <tr
-                      key={node}
-                      onClick={() => onSelectNode?.(node)}
-                      className={isSelected ? 'selected-node' : ''}
-                      style={{ cursor: 'pointer' }}
-                    >
-                    <td
-                      style={{
-                        color: palette[index % palette.length]
-                      }}
-                    >
-                      {node}
-                    </td>
-                    <td className={`status-${statusInfo?.status?.toLowerCase() || 'unknown'}`}>
-                      {statusInfo?.status || 'Unknown'}
-                    </td>
-                    <td>{isRunning ? displayUptime : '--'}</td>
-                  </tr>
-                );
-              })}
+              {filteredNodes.map((node, index) => renderNodeRow(node, index))}
             </tbody>
           </table>
         </div>
