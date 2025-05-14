@@ -7,21 +7,24 @@ from metrics.node_metrics import metrics, MetricField
 
 
 class Learner:
-    def __init__(self, node_id, transport, total_peers, total_rounds=40):
+    def __init__(self, node_id, transport, total_peers, total_rounds=40, stream_based=False):
         self._node_id = node_id
         self._transport = transport
         self._total_peers = total_peers
         self._total_rounds = total_rounds
         self._current_round = 0
-        self._model_handler = ModelHandler(node_id, total_peers)
+        self._model_handler = ModelHandler(node_id, total_peers, stream_based)
         self._message_manager = MessageManager(node_id, total_peers, transport, self._model_handler)
+        self._stream_based = stream_based
 
     async def run(self):
         while self._current_round < self._total_rounds:
             metrics().set(MetricField.CURRENT_ROUND, self._current_round)
             self._log_header(f"ROUND {self._current_round}")
+            if self._stream_based:
+                self._message_manager.send_model_updates(self._current_round, 10)
             acc_before = self._model_handler.train()
-            await self._message_manager.send_model(self._current_round)
+            
             model_chunks = await self._message_manager.collect_models(self._current_round)
             self._model_handler.aggregate(model_chunks)
             acc_after = self._model_handler.evaluate()

@@ -6,10 +6,10 @@ from metrics.node_metrics import init_metrics
 
 
 class PeerNode:
-    def __init__(self, node_id, port, peers, host_name):
+    def __init__(self, node_id, port, peers, host_name, stream_based=False):
         self._node_id = node_id
         self._transport = SphinxTransport(node_id, port, peers)
-        self._learning = Learner(node_id, self._transport, total_peers=len(peers))
+        self._learning = Learner(node_id, self._transport, total_peers=len(peers), stream_based=stream_based)
         self._metrics = init_metrics(controller_url="http://host.docker.internal:8000", host_name=host_name)
 
     async def start(self):

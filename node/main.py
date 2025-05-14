@@ -20,6 +20,7 @@ def load_env(key):
 async def node_main():
     node_id = int(load_env("NODE_ID"))
     n_nodes = int(load_env("N_NODES"))
+    stream_based = load_env("STREAM") == "True"
     port = int(load_env("PORT"))
 
     setup_logging(node_id)
@@ -34,6 +35,7 @@ async def node_main():
         port=port,
         peers=peers,
         host_name=f"node_{node_id}"
+        stream_based=stream_based
     )
     await node.start()
 
