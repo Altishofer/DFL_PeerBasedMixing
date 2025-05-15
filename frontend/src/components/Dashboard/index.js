@@ -189,7 +189,7 @@ const stopNodes = useCallback(async () => {
     };
 
     connect();
-    const statusInterval = setInterval(fetchNodeStatus, 10000);
+    const statusInterval = setInterval(fetchNodeStatus, 3000);
     const uptimeInterval = setInterval(() => {
       setNodeUptimes(prev => {
         const updatedUptimes = {};

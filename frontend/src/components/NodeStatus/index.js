@@ -20,8 +20,8 @@ const NodeStatus = ({
       uptimeInfo && !isNaN(uptimeInfo.elapsedMs)
         ? (() => {
             const totalMs = uptimeInfo.elapsedMs;
-            const seconds = Math.floor(totalMs / 1000) % 60;
-            const minutes = Math.floor(totalMs / (1000 * 60)) % 60;
+            const seconds = Math.max(Math.floor(totalMs / 1000) % 60, 0);
+            const minutes = Math.max(Math.floor(totalMs / (1000 * 60)) % 60, 0);
             return `${minutes}m ${seconds}s`;
           })()
         : '--';

@@ -9,7 +9,7 @@ export default function SimulationSettings({
   return (
     <>
       <div className="control-group-box">
-        <h3>Simulation Parameters</h3>
+        <h3>Basic Configuration</h3>
         <div className="control-row">
           <div className="control-group control-input-limited">
             <label htmlFor="nodeCount">Initial Nodes</label>
