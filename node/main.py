@@ -4,6 +4,7 @@ import logging
 import os
 import asyncio
 from utils.logging_config import setup_logging
+from models.schemas import NodeConfig
 
 def handle_exception(loop, context):
     msg = context.get("exception", context["message"])
@@ -20,22 +21,23 @@ def load_env(key):
 async def node_main():
     node_id = int(load_env("NODE_ID"))
     n_nodes = int(load_env("N_NODES"))
-    stream_based = load_env("STREAM") == "True"
     port = int(load_env("PORT"))
+    stream = load_env("STREAM") == "True"
+    rounds = int(load_env("ROUNDS"))
 
     setup_logging(node_id)
 
-    peers = {
-        i: (f"node_{i}", port)
-        for i in range(n_nodes)
-    }
+    node_config = NodeConfig(
+        node_id=node_id,
+        n_nodes=n_nodes,
+        port=port,
+        stream=stream,
+        rounds=rounds,
+    )
 
     node = PeerNode(
-        node_id=node_id,
-        port=port,
-        peers=peers,
-        host_name=f"node_{node_id}"
-        stream_based=stream_based
+        node_config=node_config,
+        host_name=f"node_{node_id}",
     )
     await node.start()
 

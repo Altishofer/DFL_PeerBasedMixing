@@ -5,7 +5,6 @@ from sklearn.datasets import load_digits
 from sklearn.neural_network import MLPClassifier
 from sklearn.exceptions import ConvergenceWarning
 import warnings
-from math import ceil
 from utils.exception_decorator import log_exceptions
 from metrics.node_metrics import metrics, MetricField
 
@@ -18,17 +17,18 @@ class ModelHandler:
         self._model = MLPClassifier(
             hidden_layer_sizes=(64,),
             alpha=1e-4,
-            max_iter=20,
+            max_iter=1,
             random_state=node_id,
             warm_start=True
         )
         self._X, self._y, self._X_val, self._y_val = self._load_partition(node_id, total_peers)
-        self._chunks
+        self._chunks = []
 
     @log_exceptions
     def train(self):
         logging.info(f"Started training...")
-        self._model.fit(self._X, self._y)
+        for _ in range(20):
+            self._model.fit(self._X, self._y)
         return self.evaluate()
 
     @log_exceptions
@@ -58,6 +58,7 @@ class ModelHandler:
         n_coefs = np.ones(len(agg_coefs), dtype=int)
         n_intercepts = np.ones(len(agg_intercepts), dtype=int)
 
+        logging.info(f"Aggregating {len(model_chunks)} chunks...")
         for chunk in model_chunks:
             if chunk["type"] == "coef":
                 self._aggregate_chunk(chunk, agg_coefs, n_coefs)

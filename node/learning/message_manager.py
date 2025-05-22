@@ -29,17 +29,20 @@ class MessageManager:
     async def send_model_updates(self, current_round, interval):
         # TODO: implement some early stopping?
 
+        self._model_handler.create_chunks(self._model_handler.get_model(), self._chunk_size)
+
         chunk_idx = 0
         total_chunks = len(self._model_handler.get_chunks())
-        max_updates = 20
+        max_updates = total_chunks
 
-        for _ in range(max_updates):
+        for i in range(max_updates):
+            logging.info(f"Sending model update {chunk_idx}/{total_chunks} to all peers, {i}/{max_updates})")
             model = self._model_handler.get_model()
             self._model_handler.create_chunks(model, self._chunk_size)
 
             start_time = get_running_loop().time()
             await self.send_model_chunk(current_round, chunk_idx)
-            sleep(interval - (get_running_loop - start_time))
+            await sleep(max(0, interval - (get_running_loop().time() - start_time)))
 
             chunk_idx += 1
             chunk_idx %= total_chunks
@@ -47,8 +50,8 @@ class MessageManager:
 
     async def send_model_chunk(self, current_round, chunk_idx):
         model = self._model_handler.get_model()
-        self._model_handler.create_model_chunks(model, self._chunk_size)
-        chunks = self._model_handler.get_model_chunks()
+        self._model_handler.create_chunks(model, self._chunk_size)
+        chunks = self._model_handler.get_chunks()
 
         if (chunks == None):
             return

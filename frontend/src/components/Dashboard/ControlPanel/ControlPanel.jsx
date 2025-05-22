@@ -31,6 +31,8 @@ const ControlPanel = ({
   setDisplayMode,
   rounds,
   setRounds,
+  stream,
+  setStream,
   exitNodes,
   updateExitNodes,
   joinNodes,
@@ -115,6 +117,18 @@ const ControlPanel = ({
                   onChange={(e) => setRounds(Math.max(1, parseInt(e.target.value, 10) || 1))}
                   disabled={isLoading}
                 />
+              </div>
+
+              <div className="control-group control-input-limited">
+                <label htmlFor="stream">Stream updates</label>
+                  <input
+                    type="checkbox"
+                    className="checkbox"
+                    id="stream"
+                    checked={stream}
+                    onChange={(e) => setStream(e.target.checked)}
+                    disabled={isLoading}
+                  />
               </div>
             </div>
           </div>

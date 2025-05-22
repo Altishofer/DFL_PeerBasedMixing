@@ -1,9 +1,8 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter
 from fastapi_cache.decorator import cache
 
 from manager.services.node_service import node_service
 from manager.models.schemas import StartRequest, NodeStatus
-from manager.services.cache_service import cache_service
 from manager.services.metrics_service import metrics_service
 
 router = APIRouter(prefix="/nodes")
@@ -11,7 +10,7 @@ router = APIRouter(prefix="/nodes")
 @router.post("/start")
 async def start_nodes(request: StartRequest):
     await metrics_service.reset_file()
-    await node_service.start_nodes(request.count)
+    await node_service.start_nodes(request)
     return {"status": "started", "nodes": request.count}
 
 @router.post("/stop")
