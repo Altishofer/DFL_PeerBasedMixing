@@ -133,9 +133,11 @@ docker inspect --format '{{.State.Pid}}' $(docker ps -q) | xargs -r sudo kill -9
 
 ### Linn
 - ✅ Switch to structured JSON model updates instead of serialized byte streams
-- Implement streaming-based FL aggregation (send parts during each epoch)
+- ✅ Implement streaming-based FL aggregation (send parts during each epoch)
 - ✅ Aggregation algo which aggregates all model fragments, ignoring any identity and parameter distribution
 - ✅ Implement more robust fragment-based aggregation
+- Enable and disable mixnet routing for experimental purposes
+- Mixing strategies (delay, shuffle, batch, dummy)
 
 ### Sandrin
 ✅ Use persistent TCP connections (currently, each message uses a new socket)
@@ -147,9 +149,7 @@ docker inspect --format '{{.State.Pid}}' $(docker ps -q) | xargs -r sudo kill -9
 
 
 ### Altin
-- Enable and disable mixnet routing for experimental purposes
 - Allow free join/leave of nodes by decoupling strict round synchronization
-- Mixing strategies (delay, shuffle, batch, dummy)
 - Mark nodes as active or inactive, for paths where messages are not received
 
 
