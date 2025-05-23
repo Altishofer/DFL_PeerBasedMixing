@@ -132,26 +132,26 @@ docker inspect --format '{{.State.Pid}}' $(docker ps -q) | xargs -r sudo kill -9
 - Wait for the implementation to condensate, start writing again
 
 ### Linn
-- Switch to structured JSON model updates instead of serialized byte streams
+- Parametrization of scenario through front & backend
 - Implement streaming-based FL aggregation (send parts during each epoch)
-- Aggregation algo which aggregates all model fragments, ignoring any identity and parameter distribution
-- Implement more robust fragment-based aggregation
+- Enable and disable mixnet routing for experimental purposes
+- Mixing strategies (delay, shuffle, batch, dummy)
+- Cache fragment size 
+- ✅ Switch to structured JSON model updates instead of serialized byte streams
+- ✅ Aggregation algo which aggregates all model fragments, ignoring any identity and parameter distribution
+- ✅ Implement more robust fragment-based aggregation
 
 ### Sandrin
-- ✅ Use persistent TCP connections (currently, each message uses a new socket)
 - Add message hashes for payload verification and replay protection
 - Introduce random synonyms for models and fragments to improve unlinkability
+- Allow free join/leave of nodes by decoupling strict round synchronization
+- Mark nodes as active or inactive, for paths where messages are not received
+- ✅ Use persistent TCP connections (currently, each message uses a new socket)
 - ✅ Real-time node statistics and visualization in the frontend
 - ✅ Add resend logic for lost packets
-- job based deployment
-
 
 ### Altin
-- Enable and disable mixnet routing for experimental purposes
-- Allow free join/leave of nodes by decoupling strict round synchronization
-- Mixing strategies (delay, shuffle, batch, dummy)
-- Mark nodes as active or inactive, for paths where messages are not received
-
+- job based deployment
 
 ## Notes
 write about small prototypes
@@ -164,4 +164,4 @@ think about experiments
 sudo snap remove --purge docker
 https://docs.docker.com/engine/install/ubuntu/
 
-uvicorn app:app  --host 0.0.0.0 --port 8000 --workers 1
+uvicorn manager.app:app  --host 0.0.0.0 --port 8000 --workers 1
