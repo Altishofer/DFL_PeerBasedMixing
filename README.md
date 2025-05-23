@@ -136,10 +136,13 @@ docker inspect --format '{{.State.Pid}}' $(docker ps -q) | xargs -r sudo kill -9
 - Implement streaming-based FL aggregation (send parts during each epoch)
 - Enable and disable mixnet routing for experimental purposes
 - Mixing strategies (delay, shuffle, batch, dummy)
-- Cache fragment size 
+- Cache fragment size
 - ✅ Switch to structured JSON model updates instead of serialized byte streams
+- ✅ Implement streaming-based FL aggregation (send parts during each epoch)
 - ✅ Aggregation algo which aggregates all model fragments, ignoring any identity and parameter distribution
 - ✅ Implement more robust fragment-based aggregation
+- Enable and disable mixnet routing for experimental purposes
+- Mixing strategies (delay, shuffle, batch, dummy)
 
 ### Sandrin
 - Add message hashes for payload verification and replay protection
@@ -152,10 +155,13 @@ docker inspect --format '{{.State.Pid}}' $(docker ps -q) | xargs -r sudo kill -9
 
 ### Altin
 - job based deployment
+- Allow free join/leave of nodes by decoupling strict round synchronization
+- Mark nodes as active or inactive, for paths where messages are not received
+
 
 ## Notes
-write about small prototypes
-think about experiments
+- write about small prototypes
+- think about experiments
 
 
 
