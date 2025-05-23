@@ -14,3 +14,5 @@ class MetricPoint(BaseModel):
 
 class StartRequest(BaseModel):
     count: int
+    rounds: int
+    stream: bool

@@ -495,11 +495,17 @@ td.status-unknown {
 .control-group select {
   width: 220px;
   max-width: 100%;
-  padding: 0.5rem 0.75rem;
+  height: 1.25rem;
   font-size: 0.95rem;
   border: 1px solid #ccc;
   border-radius: 4px;
   background-color: #fff;
+}
+
+.control-group .checkbox{
+  display: flex;
+  align-items: center;
+  height: 2rem;
 }
 
 .metric-toggle-grouped {

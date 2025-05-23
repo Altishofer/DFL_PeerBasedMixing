@@ -1,12 +1,10 @@
 import pickle
 import logging
-import zlib
 import numpy as np
 from sklearn.datasets import load_digits
 from sklearn.neural_network import MLPClassifier
 from sklearn.exceptions import ConvergenceWarning
 import warnings
-from math import ceil
 from utils.exception_decorator import log_exceptions
 from metrics.node_metrics import metrics, MetricField
 
@@ -19,16 +17,18 @@ class ModelHandler:
         self._model = MLPClassifier(
             hidden_layer_sizes=(64,),
             alpha=1e-4,
-            max_iter=20,
+            max_iter=1,
             random_state=node_id,
             warm_start=True
         )
         self._X, self._y, self._X_val, self._y_val = self._load_partition(node_id, total_peers)
+        self._chunks = []
 
     @log_exceptions
     def train(self):
         logging.info(f"Started training...")
-        self._model.fit(self._X, self._y)
+        for _ in range(20):
+            self._model.fit(self._X, self._y)
         return self.evaluate()
 
     @log_exceptions
@@ -58,6 +58,7 @@ class ModelHandler:
         n_coefs = np.ones(len(agg_coefs), dtype=int)
         n_intercepts = np.ones(len(agg_intercepts), dtype=int)
 
+        logging.info(f"Aggregating {len(model_chunks)} chunks...")
         for chunk in model_chunks:
             if chunk["type"] == "coef":
                 self._aggregate_chunk(chunk, agg_coefs, n_coefs)
@@ -128,14 +129,17 @@ class ModelHandler:
         return pkgs
 
     @log_exceptions
-    def chunk_model(self, data, chunk_size):
+    def create_chunks(self, data, chunk_size):
         coefs = self._flatten(data.coefs_)
         intercepts = self._flatten(data.intercepts_)
 
         coef_chunks = self._chunk_array(coefs, "coef", chunk_size)
         intercept_chunks = self._chunk_array(intercepts, "intercept", chunk_size)
-            
-        return coef_chunks, intercept_chunks
+        
+        self._chunks = coef_chunks + intercept_chunks
+
+    def get_chunks(self,):
+        return self._chunks
     
     @log_exceptions
     def _load_partition(self, node_id, total_peers, val_ratio=0.2):

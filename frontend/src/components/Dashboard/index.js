@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef, use } from 'react';
 import { Tabs, TabList, Tab, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import axios from 'axios';
@@ -35,7 +35,8 @@ const Dashboard = () => {
     displayMode: 'raw',
     rounds: 40,
     exitNodes: [],
-    joinNodes: []
+    joinNodes: [],
+    stream: false
   });
   const [wsTrigger, setWsTrigger] = useState(0);
   const [selectedNode, setSelectedNode] = useState(null);
@@ -55,6 +56,7 @@ const Dashboard = () => {
     try {
       setIsLoading(true);
       setError('');
+      console.log(`Sending request to ${endpoint} with data:`, data);
       const response = await axios.post(`${API_BASE_URL}${endpoint}`, data);
       await fetchNodeStatus();
       return response.data;
@@ -76,6 +78,7 @@ const Dashboard = () => {
     const data = {
       count: nodeCount,
       rounds: config.rounds,
+      stream: config.stream,
       exitNodes: config.exitNodes,
       joinNodes: config.joinNodes
     };
@@ -314,7 +317,9 @@ const stopNodes = useCallback(async () => {
               setNodeCount={setNodeCount}
               maxNodes={MAX_NODES}
               rounds={config.rounds}
+              stream={config.stream}
               setRounds={(r) => setConfig(prev => ({ ...prev, rounds: r }))}
+              setStream={(b) => setConfig(prev => ({...prev, stream: b}))}
               exitNodes={config.exitNodes}
               updateExitNodes={updateExitNodes}
               joinNodes={config.joinNodes}

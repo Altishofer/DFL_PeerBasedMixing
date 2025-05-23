@@ -7,9 +7,15 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
+<<<<<<< HEAD
     "recharts": "^2.5.0",
     "react-tabs": "6.1.0",
     "react-toastify": "11.0.5"
+=======
+    "react-tabs": "^6.1.0",
+    "react-toastify": "^11.0.5",
+    "recharts": "^2.5.0"
+>>>>>>> linn
   },
   "scripts": {
     "start": "react-scripts start",
