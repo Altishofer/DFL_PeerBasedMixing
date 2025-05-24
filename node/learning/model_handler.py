@@ -27,8 +27,8 @@ class ModelHandler:
     @log_exceptions
     def train(self):
         logging.info(f"Started training...")
-        for _ in range(20):
-            self._model.fit(self._X, self._y)
+
+        self._model.fit(self._X, self._y)
         return self.evaluate()
 
     @log_exceptions

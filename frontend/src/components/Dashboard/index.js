@@ -34,8 +34,8 @@ const Dashboard = () => {
   const [config, setConfig] = useState({
     displayMode: 'raw',
     rounds: 40,
-    exitNodes: [],
-    joinNodes: [],
+    exitNodes: 0,
+    joinNodes: 0,
     stream: false
   });
   const [wsTrigger, setWsTrigger] = useState(0);
@@ -122,8 +122,9 @@ const stopNodes = useCallback(async () => {
   setConfig({
     displayMode: 'raw',
     rounds: 40,
-    exitNodes: [],
-    joinNodes: []
+    exitNodes: 0,
+    joinNodes: 0,
+    stream: false
   });
   setSelectedNode(null);
   setActiveRound(0);
@@ -135,16 +136,17 @@ const stopNodes = useCallback(async () => {
   const updateExitNodes = useCallback((_, count) => {
     setConfig(prev => ({
       ...prev,
-      exitNodes: count > 0 ? [{ round: 1, count }] : []
+      exitNodes: count
     }));
   }, []);
 
   const updateJoinNodes = useCallback((_, count) => {
     setConfig(prev => ({
       ...prev,
-      joinNodes: count > 0 ? [{ round: 1, count }] : []
+      joinNodes: count
     }));
   }, []);
+
 
   useEffect(() => {
     let ws;
