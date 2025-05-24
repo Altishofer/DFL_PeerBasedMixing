@@ -29,6 +29,7 @@ class ModelHandler:
         logging.info(f"Started training...")
 
         self._model.fit(self._X, self._y)
+        logging.info("Finished training.")
         return self.evaluate()
 
     @log_exceptions
