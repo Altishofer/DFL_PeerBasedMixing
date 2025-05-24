@@ -16,3 +16,5 @@ class StartRequest(BaseModel):
     count: int
     rounds: int
     stream: bool
+    exitNodes: int
+    joinNodes: int

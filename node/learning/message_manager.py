@@ -16,61 +16,36 @@ class MessageManager:
         self._chunk_size = 600
 
     @log_exceptions
-    async def send_model(self, current_round):
-        model = self._model_handler.get_model()
-        self._model_handler.create_chunks(model, self._chunk_size)
-        chunks = self._model_handler.get_chunks()
-
-        for idx, _ in enumerate(chunks):
-            await self.send_model_chunk(current_round, idx)
-
-        logging.info(f"Sent model in {len(chunks)} parts each")
-
     async def send_model_updates(self, current_round, interval):
         # TODO: implement some early stopping?
 
         self._model_handler.create_chunks(self._model_handler.get_model(), self._chunk_size)
 
-        chunk_idx = 0
-        total_chunks = len(self._model_handler.get_chunks())
-        max_updates = total_chunks
-
-        for i in range(max_updates):
-            logging.info(f"Sending model update {chunk_idx}/{total_chunks} to all peers, {i}/{max_updates})")
-            model = self._model_handler.get_model()
-            self._model_handler.create_chunks(model, self._chunk_size)
-
-            start_time = get_running_loop().time()
-            await self.send_model_chunk(current_round, chunk_idx)
-            await sleep(max(0, interval - (get_running_loop().time() - start_time)))
-
-            chunk_idx += 1
-            chunk_idx %= total_chunks
-            
-
-    async def send_model_chunk(self, current_round, chunk_idx):
         model = self._model_handler.get_model()
         self._model_handler.create_chunks(model, self._chunk_size)
         chunks = self._model_handler.get_chunks()
+        n_chunks = len(chunks)
 
-        if (chunks == None):
-            return
+        for i in range(n_chunks):
+            await self.send_model_chunk(current_round, i, chunks[i], n_chunks)
 
-        if (chunk_idx >= len(chunks)):
-            raise IndexError(f"Chunk index {chunk_idx} is out of bounds. Total chunks: {len(chunks)}")
-            
+    async def send_model_chunk(self, current_round, chunk_idx, chunk, n_chunks):
         for peer_id in range(self._total_peers):
             if peer_id == self._node_id:
                 continue
-                
+
             msg = {
                 "type": "model_part",
                 "round": current_round,
                 "part_idx": chunk_idx,
-                "total_parts": len(chunks),
-                "content": chunks[chunk_idx]
+                "total_parts": n_chunks,
+                "content": chunk
             }
-            await self._transport.send(self._serialize_msg(msg), peer_id)
+            serialized_msg = self._serialize_msg(msg)
+
+            for peer_id in range(self._total_peers):
+                if peer_id != self._node_id:
+                    await self._transport.send(serialized_msg, peer_id)
 
         logging.info(f"Sent model chunk {chunk_idx}")
 

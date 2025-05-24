@@ -34,8 +34,8 @@ const Dashboard = () => {
   const [config, setConfig] = useState({
     displayMode: 'raw',
     rounds: 40,
-    exitNodes: [],
-    joinNodes: [],
+    exitNodes: 0,
+    joinNodes: 0,
     stream: false
   });
   const [wsTrigger, setWsTrigger] = useState(0);
@@ -108,28 +108,29 @@ const stopNodes = useCallback(async () => {
   };
 
   const resetDashboard = useCallback(() => {
-  setNodeCount(4);
-  axios.post(`${API_BASE_URL}/logs/clear`);
-  setNodeStatus([]);
-  setMetrics([]);
-  setSelectedMetrics([]);
-  setIsLoading(false);
-  setSelectedNode(null);
-  setLogsResetCounter(prev => prev + 1);
+    setNodeCount(4);
+    axios.post(`${API_BASE_URL}/logs/clear`);
+    setNodeStatus([]);
+    setMetrics([]);
+    setSelectedMetrics([]);
+    setIsLoading(false);
+    setSelectedNode(null);
+    setLogsResetCounter(prev => prev + 1);
 
-  setError('');
-  setNodeUptimes({});
-  setConfig({
-    displayMode: 'raw',
-    rounds: 40,
-    exitNodes: [],
-    joinNodes: []
-  });
-  setSelectedNode(null);
-  setActiveRound(0);
-  setWsTrigger(prev => prev + 1);
-  fetchNodeStatus();
-}, [fetchNodeStatus]);
+    setError('');
+    setNodeUptimes({});
+    setConfig({
+      displayMode: 'raw',
+      rounds: 40,
+      exitNodes: 0,
+      joinNodes: 0,
+      stream: false
+    });
+    setSelectedNode(null);
+    setActiveRound(0);
+    setWsTrigger(prev => prev + 1);
+    fetchNodeStatus();
+  }, [fetchNodeStatus]);
 
 
   const updateExitNodes = useCallback((_, count) => {
@@ -223,7 +224,7 @@ const stopNodes = useCallback(async () => {
   const currentRoundByNode = useMemo(() => {
   const roundMetrics = metrics
     .filter(m => m.field === 'current_round')
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // get latest values first
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   const latestByNode = {};
   for (const metric of roundMetrics) {

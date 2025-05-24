@@ -13,9 +13,9 @@ class PeerNode:
             i: (f"node_{i}", node_config.port)
             for i in range(node_config.n_nodes)
         }
-        self._transport = SphinxTransport(node_config.node_id, node_config.port, peers) 
-        self._learning = Learner(node_config, self._transport)
         self._metrics = init_metrics(controller_url="http://host.docker.internal:8000", host_name=host_name)
+        self._transport = SphinxTransport(node_config.node_id, node_config.port, peers)
+        self._learning = Learner(node_config, self._transport)
 
     async def start(self):
         await self._transport.start()
