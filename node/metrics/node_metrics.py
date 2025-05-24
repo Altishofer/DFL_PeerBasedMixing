@@ -43,28 +43,19 @@ class Metrics:
         self._data: Dict[MetricField, int] = {field: 0 for field in MetricField}
         self._data_lock = Lock()
         self._change_log: deque = deque()
-        self._metrics_buffer: Dict[MetricField, int] = {}
         self._controller_url = controller_url
         self._host = host_name
 
         if controller_url:
             Thread(target=self._push_loop, daemon=True).start()
-            Thread(target=self._flush_buffer_loop, daemon=True).start()
 
     def increment(self, field: MetricField, amount: int = 1):
         with self._data_lock:
             self._data[field] += amount
-            self._metrics_buffer[field] = max(self._metrics_buffer.get(field, 0), self._data[field])
 
     def set(self, field: MetricField, value: int):
         with self._data_lock:
             self._data[field] = value
-            self._metrics_buffer[field] = max(self._metrics_buffer.get(field, value), value)
-
-    def _flush_buffer_loop(self):
-        while True:
-            time.sleep(3)
-            self._flush_metrics()
 
     def _flush_metrics(self):
         timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -74,9 +65,8 @@ class Metrics:
                 "field": field.value,
                 "value": value,
                 "node": self._host
-            } for field, value in self._metrics_buffer.items()]
+            } for field, value in self._data.items()]
             self._change_log.extend(updates)
-            self._metrics_buffer.clear()
 
     def get_all(self) -> Dict[str, Any]:
         with self._data_lock:
@@ -90,6 +80,7 @@ class Metrics:
         while True:
             jitter = random.uniform(-0.1, 0.1)
             interval = ConfigStore.push_metric_interval + jitter
+            self._flush_metrics()
             self._push_metrics()
             time.sleep(interval)
 

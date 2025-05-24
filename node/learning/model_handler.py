@@ -3,8 +3,6 @@ import logging
 import random
 
 import numpy as np
-from sklearn.datasets import load_digits
-from sklearn.neural_network import MLPClassifier
 from sklearn.exceptions import ConvergenceWarning
 import warnings
 
@@ -16,14 +14,10 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, Subset
+from torch.nn.utils import parameters_to_vector, vector_to_parameters
 
 import os
 os.environ['TORCH_CPP_LOG_LEVEL'] = 'WARNING'
-
-
-
-
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 
@@ -39,7 +33,6 @@ class ModelHandler:
         self._loss_fn = nn.CrossEntropyLoss()
         self._optimizer = optim.Adam(self._model.parameters(), lr=1e-3)
         self._train_loader, self._val_loader = self._load_partition(node_id, total_peers)
-        self._chunks = []
 
     @log_exceptions
     def train(self):
@@ -62,7 +55,9 @@ class ModelHandler:
         self._model.eval()
         correct = total = 0
         with torch.no_grad():
-            for Xb, yb in self._val_loader:
+            batches = list(self._val_loader)
+            selected_batches = random.sample(batches, 30)
+            for Xb, yb in selected_batches:
 
                 Xb, yb = Xb.to(self._device), yb.to(self._device)
                 pred = self._model(Xb)
@@ -80,78 +75,67 @@ class ModelHandler:
     @log_exceptions
     def get_model(self):
         return self._model.state_dict()
-    
-    @log_exceptions
-    def _aggregate_chunk(self, chunk, aggregate, counter):
-        aggregate[chunk["start"]:chunk["end"]] += chunk["data"]
-        counter[chunk["start"]:chunk["end"]] += 1
 
     @log_exceptions
     def aggregate(self, model_chunks):
-        flat = self._flatten_state_dict(self._model.state_dict())
+        flat = self._flatten_state_dict()
+
+        logging.info(f"Starting aggregation of {len(model_chunks)} model chunks...")
+
+        part_hits = np.zeros_like(flat, dtype=np.int32)
+
+        local_model_flat = self._flatten_state_dict()
         counter = np.ones_like(flat)
+        flat += local_model_flat
+        counter += 1
+        part_hits += 1
 
-        logging.info(f"Aggregating {len(model_chunks)} chunks...")
         for chunk in model_chunks:
-            if chunk["type"] == "params":
-                self._aggregate_chunk(chunk, flat, counter)
+            start, end = chunk["start"], chunk["end"]
+            array = np.frombuffer(chunk["data"], dtype=np.float32, count=end - start)
+            flat[start:end] += array
+            counter[start:end] += 1
+            part_hits[start:end] += 1
 
-        avg_flat = flat / counter
-        new_state = self._unflatten_state_dict(avg_flat, self._model.state_dict())
-        self._model.load_state_dict(new_state)
+        self._unflatten_state_dict(flat / counter)
 
-    def _flatten_state_dict(self, state_dict):
-        return np.concatenate([param.cpu().numpy().ravel() for param in state_dict.values()])
+        nonzero_parts = part_hits > 0
+        hits_per_part = part_hits[nonzero_parts]
 
-    def _unflatten_state_dict(self, flat, reference_state_dict):
-        new_state = {}
-        pointer = 0
-        for key, param in reference_state_dict.items():
-            size = param.numel()
-            shape = param.shape
-            new_state[key] = torch.tensor(flat[pointer:pointer + size].reshape(shape), dtype=param.dtype)
-            pointer += size
-        return new_state
+        max_hits = hits_per_part.max() if hits_per_part.size else 0
+        min_hits = hits_per_part.min() if hits_per_part.size else 0
+        avg_hits = hits_per_part.mean() if hits_per_part.size else 0
 
+        logging.info(f"  Max fragments received for a part: {max_hits}")
+        logging.info(f"  Min fragments received for a part: {min_hits}")
+        logging.info(f"  Avg fragments per part: {avg_hits:.2f}")
 
-    @log_exceptions
-    def _chunk_array(self, data, type, chunk_size):
-        pkgs = []
-        i = 0
-        while i < len(data):
-            elems = 1
-            while True:
-                end = min(i + elems, len(data))
-                package = {}
-                package["type"] = type
-                package["start"] = i
-                package["end"] = end
-                package["data"] = data[i:end]
-                pkg = pickle.dumps(package)
-                if len(pkg) > chunk_size:
-                    if elems == 1:
-                        raise ValueError("Single element too large to fit in chunk")
-                    elems -= 1  # back off to last valid size
-                    break
-                if end == len(data):
-                    break
-                elems += 1
+    def _flatten_state_dict(self):
+        return (parameters_to_vector(self._model.parameters())
+                .detach().cpu().numpy().astype(np.float32))
 
-            end = i + elems
-            package["end"] = end
-            package["data"] = data[i:end]
-            pkgs.append(package)
-            i = end
-
-        return pkgs
+    def _unflatten_state_dict(self, flat):
+        vector_to_parameters(torch.from_numpy(flat)
+                             .to(self._device), self._model.parameters())
+        return self._model.state_dict()
 
     @log_exceptions
-    def create_chunks(self, data, chunk_size):
-        flat = self._flatten_state_dict(data)
-        self._chunks = self._chunk_array(flat, "params", chunk_size)
+    def create_chunks(self, bytes_per_chunk=600):
+        data = self._flatten_state_dict()
+        float32_size = 4
+        chunk_len = bytes_per_chunk // float32_size
+        chunks = []
 
-    def get_chunks(self,):
-        return self._chunks
+        for start in range(0, len(data), chunk_len):
+            end = min(start + chunk_len, len(data))
+            chunk = {
+                "start": start,
+                "end": end,
+                "data": data[start:end].astype(np.float32).tobytes()
+            }
+            chunks.append(chunk)
+
+        return chunks
 
     @log_exceptions
     def _load_partition(self, node_id, total_peers):

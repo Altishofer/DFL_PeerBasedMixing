@@ -16,7 +16,13 @@ export default function ContainerLog({ containerName, resetTrigger }) {
     setLogs([]);
     serviceRef.current = new LogService(
       containerName,
-      (line) => setLogs((prev) => [...prev.slice(-500), line]),
+        (line) =>
+      setLogs((prev) => {
+        const recent = prev.slice(-20);
+        if (recent.includes(line)) return prev;
+        return [...prev.slice(-499), line];
+      }),
+
       (err) => console.error(`LogService error:`, err)
     );
 

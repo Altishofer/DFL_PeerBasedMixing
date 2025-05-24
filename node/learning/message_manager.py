@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import pickle
 from asyncio import get_running_loop, sleep, QueueEmpty
@@ -13,41 +14,44 @@ class MessageManager:
         self._model_handler = model_handler
         self._incoming_parts = []
         self._model_chunk_buffer = defaultdict(list)
-        self._chunk_size = 600
 
     @log_exceptions
-    async def send_model_updates(self, current_round, interval):
-        # TODO: implement some early stopping?
-
-        self._model_handler.create_chunks(self._model_handler.get_model(), self._chunk_size)
-
-        model = self._model_handler.get_model()
-        self._model_handler.create_chunks(model, self._chunk_size)
-        chunks = self._model_handler.get_chunks()
+    def chunks(self):
+        chunks = self._model_handler.create_chunks()
         n_chunks = len(chunks)
+        return chunks, n_chunks
+
+    @log_exceptions
+    async def stream_model(self, current_round, interval):
+        _, n_chunks = self.chunks()
+        for i in range(n_chunks):
+            chunks, n_chunks = self.chunks()
+            await self.send_model_chunk(current_round, i, chunks[i], n_chunks)
+            await asyncio.sleep(interval)
+
+    @log_exceptions
+    async def send_model_updates(self, current_round):
+        # TODO: implement some early stopping?
+        chunks, n_chunks = self.chunks()
 
         for i in range(n_chunks):
             await self.send_model_chunk(current_round, i, chunks[i], n_chunks)
 
     async def send_model_chunk(self, current_round, chunk_idx, chunk, n_chunks):
+        msg = {
+            "type": "model_part",
+            "round": current_round,
+            "part_idx": chunk_idx,
+            "total_parts": n_chunks,
+            "content": chunk
+        }
+        serialized_msg = self._serialize_msg(msg)
+
         for peer_id in range(self._total_peers):
-            if peer_id == self._node_id:
-                continue
+            if peer_id != self._node_id:
+                await self._transport.send(serialized_msg, peer_id)
 
-            msg = {
-                "type": "model_part",
-                "round": current_round,
-                "part_idx": chunk_idx,
-                "total_parts": n_chunks,
-                "content": chunk
-            }
-            serialized_msg = self._serialize_msg(msg)
-
-            for peer_id in range(self._total_peers):
-                if peer_id != self._node_id:
-                    await self._transport.send(serialized_msg, peer_id)
-
-        logging.info(f"Sent model chunk {chunk_idx}")
+        logging.debug(f"Sent model chunk {chunk_idx}")
 
     @log_exceptions
     async def collect_models(self, current_round):

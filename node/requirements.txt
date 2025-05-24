@@ -16,3 +16,4 @@ uvicorn[standard]
 fastapi-cache2
 torch
 torchvision
+tqdm

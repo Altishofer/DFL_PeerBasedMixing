@@ -28,7 +28,7 @@ class Learner:
             update_task = None
             if self._stream_based:
                 update_task = asyncio.create_task(
-                    self._message_manager.send_model_updates(self._current_round, 0.2)
+                    self._message_manager.stream_model(self._current_round, 0.2)
                 )
             acc_before = self._model_handler.train()
 
@@ -36,7 +36,7 @@ class Learner:
                 await update_task
 
             if not self._stream_based:
-                await self._message_manager.send_model(self._current_round)
+                await self._message_manager.send_model_updates(self._current_round)
 
             model_chunks = await self._message_manager.collect_models(self._current_round)
             self._model_handler.aggregate(model_chunks)

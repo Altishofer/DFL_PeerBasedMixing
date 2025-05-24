@@ -43,14 +43,14 @@ export default function SimulationSettings({
 
           <div className="control-group control-input-limited">
             <label htmlFor="stream">Stream updates</label>
-              <input
-                type="checkbox"
-                className="checkbox"
-                id="stream"
-                checked={stream}
-                onChange={(e) => setStream(e.target.checked)}
-                disabled={isLoading}
-              />
+            <input
+              type="checkbox"
+              className="checkbox"
+              id="stream"
+              checked={stream}
+              onChange={(e) => setStream(e.target.checked)}
+              disabled={isLoading}
+            />
           </div>
         </div>
       </div>
@@ -65,8 +65,8 @@ export default function SimulationSettings({
               type="number"
               min="0"
               max={nodeCount}
-              value={exitNodes.reduce((sum, e) => sum + e.count, 0)}
-              onChange={(e) => updateExitNodes(1, Math.max(0, parseInt(e.target.value, 10) || 0))}
+              value={exitNodes}
+              onChange={(e) => updateExitNodes(Math.max(0, parseInt(e.target.value, 10) || 0))}
               disabled={isLoading}
             />
           </div>
@@ -78,15 +78,13 @@ export default function SimulationSettings({
               type="number"
               min="0"
               max={maxNodes - nodeCount}
-              value={joinNodes.reduce((sum, j) => sum + j.count, 0)}
-              onChange={(e) => updateJoinNodes(1, Math.max(0, parseInt(e.target.value, 10) || 0))}
+              value={joinNodes}
+              onChange={(e) => updateJoinNodes(Math.max(0, parseInt(e.target.value, 10) || 0))}
               disabled={isLoading}
             />
           </div>
         </div>
       </div>
-
-
     </>
   );
 }
