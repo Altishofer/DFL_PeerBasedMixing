@@ -16,7 +16,6 @@ class Connection:
         self._peer_id = peer_id
 
     @classmethod
-    @log_exceptions
     async def create(cls, my_peer_id: int, host: str, port: int, peer_id: int):
         reader, writer = await asyncio.open_connection(host, port)
         writer.write(my_peer_id.to_bytes(1, "big"))

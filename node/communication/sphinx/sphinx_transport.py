@@ -49,6 +49,9 @@ class SphinxTransport:
         self._incoming_queue = asyncio.Queue()
         asyncio.create_task(self.resend_loop())
 
+    def active_nodes(self):
+        return len(self._peers) - 1
+
     @log_exceptions
     async def start(self):
         asyncio.create_task(self._peer.start())

@@ -26,16 +26,18 @@ class NodeService:
         for i in range(start_request.count):
             name = f"node_{i}"
 
-            data = start_request.dict()
+            data = start_request.model_dump()
             data["n_nodes"] = data.pop("count")
             data.update({
                 "node_id": i, 
-                "port": 8000
+                "port": 8000,
+                "exit": i == 0,
+                "join": i == start_request.count -1
             })
 
             node_config = NodeConfig(**data)
 
-            env_vars = {str(k).upper() : str(v) for k, v in node_config.dict().items()}
+            env_vars = {str(k).upper() : str(v) for k, v in node_config.model_dump().items()}
 
             self._client.containers.run(
                 settings.IMAGE_NAME,

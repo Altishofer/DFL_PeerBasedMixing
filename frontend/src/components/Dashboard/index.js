@@ -28,7 +28,7 @@ const defaultConfig = {
 };
 
 const Dashboard = () => {
-  const [nodeCount, setNodeCount] = useState(4);
+  const [nodeCount, setNodeCount] = useState(6);
   const [nodeStatus, setNodeStatus] = useState([]);
   const [metrics, setMetrics] = useState([]);
   const [selectedMetrics, setSelectedMetrics] = useState([]);
@@ -72,7 +72,7 @@ const Dashboard = () => {
   }, [fetchNodeStatus]);
 
   const resetDashboard = useCallback(() => {
-    setNodeCount(4);
+    setNodeCount(6);
     axios.post(`${API_BASE_URL}/logs/clear`);
     setNodeStatus([]);
     setMetrics([]);

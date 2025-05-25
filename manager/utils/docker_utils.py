@@ -24,10 +24,10 @@ def generate_keys(n: int):
         pkiPriv_raw[nid] = (nid, x.binary(), y.export())
         pkiPub_raw[nid] = (nid, y.export())
 
-    os.makedirs("../secrets", exist_ok=True)
-    with open("../secrets/pki_priv.pkl", "wb") as f:
+    os.makedirs("./secrets", exist_ok=True)
+    with open("./secrets/pki_priv.pkl", "wb") as f:
         pickle.dump(pkiPriv_raw, f)
-    with open("../secrets/pki_pub.pkl", "wb") as f:
+    with open("./secrets/pki_pub.pkl", "wb") as f:
         pickle.dump(pkiPub_raw, f)
 
 def create_network():

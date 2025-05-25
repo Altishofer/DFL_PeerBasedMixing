@@ -17,8 +17,10 @@ class Learner:
         self._total_rounds = node_config.rounds
         self._current_round = 1
         self._model_handler = ModelHandler(self._node_id, self._total_peers)
-        self._message_manager = MessageManager(self._node_id, self._total_peers, transport, self._model_handler)
+        self._message_manager = MessageManager(self._node_id, transport, self._model_handler)
         self._stream_based = node_config.stream
+        self._exit_node = node_config.exit
+        self._join_node = node_config.join
 
     @log_exceptions
     async def run(self):
@@ -52,7 +54,7 @@ class Learner:
             metrics().set(MetricField.ACCURACY, accuracy)
 
             self._log_header(f"Awaiting model chunks from peers.")
-            model_chunks = await self._message_manager.collect_models(self._current_round)
+            model_chunks, max_round = await self._message_manager.collect_models()
 
             self._log_header(f"Aggregating {len(model_chunks)} model chunks.")
             self._model_handler.aggregate(model_chunks)
@@ -66,6 +68,10 @@ class Learner:
             self._log_header(f"Finished Round {self._current_round}")
             logging.info(f"Finished in {time.time() - start:.0f}s")
             start = time.time()
+
+            if max_round > self._current_round:
+                self._current_round = max_round
+                logging.info(f"Fast forwarding to round {max_round + 1}")
 
             self._current_round += 1
 

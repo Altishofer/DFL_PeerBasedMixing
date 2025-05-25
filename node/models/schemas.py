@@ -6,3 +6,5 @@ class NodeConfig(BaseModel):
     n_nodes: int
     stream: bool
     port: int
+    join: bool
+    exit: bool

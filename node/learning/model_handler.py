@@ -77,9 +77,9 @@ class ModelHandler:
         flat = self._flatten_state_dict()
 
         part_hits = np.zeros_like(flat, dtype=np.int32)
+        counter = np.ones_like(flat)
 
         local_model_flat = self._flatten_state_dict()
-        counter = np.ones_like(flat)
         flat += local_model_flat
         counter += 1
         part_hits += 1

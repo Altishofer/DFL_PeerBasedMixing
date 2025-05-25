@@ -31,10 +31,8 @@ class TcpServer:
 
     @log_exceptions
     async def connect_peers(self):
-        for peer_id, (host, port) in self.peers.items():
-            if peer_id == self.node_id:
-                continue
-            self.connections[peer_id] = await Connection.create(self.node_id, host, port, peer_id)
+        for peer_id, (host, port) in list(self.peers.items()):
+            await self.add_peer(peer_id, host, port)
 
     def is_active(self, peer_id):
         return peer_id in self.peers and peer_id in self.connections
@@ -56,6 +54,9 @@ class TcpServer:
     async def _handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         pid_byte = await reader.readexactly(1)
         peer_id = int.from_bytes(pid_byte, "big")
+
+        await self.add_peer(peer_id, f"node_{peer_id}", self.port)
+
         try:
             while True:
                 data = await reader.readexactly(self.packet_size)
@@ -71,14 +72,17 @@ class TcpServer:
     async def add_peer(self, peer_id: int, host: str, port: int):
         if peer_id in self.connections:
             return
-        self.peers[peer_id] = (host, port)
-        self.connections[peer_id] = await Connection.create(self.node_id, host, port, peer_id)
+        if peer_id == self.node_id:
+            return
+        try:
+            self.peers[peer_id] = (host, port)
+            self.connections[peer_id] = await Connection.create(self.node_id, host, port, peer_id)
+        except:
+            await self.remove_peer(peer_id)
 
     async def remove_peer(self, peer_id: int):
         conn = self.connections.pop(peer_id, None)
         if conn:
             logging.warning(f"Removed {peer_id} from active peers")
             await conn.close()
-        else:
-            logging.warning(f"Peer {peer_id} already removed.")
         self.peers.pop(peer_id, None)

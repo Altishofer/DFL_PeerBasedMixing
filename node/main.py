@@ -1,3 +1,5 @@
+import time
+
 from peer_node import PeerNode
 import logging
 
@@ -24,6 +26,8 @@ async def node_main():
     port = int(load_env("PORT"))
     stream = load_env("STREAM") == "True"
     rounds = int(load_env("ROUNDS"))
+    exit = bool(load_env("EXIT") == "True")
+    join = bool(load_env("JOIN") == "True")
 
     setup_logging(node_id)
 
@@ -33,7 +37,16 @@ async def node_main():
         port=port,
         stream=stream,
         rounds=rounds,
+        exit=exit,
+        join=join
     )
+
+    if join:
+        logging.info(f"Node is waiting 3 min before joining.")
+        time.sleep(180)
+    if exit:
+        node_config.rounds = 2
+        logging.info(f"Node will exit after Round {node_config.rounds}")
 
     node = PeerNode(
         node_config=node_config,

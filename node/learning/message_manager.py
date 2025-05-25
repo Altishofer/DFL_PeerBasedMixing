@@ -7,9 +7,8 @@ import zlib
 from utils.exception_decorator import log_exceptions
 
 class MessageManager:
-    def __init__(self, node_id, total_peers, transport, model_handler):
+    def __init__(self, node_id, transport, model_handler):
         self._node_id = node_id
-        self._total_peers = total_peers
         self._transport = transport
         self._model_handler = model_handler
         self._incoming_parts = []
@@ -33,7 +32,6 @@ class MessageManager:
     async def send_model_updates(self, current_round):
         # TODO: implement some early stopping?
         chunks, n_chunks = self.chunks()
-
         for i in range(n_chunks):
             await self.send_model_chunk(current_round, i, chunks[i], n_chunks)
 
@@ -51,12 +49,18 @@ class MessageManager:
             logging.info(f"Sent model chunk {chunk_idx} to all peers.")
 
     @log_exceptions
-    async def collect_models(self, current_round):
+    async def collect_models(self):
         #TODO: better stopping condition
-        collected_parts = 0
+        collected_parts = max_round = 0
         time_limit = 30.0
         start_time = get_running_loop().time()
-        while get_running_loop().time() - start_time < time_limit:
+        while True:
+            if get_running_loop().time() - start_time > time_limit:
+                logging.info(f"Timeout of {time_limit}s reached.")
+                break
+            if collected_parts >= 338 * self._transport.active_nodes():
+                logging.info(f"Received all parts of currently active peers.")
+                break
             try:
                 msg = self._transport._incoming_queue.get_nowait()
                 parsed = self._deserialize_msg(msg)
@@ -69,14 +73,15 @@ class MessageManager:
                     part_idx = parsed["part_idx"]
                     total_parts = parsed["total_parts"]
                     msg_round = parsed["round"]
+                    max_round = max(max_round, msg_round)
 
-                    self._model_chunk_buffer[current_round].append(parsed["content"])
+                    self._model_chunk_buffer[msg_round].append(parsed["content"])
                     logging.debug(f"Received part {part_idx+1}/{total_parts} for round {msg_round}")
             except QueueEmpty:
                 await sleep(0.1)
 
-        logging.debug(f"Finished collecting {collected_parts} model parts")
-        return self._model_chunk_buffer[current_round]
+        logging.info(f"Finished collecting {collected_parts} parts from {self._transport.active_nodes()} active nodes")
+        return self._model_chunk_buffer[max_round], max_round
 
     @log_exceptions
     def _serialize_msg(self, msg) -> bytes:
