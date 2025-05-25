@@ -56,12 +56,17 @@ class MessageManager:
     @log_exceptions
     async def collect_models(self, current_round):
         #TODO: better stopping condition
+        collected_parts = 0
         t = 30.0
         start_time = get_running_loop().time()
         while get_running_loop().time() - start_time < t:
             try:
                 msg = self._transport._incoming_queue.get_nowait()
                 parsed = self._deserialize_msg(msg)
+
+                collected_parts += 1
+                if collected_parts % 200 == 0:
+                    logging.info(f"Collected {collected_parts} model parts.")
 
                 if parsed["type"] == "model_part":
                     part_idx = parsed["part_idx"]

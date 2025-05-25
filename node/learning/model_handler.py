@@ -35,11 +35,11 @@ class ModelHandler:
         self._train_loader, self._val_loader = self._load_partition(node_id, total_peers)
 
     @log_exceptions
-    def train(self):
-        logging.info(f"Start training on {self._BATCHES_PER_ROUND} random batches")
+    def train(self, n_batches):
+        logging.info(f"Training on {n_batches} random batches")
         self._model.train()
         batches = list(self._train_loader)
-        random_batches = random.sample(batches, self._BATCHES_PER_ROUND)
+        random_batches = random.sample(batches, n_batches)
         for Xb, yb in random_batches:
             Xb, yb = Xb.to(self._device), yb.to(self._device)
             self._optimizer.zero_grad()
@@ -47,16 +47,14 @@ class ModelHandler:
             loss.backward()
             self._optimizer.step()
 
-        return self.evaluate()
-
     @log_exceptions
-    def evaluate(self):
-        logging.info(f"Finished training, evaluating local model")
+    def evaluate(self, n_batches):
+        logging.info(f"Validating on {n_batches} random batches")
         self._model.eval()
         correct = total = 0
         with torch.no_grad():
             batches = list(self._val_loader)
-            selected_batches = random.sample(batches, 30)
+            selected_batches = random.sample(batches, n_batches)
             for Xb, yb in selected_batches:
 
                 Xb, yb = Xb.to(self._device), yb.to(self._device)
@@ -65,7 +63,6 @@ class ModelHandler:
                 total += yb.size(0)
         accuracy = correct / total
 
-        metrics().set(MetricField.ACCURACY, accuracy)
         return accuracy
 
     @log_exceptions
@@ -79,8 +76,6 @@ class ModelHandler:
     @log_exceptions
     def aggregate(self, model_chunks):
         flat = self._flatten_state_dict()
-
-        logging.info(f"Starting aggregation of {len(model_chunks)} model chunks...")
 
         part_hits = np.zeros_like(flat, dtype=np.int32)
 
@@ -106,9 +101,9 @@ class ModelHandler:
         min_hits = hits_per_part.min() if hits_per_part.size else 0
         avg_hits = hits_per_part.mean() if hits_per_part.size else 0
 
-        logging.info(f"  Max fragments received for a part: {max_hits}")
-        logging.info(f"  Min fragments received for a part: {min_hits}")
-        logging.info(f"  Avg fragments per part: {avg_hits:.2f}")
+        logging.info(f"Max fragments received for a part: {max_hits}")
+        logging.info(f"Min fragments received for a part: {min_hits}")
+        logging.info(f"Avg fragments per part: {avg_hits:.2f}")
 
     def _flatten_state_dict(self):
         return (parameters_to_vector(self._model.parameters())
@@ -139,6 +134,8 @@ class ModelHandler:
 
     @log_exceptions
     def _load_partition(self, node_id, total_peers):
+        logging.info(f"Loading dataset")
+
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
@@ -165,6 +162,10 @@ class ModelHandler:
 
         val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=self._BATCH_SIZE, shuffle=False)
         train_loader = torch.utils.data.DataLoader(train_subset, batch_size=self._BATCH_SIZE, shuffle=True)
+
+        logging.info(f"Batch Size: {self._BATCH_SIZE}")
+        logging.info(f"Loaded {len(val_loader)} validation batches")
+        logging.info(f"Loaded {len(val_loader)} training batches")
 
         return train_loader, val_loader
 

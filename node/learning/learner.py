@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 
 from learning.message_manager import MessageManager
 from learning.model_handler import ModelHandler
@@ -21,16 +22,23 @@ class Learner:
 
     @log_exceptions
     async def run(self):
+        aggregated_accuracy = float()
+        start = time.time()
+
         while self._current_round < self._total_rounds:
             metrics().set(MetricField.CURRENT_ROUND, self._current_round)
             self._log_header(f"ROUND {self._current_round}")
-            self._log_header(f"Stream model updates {self._stream_based}")
+            self._log_header(f"Stream Mode: {self._stream_based}")
+
             update_task = None
             if self._stream_based:
                 update_task = asyncio.create_task(
                     self._message_manager.stream_model(self._current_round, 0.2)
                 )
-            acc_before = self._model_handler.train()
+
+            self._log_header(f"Start Training")
+            self._model_handler.train(30)
+            logging.info(f"Finished Training")
 
             if update_task:
                 await update_task
@@ -38,22 +46,32 @@ class Learner:
             if not self._stream_based:
                 await self._message_manager.send_model_updates(self._current_round)
 
+            self._log_header("Local Model Validation Accuracy")
+            accuracy = self._model_handler.evaluate(30)
+            logging.info(f"Acc. {aggregated_accuracy:.2f} ➜ {accuracy:.2f} | Δ: {accuracy - aggregated_accuracy:+.2f}")
+            metrics().set(MetricField.ACCURACY, accuracy)
+
+            self._log_header(f"Awaiting model chunks from peers.")
             model_chunks = await self._message_manager.collect_models(self._current_round)
+
+            self._log_header(f"Aggregating {len(model_chunks)} model chunks.")
             self._model_handler.aggregate(model_chunks)
-            acc_after = self._model_handler.evaluate()
-            self._log_footer(acc_before, acc_after)
+
+            self._log_header("Aggregated Model Validation Accuracy")
+            accuracy = self._model_handler.evaluate(30)
+            logging.info(f"acc {aggregated_accuracy:.2f} ➜ {accuracy:.2f} | Δ: {accuracy - aggregated_accuracy:+.2f}")
+            aggregated_accuracy = accuracy
+            metrics().set(MetricField.AGGREGATED_ACCURACY, aggregated_accuracy)
+
+            self._log_header(f"Finished Round {self._current_round}")
+            logging.info(f"Finished in {time.time() - start:.0f}s")
+            start = time.time()
+
             self._current_round += 1
 
         logging.info(f"Completed all {self._total_rounds} training rounds")
         await asyncio.sleep(10)
 
     def _log_header(self, title):
-        logging.info(f"\n{'=' * 20} {title} {'=' * 20}")
-
-    def _log_footer(self, acc_before, acc_after):
-        val_acc = self._model_handler.evaluate()
-        delta = acc_after - acc_before
-        logging.info(f"Round {self._current_round} done")
-        logging.info(f"Train: {acc_before:.4f} ➜ {acc_after:.4f} | Δ: {delta:+.4f}")
-        logging.info(f"Validation Accuracy: {val_acc:.4f}")
-        logging.info("=" * 60)
+        l = 30 - len(title) // 2
+        logging.info(f"\n{'=' * l} {title} {'=' * l}")

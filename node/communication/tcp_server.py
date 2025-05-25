@@ -46,5 +46,8 @@ class TcpServer:
     async def _handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         peer_info = writer.get_extra_info("peername")
         while True:
-            data = await reader.readexactly(self.packet_size)
-            await self.message_handler(data)
+            try:
+                data = await reader.readexactly(self.packet_size)
+                await self.message_handler(data)
+            except asyncio.exceptions.IncompleteReadError:
+                pass

@@ -22,6 +22,7 @@ class MetricField(Enum):
     FRAGMENT_RESENT = "fragment_resent"
     BYTES_SENT = "bytes_sent"
     FRAGMENTS_FORWARDED = "fragments_forwarded"
+    AGGREGATED_ACCURACY = "aggregated_accuracy"
 
 
 _metrics_instance = None

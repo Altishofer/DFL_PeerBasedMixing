@@ -15,7 +15,8 @@ const METRIC_GROUPS = {
   ],
   Learning: [
     'accuracy',
-    'current_round'
+    'current_round',
+    'aggregated_accuracy'
   ]
 };
 

@@ -15,6 +15,7 @@ export const METRIC_FIELDS = {
   bytes_received: 'Bytes Received',
   current_round: 'Current Round',
   accuracy: 'Accuracy',
+  aggregated_accuracy: 'Aggregated Accuracy',
   fragment_resent: 'Fragments Resent',
   bytes_sent: 'Bytes Sent',
   fragments_forwarded: 'Fragments Forwarded',
