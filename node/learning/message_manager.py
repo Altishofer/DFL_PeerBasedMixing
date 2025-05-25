@@ -59,7 +59,7 @@ class MessageManager:
                 logging.info(f"Timeout of {time_limit}s reached.")
                 break
             if collected_parts >= 338 * self._transport.active_nodes():
-                logging.info(f"Received all parts of currently active peers.")
+                logging.info(f"Received all parts of active peers.")
                 break
             try:
                 msg = self._transport._incoming_queue.get_nowait()
@@ -80,7 +80,7 @@ class MessageManager:
             except QueueEmpty:
                 await sleep(0.1)
 
-        logging.info(f"Finished collecting {collected_parts} parts from {self._transport.active_nodes()} active nodes")
+        logging.info(f"Received total {collected_parts} parts from {self._transport.active_nodes()} nodes")
         return self._model_chunk_buffer[max_round], max_round
 
     @log_exceptions
