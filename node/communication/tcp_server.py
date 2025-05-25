@@ -29,11 +29,10 @@ class TcpServer:
 
     @log_exceptions
     async def connect_peers(self):
-        self.connections = {
-        peer_id: await Connection.create(host, port)
-        for peer_id, (host, port) in
-        self.peers.items() if peer_id != self.node_id
-        }
+        for peer_id, (host, port) in self.peers.items():
+            if peer_id == self.node_id:
+                continuep
+            self.connections[peer_id] = await Connection.create(host, port)
 
     @log_exceptions
     async def send(self, peer_id, message: bytes):

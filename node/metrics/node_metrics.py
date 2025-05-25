@@ -61,36 +61,24 @@ class Metrics:
     def _flush_metrics(self):
         timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
         with self._data_lock:
-            updates = [{
+            return [{
                 "timestamp": timestamp,
                 "field": field.value,
                 "value": value,
                 "node": self._host
             } for field, value in self._data.items()]
-            self._change_log.extend(updates)
-
-    def get_all(self) -> Dict[str, Any]:
-        with self._data_lock:
-            return {field.value: value for field, value in self._data.items()}
-
-    def get_log(self) -> List[Dict[str, Any]]:
-        with self._data_lock:
-            return list(self._change_log)
 
     def _push_loop(self):
         while True:
             jitter = random.uniform(-0.1, 0.1)
             interval = ConfigStore.push_metric_interval + jitter
-            self._flush_metrics()
             self._push_metrics()
             time.sleep(interval)
 
     def _push_metrics(self):
         try:
             with self._data_lock:
-                if not self._change_log:
-                    return
-                payload = list(self._change_log)
+                payload = self._flush_metrics()
             response = requests.post(
                 f"{self._controller_url}/metrics/push",
                 json=payload,

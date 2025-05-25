@@ -61,7 +61,7 @@ class Learner:
             accuracy = self._model_handler.evaluate(30)
             logging.info(f"acc {aggregated_accuracy:.2f} ➜ {accuracy:.2f} | Δ: {accuracy - aggregated_accuracy:+.2f}")
             aggregated_accuracy = accuracy
-            metrics().set(MetricField.AGGREGATED_ACCURACY, aggregated_accuracy)
+            metrics().set(MetricField.AGGREGATED_ACCURACY, accuracy)
 
             self._log_header(f"Finished Round {self._current_round}")
             logging.info(f"Finished in {time.time() - start:.0f}s")

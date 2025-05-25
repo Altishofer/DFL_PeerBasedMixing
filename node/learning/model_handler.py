@@ -1,4 +1,3 @@
-import pickle
 import logging
 import random
 
@@ -8,7 +7,6 @@ import warnings
 
 from learning.fed_cnn import FedCNN
 from utils.exception_decorator import log_exceptions
-from metrics.node_metrics import metrics, MetricField
 
 import torch
 import torch.nn as nn
@@ -24,7 +22,6 @@ warnings.filterwarnings("ignore", category=ConvergenceWarning)
 class ModelHandler:
 
     _BATCH_SIZE = 64
-    _BATCHES_PER_ROUND = 10
     _ALPHA = 10
 
     def __init__(self, node_id, total_peers):
@@ -33,10 +30,12 @@ class ModelHandler:
         self._loss_fn = nn.CrossEntropyLoss()
         self._optimizer = optim.Adam(self._model.parameters(), lr=1e-3)
         self._train_loader, self._val_loader = self._load_partition(node_id, total_peers)
+        self._n_train_batches = 0
+        self._n_val_batches = 0
 
     @log_exceptions
     def train(self, n_batches):
-        logging.info(f"Training on {n_batches} random batches")
+        logging.info(f"Training on {n_batches} of {self._n_train_batches} batches")
         self._model.train()
         batches = list(self._train_loader)
         random_batches = random.sample(batches, n_batches)
@@ -49,7 +48,7 @@ class ModelHandler:
 
     @log_exceptions
     def evaluate(self, n_batches):
-        logging.info(f"Validating on {n_batches} random batches")
+        logging.info(f"Validating on {n_batches} of {self._n_val_batches} batches")
         self._model.eval()
         correct = total = 0
         with torch.no_grad():
@@ -132,14 +131,14 @@ class ModelHandler:
 
         return chunks
 
-    @log_exceptions
     def _load_partition(self, node_id, total_peers):
-        logging.info(f"Loading dataset")
 
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
+
+        logging.info(f"Downloading Dataset")
         dataset = datasets.FashionMNIST(root="/tmp/fashionmnist", train=True, transform=transform, download=True)
         val_dataset = datasets.FashionMNIST(root="/tmp/fashionmnist", train=False, transform=transform, download=True)
 
@@ -163,9 +162,11 @@ class ModelHandler:
         val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=self._BATCH_SIZE, shuffle=False)
         train_loader = torch.utils.data.DataLoader(train_subset, batch_size=self._BATCH_SIZE, shuffle=True)
 
+        self._n_train_batches = len(train_loader)
+        self._n_val_batches = len(val_loader)
+
         logging.info(f"Batch Size: {self._BATCH_SIZE}")
-        logging.info(f"Loaded {len(val_loader)} validation batches")
-        logging.info(f"Loaded {len(val_loader)} training batches")
+        logging.info(f"Validation Batches: {self._n_val_batches}")
+        logging.info(f"Training Batches {self._n_train_batches}")
 
         return train_loader, val_loader
-

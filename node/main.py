@@ -41,6 +41,5 @@ async def node_main():
     )
     await node.start()
 
-
 if __name__ == "__main__":
     asyncio.run(node_main())
