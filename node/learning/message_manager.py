@@ -46,20 +46,17 @@ class MessageManager:
             "content": chunk
         }
         serialized_msg = self._serialize_msg(msg)
-
-        for peer_id in range(self._total_peers):
-            if peer_id != self._node_id:
-                await self._transport.send(serialized_msg, peer_id)
-
-        logging.info(f"Sent model chunk {chunk_idx} to all peers.")
+        await self._transport.send_to_peers(serialized_msg)
+        if not chunk_idx % 50:
+            logging.info(f"Sent model chunk {chunk_idx} to all peers.")
 
     @log_exceptions
     async def collect_models(self, current_round):
         #TODO: better stopping condition
         collected_parts = 0
-        t = 30.0
+        time_limit = 30.0
         start_time = get_running_loop().time()
-        while get_running_loop().time() - start_time < t:
+        while get_running_loop().time() - start_time < time_limit:
             try:
                 msg = self._transport._incoming_queue.get_nowait()
                 parsed = self._deserialize_msg(msg)
@@ -82,9 +79,9 @@ class MessageManager:
         return self._model_chunk_buffer[current_round]
 
     @log_exceptions
-    def _serialize_msg(self, msg):
+    def _serialize_msg(self, msg) -> bytes:
         return zlib.compress(pickle.dumps(msg))
 
     @log_exceptions
-    def _deserialize_msg(self, msg):
+    def _deserialize_msg(self, msg) -> dict:
         return pickle.loads(zlib.decompress(msg))

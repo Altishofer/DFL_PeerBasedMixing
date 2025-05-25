@@ -57,11 +57,14 @@ class SphinxTransport:
         await asyncio.sleep(5)
 
     @log_exceptions
-    async def send(self, json_payload: dict, target_node: int = None):
-        # str_payload = pickle.dumps(json_payload)
-        str_payload = json_payload
-        # logging.info(f"sending {str_payload}, of type {type(str_payload)}")
-        path, msg_bytes = self.sphinx_router.create_forward_msg(target_node, str_payload)
+    async def send_to_peers(self, payload:bytes):
+        for peer_id in list(self._peers.keys()):
+            if peer_id == self._node_id:
+                continue
+            await self.send(payload, peer_id)
+
+    async def send(self, payload: bytes, target_node: int = None):
+        path, msg_bytes = self.sphinx_router.create_forward_msg(target_node, payload)
         await self._peer.send(path[0], msg_bytes)
 
     @log_exceptions
@@ -73,7 +76,12 @@ class SphinxTransport:
         while True:
             stale = self._cache.get_older_than(ConfigStore.resend_time)
             for fragment in stale:
+                # if not fragment.target_node in self._peers:
+                #     logging.info(f"Skipping resending to inactive node {fragment.target_node}")
+                #     self._cache.received_surb(fragment.surb_id)
+                #     continue
                 await self.send(fragment.payload, fragment.target_node)
+                metrics().increment(MetricField.FRAGMENT_RESENT)
                 logging.info(f"Resent message to node {fragment.target_node}")
             await asyncio.sleep(1)
 

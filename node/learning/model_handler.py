@@ -132,32 +132,25 @@ class ModelHandler:
         return chunks
 
     def _load_partition(self, node_id, total_peers):
+        self._log_header(f"Dataset")
+        np.random.seed(42)
+        torch.manual_seed(42)
 
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
 
-        logging.info(f"Downloading Dataset")
         dataset = datasets.FashionMNIST(root="/tmp/fashionmnist", train=True, transform=transform, download=True)
         val_dataset = datasets.FashionMNIST(root="/tmp/fashionmnist", train=False, transform=transform, download=True)
 
-        labels = np.array(dataset.targets)
-        num_classes = 10
-        class_indices = [np.where(labels == y)[0] for y in range(num_classes)]
-        per_node_indices = [[] for _ in range(total_peers)]
+        indices = np.arange(len(dataset))
+        np.random.shuffle(indices)
 
-        for c in range(num_classes):
-            indices = class_indices[c]
-            np.random.shuffle(indices)
-            proportions = np.random.dirichlet(alpha=np.ones(total_peers) * self._ALPHA)
-            proportions = (np.cumsum(proportions) * len(indices)).astype(int)[:-1]
-            splits = np.split(indices, proportions)
-            for i, split in enumerate(splits):
-                per_node_indices[i].extend(split)
+        node_splits = np.array_split(indices, total_peers)
+        node_indices = node_splits[node_id]
 
-        np.random.shuffle(per_node_indices[node_id])
-        train_subset = torch.utils.data.Subset(dataset, per_node_indices[node_id])
+        train_subset = torch.utils.data.Subset(dataset, node_indices)
 
         val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=self._BATCH_SIZE, shuffle=False)
         train_loader = torch.utils.data.DataLoader(train_subset, batch_size=self._BATCH_SIZE, shuffle=True)
@@ -170,3 +163,7 @@ class ModelHandler:
         logging.info(f"Training Batches {self._n_train_batches}")
 
         return train_loader, val_loader
+
+    def _log_header(self, title):
+        l = 30 - len(title) // 2
+        logging.info(f"\n\n{'=' * l} {title} {'=' * l}")

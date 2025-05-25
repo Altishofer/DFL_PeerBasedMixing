@@ -1,6 +1,4 @@
-import hashlib
-import json
-import sys
+import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import List
@@ -15,7 +13,7 @@ class Fragment:
     surb_id: bytes
     surb_key_tuble: tuple
     target_node: int
-    payload: dict
+    payload: bytes
     timestamp: datetime
 
 

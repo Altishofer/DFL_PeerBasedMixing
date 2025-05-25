@@ -15,7 +15,7 @@ class Learner:
         self._transport = transport
         self._total_peers = node_config.n_nodes
         self._total_rounds = node_config.rounds
-        self._current_round = 0
+        self._current_round = 1
         self._model_handler = ModelHandler(self._node_id, self._total_peers)
         self._message_manager = MessageManager(self._node_id, self._total_peers, transport, self._model_handler)
         self._stream_based = node_config.stream
@@ -25,7 +25,7 @@ class Learner:
         aggregated_accuracy = float()
         start = time.time()
 
-        while self._current_round < self._total_rounds:
+        while self._current_round <= self._total_rounds:
             metrics().set(MetricField.CURRENT_ROUND, self._current_round)
             self._log_header(f"ROUND {self._current_round}")
             logging.info(f"Stream Mode: {self._stream_based}")
@@ -37,7 +37,7 @@ class Learner:
                 )
 
             self._log_header(f"Start Training")
-            self._model_handler.train(30)
+            self._model_handler.train(5)
             logging.info(f"Finished Training")
 
             if update_task:
@@ -47,7 +47,7 @@ class Learner:
                 await self._message_manager.send_model_updates(self._current_round)
 
             self._log_header("Local Model Validation Accuracy")
-            accuracy = self._model_handler.evaluate(30)
+            accuracy = self._model_handler.evaluate(5)
             logging.info(f"Acc. {aggregated_accuracy:.2f} ➜ {accuracy:.2f} | Δ: {accuracy - aggregated_accuracy:+.2f}")
             metrics().set(MetricField.ACCURACY, accuracy)
 
@@ -58,7 +58,7 @@ class Learner:
             self._model_handler.aggregate(model_chunks)
 
             self._log_header("Aggregated Model Validation Accuracy")
-            accuracy = self._model_handler.evaluate(30)
+            accuracy = self._model_handler.evaluate(5)
             logging.info(f"acc {aggregated_accuracy:.2f} ➜ {accuracy:.2f} | Δ: {accuracy - aggregated_accuracy:+.2f}")
             aggregated_accuracy = accuracy
             metrics().set(MetricField.AGGREGATED_ACCURACY, accuracy)
