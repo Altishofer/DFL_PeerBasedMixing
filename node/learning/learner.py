@@ -28,7 +28,7 @@ class Learner:
         while self._current_round < self._total_rounds:
             metrics().set(MetricField.CURRENT_ROUND, self._current_round)
             self._log_header(f"ROUND {self._current_round}")
-            self._log_header(f"Stream Mode: {self._stream_based}")
+            logging.info(f"Stream Mode: {self._stream_based}")
 
             update_task = None
             if self._stream_based:
@@ -74,4 +74,4 @@ class Learner:
 
     def _log_header(self, title):
         l = 30 - len(title) // 2
-        logging.info(f"\n{'=' * l} {title} {'=' * l}")
+        logging.info(f"\n\n{'=' * l} {title} {'=' * l}")

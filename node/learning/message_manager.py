@@ -78,7 +78,7 @@ class MessageManager:
             except QueueEmpty:
                 await sleep(0.1)
 
-        logging.debug("Finished collecting models")
+        logging.debug(f"Finished collecting {collected_parts} model parts")
         return self._model_chunk_buffer[current_round]
 
     @log_exceptions

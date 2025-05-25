@@ -29,9 +29,9 @@ class ModelHandler:
         self._model = FedCNN().to(self._device)
         self._loss_fn = nn.CrossEntropyLoss()
         self._optimizer = optim.Adam(self._model.parameters(), lr=1e-3)
-        self._train_loader, self._val_loader = self._load_partition(node_id, total_peers)
         self._n_train_batches = 0
         self._n_val_batches = 0
+        self._train_loader, self._val_loader = self._load_partition(node_id, total_peers)
 
     @log_exceptions
     def train(self, n_batches):
