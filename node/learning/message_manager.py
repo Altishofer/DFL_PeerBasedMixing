@@ -51,7 +51,7 @@ class MessageManager:
             if peer_id != self._node_id:
                 await self._transport.send(serialized_msg, peer_id)
 
-        logging.debug(f"Sent model chunk {chunk_idx}")
+        logging.info(f"Sent model chunk {chunk_idx} to all peers.")
 
     @log_exceptions
     async def collect_models(self, current_round):
