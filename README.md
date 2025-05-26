@@ -144,16 +144,16 @@ docker inspect --format '{{.State.Pid}}' $(docker ps -q) | xargs -r sudo kill -9
 - Mixing strategies (delay, shuffle, batch, dummy)
 
 ### Sandrin
-✅ Use persistent TCP connections (currently, each message uses a new socket)
+- ✅ Use persistent TCP connections (currently, each message uses a new socket)
 - Add message hashes for payload verification and replay protection
-- Introduce random synonyms for models and fragments to improve unlinkability
-- Allow free join/leave of nodes by decoupling strict round synchronization
-- Mark nodes as active or inactive, for paths where messages are not received
-✅ Use persistent TCP connections (currently, each message uses a new socket)
-✅ Real-time node statistics and visualization in the frontend
-✅ Add resend logic for lost packets
+- ✅Allow free join/leave of nodes by decoupling strict round synchronization
+- ✅ Mark nodes as active or inactive, for paths where messages are not received
+- ✅ Use persistent TCP connections (currently, each message uses a new socket)
+- ✅ Real-time node statistics and visualization in the frontend
+- ✅ Add resend logic for lost packets
 
 ### Altin
+- Introduce random synonyms for models and fragments to improve unlinkability
 - Enable and disable mixnet routing for experimental purposes
 - Allow free join/leave of nodes by decoupling strict round synchronization
 - Mixing strategies (delay, shuffle, batch, dummy)

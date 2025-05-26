@@ -22,7 +22,9 @@ warnings.filterwarnings("ignore", category=ConvergenceWarning)
 class ModelHandler:
 
     _BATCH_SIZE = 64
-    _ALPHA = 10
+    _DIRICHLET_ALPHA = 10
+    _N_BACHES_PER_ROUND = 30
+    _N_BATCHES_PER_VALIDATION = 157
 
     def __init__(self, node_id, total_peers):
         self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -34,7 +36,8 @@ class ModelHandler:
         self._train_loader, self._val_loader = self._load_partition(node_id, total_peers)
 
     @log_exceptions
-    def train(self, n_batches):
+    def train(self):
+        n_batches = self._N_BACHES_PER_ROUND
         logging.info(f"Training on {n_batches} of {self._n_train_batches} batches")
         self._model.train()
         batches = list(self._train_loader)
@@ -47,7 +50,8 @@ class ModelHandler:
             self._optimizer.step()
 
     @log_exceptions
-    def evaluate(self, n_batches):
+    def evaluate(self):
+        n_batches = self._N_BATCHES_PER_VALIDATION
         logging.info(f"Validating on {n_batches} of {self._n_val_batches} batches")
         self._model.eval()
         correct = total = 0
@@ -132,8 +136,8 @@ class ModelHandler:
         return chunks
 
     def _load_partition(self, node_id, total_peers):
-        self._log_header(f"Dataset")
-        np.random.seed(42)
+        self._log_header("Dataset")
+
         torch.manual_seed(42)
 
         transform = transforms.Compose([
@@ -141,16 +145,34 @@ class ModelHandler:
             transforms.Normalize((0.5,), (0.5,))
         ])
 
-        dataset = datasets.FashionMNIST(root="/tmp/fashionmnist", train=True, transform=transform, download=True)
-        val_dataset = datasets.FashionMNIST(root="/tmp/fashionmnist", train=False, transform=transform, download=True)
+        dataset = datasets.MNIST(root="/tmp/mnist", train=True, transform=transform, download=True)
+        val_dataset = datasets.MNIST(root="/tmp/mnist", train=False, transform=transform, download=True)
 
-        indices = np.arange(len(dataset))
-        np.random.shuffle(indices)
+        targets = torch.tensor(dataset.targets)
+        indices_by_class = {int(c): (targets == c).nonzero(as_tuple=True)[0] for c in range(10)}
 
-        node_splits = np.array_split(indices, total_peers)
-        node_indices = node_splits[node_id]
+        logging.info(f"Using a Dirichlet distribution with alpha = {self._DIRICHLET_ALPHA}")
+        dirichlet = torch.distributions.Dirichlet(torch.full((total_peers,), self._DIRICHLET_ALPHA))
 
-        train_subset = torch.utils.data.Subset(dataset, node_indices)
+        node_indices = []
+
+        for cls, class_indices in indices_by_class.items():
+            class_indices = class_indices[torch.randperm(class_indices.size(0))]
+            proportions = dirichlet.sample()
+            counts = torch.floor(proportions * len(class_indices)).long()
+            counts[-1] = len(class_indices) - counts[:-1].sum()
+
+            start = 0
+            for peer_id, count in enumerate(counts):
+                end = start + count.item()
+                if peer_id == node_id:
+                    node_indices.append(class_indices[start:end])
+                start = end
+
+        node_indices = torch.cat(node_indices)
+        node_indices = node_indices[torch.randperm(node_indices.size(0))]
+
+        train_subset = torch.utils.data.Subset(dataset, node_indices.tolist())
 
         val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=self._BATCH_SIZE, shuffle=False)
         train_loader = torch.utils.data.DataLoader(train_subset, batch_size=self._BATCH_SIZE, shuffle=True)

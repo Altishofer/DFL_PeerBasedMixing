@@ -10,12 +10,13 @@ from utils.logging_config import log_exceptions
 
 
 class Learner:
+
     def __init__(self, node_config : NodeConfig, transport):
         self._node_id = node_config.node_id
         self._transport = transport
         self._total_peers = node_config.n_nodes
         self._total_rounds = node_config.rounds
-        self._current_round = 1
+        self._current_round = 0
         self._model_handler = ModelHandler(self._node_id, self._total_peers)
         self._message_manager = MessageManager(self._node_id, transport, self._model_handler)
         self._stream_based = node_config.stream
@@ -26,8 +27,17 @@ class Learner:
     async def run(self):
         aggregated_accuracy = float()
         start = time.time()
+        highest_peer_round = 0
 
         while self._current_round <= self._total_rounds:
+
+            if highest_peer_round > self._current_round + 1:
+                self._current_round = highest_peer_round
+                logging.info(f"Fast forwarding to round {highest_peer_round + 1}")
+                continue
+
+            self._current_round += 1
+
             metrics().set(MetricField.CURRENT_ROUND, self._current_round)
             self._log_header(f"ROUND {self._current_round}")
             logging.info(f"Stream Mode: {self._stream_based}")
@@ -39,7 +49,7 @@ class Learner:
                 )
 
             self._log_header(f"Start Training")
-            self._model_handler.train(5)
+            self._model_handler.train()
             logging.info(f"Finished Training")
 
             if update_task:
@@ -49,18 +59,18 @@ class Learner:
                 await self._message_manager.send_model_updates(self._current_round)
 
             self._log_header("Local Model Validation Accuracy")
-            accuracy = self._model_handler.evaluate(5)
+            accuracy = self._model_handler.evaluate()
             logging.info(f"Acc. {aggregated_accuracy:.2f} ➜ {accuracy:.2f} | Δ: {accuracy - aggregated_accuracy:+.2f}")
             metrics().set(MetricField.ACCURACY, accuracy)
 
             self._log_header(f"Awaiting model chunks from peers.")
-            model_chunks, max_round = await self._message_manager.collect_models()
+            model_chunks, highest_peer_round = await self._message_manager.collect_models()
 
             self._log_header(f"Aggregating {len(model_chunks)} model chunks.")
             self._model_handler.aggregate(model_chunks)
 
             self._log_header("Aggregated Model Validation Accuracy")
-            accuracy = self._model_handler.evaluate(5)
+            accuracy = self._model_handler.evaluate()
             logging.info(f"acc {aggregated_accuracy:.2f} ➜ {accuracy:.2f} | Δ: {accuracy - aggregated_accuracy:+.2f}")
             aggregated_accuracy = accuracy
             metrics().set(MetricField.AGGREGATED_ACCURACY, accuracy)
@@ -68,12 +78,6 @@ class Learner:
             self._log_header(f"Finished Round {self._current_round}")
             logging.info(f"Finished in {time.time() - start:.0f}s")
             start = time.time()
-
-            if max_round > self._current_round:
-                self._current_round = max_round
-                logging.info(f"Fast forwarding to round {max_round + 1}")
-
-            self._current_round += 1
 
         logging.info(f"Completed all {self._total_rounds} training rounds")
         await asyncio.sleep(10)
