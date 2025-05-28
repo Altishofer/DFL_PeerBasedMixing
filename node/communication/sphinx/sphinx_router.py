@@ -26,6 +26,10 @@ class SphinxRouter:
         self._surb_key_store = {}
 
     @log_exceptions
+    def get_older_than(self, time_s: int):
+        return self.cache.get_older_than(time_s)
+
+    @log_exceptions
     def create_forward_msg(self, target_node, payload):
         path, nodes_routing, keys_nodes = self.build_forward_path(target_node)
         backward_path, nodes_routing_back, keys_nodes_back = self.build_surb_reply_path(target_node)
@@ -67,7 +71,7 @@ class SphinxRouter:
     def decrypt_surb(self, delta: bytes, surb_id):
         key = self.cache.received_surb(surb_id)
         msg = receive_surb(self._params, key, delta)
-        logging.debug(f"{self._node_id} resolved surb with message: {msg.decode()}")
+        logging.debug(f"Resolved surb with message: {msg.decode()}")
         return msg
 
     @log_exceptions

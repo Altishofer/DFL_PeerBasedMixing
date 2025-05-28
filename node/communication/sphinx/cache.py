@@ -15,31 +15,34 @@ class Fragment:
     target_node: int
     payload: bytes
     timestamp: datetime
+    acked: bool
 
 
 class Cache:
 
     def __init__(self):
         self.cache = {}
+        self.out_counter = 0
+        self.in_counter = 0
 
     @log_exceptions
-    def new_fragment(self, surb_id:bytes, surb_key_tuple:tuple, target_node:int, payload:dict):
-        metrics().increment(MetricField.FRAGMENT_RECEIVED)
+    def new_fragment(self, surb_id:bytes, surb_key_tuple:tuple, target_node:int, payload:bytes):
         now = datetime.now(timezone.utc)
-        fragment = Fragment(surb_id, surb_key_tuple, target_node, payload, now)
+        fragment = Fragment(surb_id, surb_key_tuple, target_node, payload, now, False)
         self.cache[surb_id] = fragment
+        self.out_counter += 1
 
     @log_exceptions
     def received_surb(self, surb_id):
         metrics().increment(MetricField.SURB_RECEIVED)
-        fragment = self.cache.get(surb_id)
-        del self.cache[surb_id]
-        return fragment.surb_key_tuble
+        self.cache[surb_id].acked = True
+        self.in_counter += 1
+        return self.cache[surb_id].surb_key_tuble
 
     @log_exceptions
     def get_older_than(self, seconds: float) -> List[Fragment]:
-        metrics().increment(MetricField.SURB_RECEIVED)
         cutoff = datetime.now(timezone.utc) - timedelta(seconds=seconds)
-        to_resend = [fragment for fragment in self.cache.values() if fragment.timestamp < cutoff]
+        to_resend = [fragment for fragment in self.cache.values() if fragment.timestamp < cutoff and not fragment.acked]
         metrics().increment(MetricField.FRAGMENT_RESENT, len(to_resend))
+        logging.info(f"{self.in_counter=}, {self.out_counter=}")
         return to_resend

@@ -35,7 +35,9 @@ class MessageManager:
         # TODO: implement some early stopping?
         chunks, n_chunks = self.chunks()
         for i in range(n_chunks):
-            await self.send_model_chunk(current_round, i, chunks[i], n_chunks)
+            n_peers = await self.send_model_chunk(current_round, i, chunks[i], n_chunks)
+        logging.info(f"Sent {n_chunks} model chunks to {n_peers} peers.")
+
 
     async def send_model_chunk(self, current_round, chunk_idx, chunk, n_chunks):
         msg = {
@@ -46,41 +48,50 @@ class MessageManager:
             "content": chunk
         }
         serialized_msg = self._serialize_msg(msg)
-        n_peers = await self._transport.send_to_peers(serialized_msg)
-        if not chunk_idx % 50:
-            logging.info(f"Sent {chunk_idx} model chunks to {n_peers} peers.")
+        return await self._transport.send_to_peers(serialized_msg)
 
     @log_exceptions
     async def collect_models(self):
-        self._model_chunk_buffer = list()
+        self._model_chunk_buffer.clear()
         collected_parts = max_round = 0
         time_limit = 40.0
         start_time = get_running_loop().time()
+        seen_hashes = set()
         while True:
             if get_running_loop().time() - start_time > time_limit:
                 logging.info(f"Timeout of {time_limit}s reached.")
                 break
-            if collected_parts >= 338 * self._transport.active_nodes():
-                logging.info(f"Received all parts of active peers.")
-                break
+            # if collected_parts >= 170 * self._transport.active_nodes():
+            #     logging.info(f"Received all parts of active peers.")
+            #     break
+
             try:
-                msg = self._transport._incoming_queue.get_nowait()
-                parsed = self._deserialize_msg(msg)
-
-                collected_parts += 1
-                if collected_parts % 200 == 0:
-                    logging.info(f"Collected {collected_parts} model parts.")
-
-                if parsed["type"] == "model_part":
-                    part_idx = parsed["part_idx"]
-                    total_parts = parsed["total_parts"]
-                    msg_round = parsed["round"]
-                    max_round = max(max_round, msg_round)
-
-                    self._model_chunk_buffer.append(parsed["content"])
-                    logging.debug(f"Received part {part_idx + 1}/{total_parts} for round {msg_round}")
+                msg = self._transport.get_next_fragment()
             except QueueEmpty:
                 await sleep(0.1)
+                continue
+
+            msg_hash = hashlib.sha256(msg).digest()
+            if msg_hash in seen_hashes:
+                logging.info("Duplicate fragment dropped.")
+                continue
+            seen_hashes.add(msg_hash)
+
+            parsed = self._deserialize_msg(msg)
+
+            collected_parts += 1
+
+            logging.info(f"Collected {collected_parts} model parts.")
+
+            if parsed["type"] == "model_part":
+                part_idx = parsed["part_idx"]
+                total_parts = parsed["total_parts"]
+                msg_round = parsed["round"]
+                max_round = max(max_round, msg_round)
+
+                self._model_chunk_buffer.append(parsed["content"])
+                logging.debug(f"Received part {part_idx + 1}/{total_parts} for round {msg_round}")
+
 
         logging.info(f"Received total {collected_parts} parts from {self._transport.active_nodes()} nodes")
         return self._model_chunk_buffer, max_round

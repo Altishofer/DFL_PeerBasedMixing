@@ -16,10 +16,8 @@ class Connection:
         logging.info(f"Connected to peer {host}:{port} with id {peer_id}")
 
     @classmethod
-    async def create(cls, my_peer_id: int, host: str, port: int, peer_id: int):
+    async def create(cls, host: str, port: int, peer_id: int):
         reader, writer = await asyncio.open_connection(host, port)
-        writer.write(my_peer_id.to_bytes(1, "big"))
-        await writer.drain()
         return cls(host, port, reader, writer, peer_id)
 
     @retry(tries=3, delay=2)

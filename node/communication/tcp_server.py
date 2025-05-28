@@ -49,41 +49,23 @@ class TcpServer:
             await asyncio.wait_for(self.connections[peer_id].send(message), timeout=10.0)
         except (ConnectionResetError, BrokenPipeError, OSError, asyncio.TimeoutError) as e:
             logging.warning(f"Send failed to peer {peer_id}: {e}")
-            logging.error(f"PEER {peer_id} IN SEND")
-            await self.remove_peer(peer_id)
 
     @log_exceptions
     async def _handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        pid_byte = await reader.readexactly(1)
-        peer_id = int.from_bytes(pid_byte, "big")
-
-        writer.write(self.node_id.to_bytes(1, "big"))
-
-        if peer_id in self.connections or peer_id == self.node_id or peer_id not in self._peer_cfg:
-            return True
-        host, port = self._peer_cfg[peer_id]
-        try:
-            self.connections[peer_id] = Connection(host, port, reader, writer, peer_id)
-            self.peers[peer_id] = (host, port)
-        except:
-            logging.error(f"PEER {peer_id} Could not store Connection")
-
         try:
             while True:
                 data = await reader.readexactly(self.packet_size)
                 await self.message_handler(data)
         except asyncio.exceptions.IncompleteReadError:
-            logging.error(f"PEER {peer_id} DISCONNECTED IN HANDLE CONNECTION")
-            await self.remove_peer(peer_id)
+            logging.error(f"INCOMPLETE READ ERROR")
 
     async def add_peer(self, peer_id: int):
         if peer_id in self.connections or peer_id == self.node_id or peer_id not in self._peer_cfg:
-            return True
+            return
         host, port = self._peer_cfg[peer_id]
         try:
-            self.connections[peer_id] = await Connection.create(self.node_id, host, port, peer_id)
+            self.connections[peer_id] = await Connection.create(host, port, peer_id)
             self.peers[peer_id] = (host, port)
-            return False
         except Exception as e:
             logging.debug(f"Failed to connect to peer {peer_id}: {e}")
 

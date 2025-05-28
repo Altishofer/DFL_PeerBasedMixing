@@ -8,7 +8,6 @@ from sphinxmix.SphinxClient import (
 )
 from sphinxmix.SphinxParams import SphinxParams
 
-from communication.sphinx.cache import Cache
 from communication.sphinx.sphinx_router import SphinxRouter
 from communication.tcp_server import TcpServer
 from utils.config_store import ConfigStore
@@ -45,19 +44,21 @@ class SphinxTransport:
             message_handler=self.__handle_incoming
         )
 
-        self._cache = Cache()
         self._incoming_queue = asyncio.Queue()
         asyncio.create_task(self.resend_loop())
 
     def active_nodes(self):
         return len(self._peers) - 1
 
+    def get_next_fragment(self):
+        return self._incoming_queue.get_nowait()
+
     @log_exceptions
     async def start(self):
         asyncio.create_task(self._peer.start())
         await asyncio.sleep(5)
         await self._peer.connect_peers()
-        await asyncio.sleep(5)
+        await asyncio.sleep(10)
 
     @log_exceptions
     async def send_to_peers(self, payload:bytes):
@@ -77,7 +78,7 @@ class SphinxTransport:
     @log_exceptions
     async def resend_loop(self):
         while True:
-            stale = self._cache.get_older_than(ConfigStore.resend_time)
+            stale = self.sphinx_router.get_older_than(ConfigStore.resend_time)
             for fragment in stale:
                 # if not fragment.target_node in self._peers:
                 #     logging.info(f"Skipping resending to inactive node {fragment.target_node}")

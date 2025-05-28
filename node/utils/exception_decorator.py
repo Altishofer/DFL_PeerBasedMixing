@@ -8,6 +8,8 @@ def log_exceptions(func):
     if asyncio.iscoroutinefunction(func):
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
+            return await func(*args, **kwargs)
+
             try:
                 return await func(*args, **kwargs)
             except Exception:
@@ -16,6 +18,8 @@ def log_exceptions(func):
     else:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
             try:
                 return func(*args, **kwargs)
             except Exception:
