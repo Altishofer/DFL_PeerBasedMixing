@@ -61,10 +61,10 @@ class SphinxTransport:
 
     @log_exceptions
     async def send_to_peers(self, payload:bytes):
-        for peer_id in list(self._peers.keys()):
-            if peer_id == self._node_id:
-                continue
+        peers = list(self._peer.active_peers())
+        for peer_id in peers:
             await self.send(payload, peer_id)
+        return len(peers)
 
     async def send(self, payload: bytes, target_node: int = None):
         path, msg_bytes = self.sphinx_router.create_forward_msg(target_node, payload)

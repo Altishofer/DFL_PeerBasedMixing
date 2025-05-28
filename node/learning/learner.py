@@ -31,11 +31,6 @@ class Learner:
 
         while self._current_round <= self._total_rounds:
 
-            if highest_peer_round > self._current_round + 1:
-                self._current_round = highest_peer_round
-                logging.info(f"Fast forwarding to round {highest_peer_round + 1}")
-                continue
-
             self._current_round += 1
 
             metrics().set(MetricField.CURRENT_ROUND, self._current_round)

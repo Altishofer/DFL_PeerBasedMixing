@@ -7,15 +7,16 @@ from metrics.node_metrics import metrics, MetricField
 
 
 class TcpServer:
-    def __init__(self, node_id:int, port:int, peers:dict, message_handler, packet_size):
+    def __init__(self, node_id: int, port: int, peers: dict, message_handler, packet_size):
         self.node_id = node_id
         self.port = port
         self.peers = peers
+        self._peer_cfg = peers.copy()
         self.message_handler = message_handler
         self.packet_size = packet_size
         self._server = None
-        self._hb_task = None
-        self.connections = {} # node_id : Connection
+        self.connections = {}
+        asyncio.create_task(self._reconnect_loop())
 
     @log_exceptions
     async def start(self):
@@ -24,30 +25,31 @@ class TcpServer:
             "0.0.0.0",
             self.port
         )
-        self._log_header("TCP SERVER")
         logging.info(f"TCP server listening on port {self.port}")
         async with self._server:
             await self._server.serve_forever()
 
     @log_exceptions
     async def connect_peers(self):
-        for peer_id, (host, port) in list(self.peers.items()):
-            await self.add_peer(peer_id, host, port)
+        for pid in list(self._peer_cfg.keys()):
+            await self.add_peer(pid)
 
     def is_active(self, peer_id):
-        return peer_id in self.peers and peer_id in self.connections
+        return peer_id in self.connections
+
+    def active_peers(self):
+        return [peer_id for peer_id in self.connections]
 
     async def send(self, peer_id, message: bytes):
         if not self.is_active(peer_id):
-            logging.debug(f"Skipping message to inactive peer {peer_id}")
             return
         try:
             metrics().increment(MetricField.MSG_SENT)
             metrics().increment(MetricField.BYTES_SENT, len(message))
-            connection = self.connections[peer_id]
-            await connection.send(message)
-        except (ConnectionResetError, BrokenPipeError, OSError) as e:
-            logging.warning(f"Send failed to peer {peer_id}")
+            await asyncio.wait_for(self.connections[peer_id].send(message), timeout=10.0)
+        except (ConnectionResetError, BrokenPipeError, OSError, asyncio.TimeoutError) as e:
+            logging.warning(f"Send failed to peer {peer_id}: {e}")
+            logging.error(f"PEER {peer_id} IN SEND")
             await self.remove_peer(peer_id)
 
     @log_exceptions
@@ -55,34 +57,44 @@ class TcpServer:
         pid_byte = await reader.readexactly(1)
         peer_id = int.from_bytes(pid_byte, "big")
 
-        await self.add_peer(peer_id, f"node_{peer_id}", self.port)
+        writer.write(self.node_id.to_bytes(1, "big"))
+
+        if peer_id in self.connections or peer_id == self.node_id or peer_id not in self._peer_cfg:
+            return True
+        host, port = self._peer_cfg[peer_id]
+        try:
+            self.connections[peer_id] = Connection(host, port, reader, writer, peer_id)
+            self.peers[peer_id] = (host, port)
+        except:
+            logging.error(f"PEER {peer_id} Could not store Connection")
 
         try:
             while True:
                 data = await reader.readexactly(self.packet_size)
                 await self.message_handler(data)
         except asyncio.exceptions.IncompleteReadError:
-            logging.warning("Raised Incomplete Read Error")
+            logging.error(f"PEER {peer_id} DISCONNECTED IN HANDLE CONNECTION")
             await self.remove_peer(peer_id)
 
-    def _log_header(self, title):
-        l = 30 - len(title) // 2
-        logging.info(f"\n\n{'=' * l} {title} {'=' * l}")
-
-    async def add_peer(self, peer_id: int, host: str, port: int):
-        if peer_id in self.connections:
-            return
-        if peer_id == self.node_id:
-            return
+    async def add_peer(self, peer_id: int):
+        if peer_id in self.connections or peer_id == self.node_id or peer_id not in self._peer_cfg:
+            return True
+        host, port = self._peer_cfg[peer_id]
         try:
-            self.peers[peer_id] = (host, port)
             self.connections[peer_id] = await Connection.create(self.node_id, host, port, peer_id)
-        except:
-            await self.remove_peer(peer_id)
+            self.peers[peer_id] = (host, port)
+            return False
+        except Exception as e:
+            logging.debug(f"Failed to connect to peer {peer_id}: {e}")
 
     async def remove_peer(self, peer_id: int):
         conn = self.connections.pop(peer_id, None)
         if conn:
-            logging.warning(f"Removed {peer_id} from active peers")
             await conn.close()
         self.peers.pop(peer_id, None)
+
+    async def _reconnect_loop(self):
+        while True:
+            for pid in list(self._peer_cfg.keys()):
+                await self.add_peer(pid)
+            await asyncio.sleep(5)

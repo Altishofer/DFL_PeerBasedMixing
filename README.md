@@ -144,21 +144,27 @@ docker inspect --format '{{.State.Pid}}' $(docker ps -q) | xargs -r sudo kill -9
 - Mixing strategies (delay, shuffle, batch, dummy)
 
 ### Sandrin
-- ✅ Use persistent TCP connections (currently, each message uses a new socket)
-- Add message hashes for payload verification and replay protection
-- ✅Allow free join/leave of nodes by decoupling strict round synchronization
-- ✅ Mark nodes as active or inactive, for paths where messages are not received
-- ✅ Use persistent TCP connections (currently, each message uses a new socket)
+- ✅ Allow free join/leave of nodes by decoupling strict round synchronization
+- ✅ Add early stop of collecting models if peers * model_parts was received
+- ✅ Add parametrization of number of nodes to join late or leave early
+- ✅ Cut TCP connection if a node closes the connection
+- ✅ Add new or restarted connection to active nodes if handshake is received
+- ✅ Refactoring using CNN with torch instead of MLP
+- ✅ Refactoring whole model aggregation and model fragmentation
+- ✅ Improved logging, added aggregated and local accuracy to dashboard
+
 - ✅ Real-time node statistics and visualization in the frontend
+- ✅ Use persistent TCP connections (currently, each message uses a new socket)
 - ✅ Add resend logic for lost packets
 
 ### Altin
-- Introduce random synonyms for models and fragments to improve unlinkability
 - Enable and disable mixnet routing for experimental purposes
-- Allow free join/leave of nodes by decoupling strict round synchronization
 - Mixing strategies (delay, shuffle, batch, dummy)
-- Mark nodes as active or inactive, for paths where messages are not received
+- Add message hashes for payload verification and replay protection
+- Frontend, clear log and old metrics when restarting
 
+### Discarded
+- Introduce random synonyms for models and fragments to improve unlinkability
 
 ## Notes
 - write about small prototypes

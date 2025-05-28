@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import logging
 import pickle
 from asyncio import get_running_loop, sleep, QueueEmpty
@@ -12,7 +13,8 @@ class MessageManager:
         self._transport = transport
         self._model_handler = model_handler
         self._incoming_parts = []
-        self._model_chunk_buffer = defaultdict(list)
+        self._model_chunk_buffer = list()
+        self._seen_hashes = set()
 
     @log_exceptions
     def chunks(self):
@@ -44,15 +46,15 @@ class MessageManager:
             "content": chunk
         }
         serialized_msg = self._serialize_msg(msg)
-        await self._transport.send_to_peers(serialized_msg)
+        n_peers = await self._transport.send_to_peers(serialized_msg)
         if not chunk_idx % 50:
-            logging.info(f"Sent model chunk {chunk_idx} to all peers.")
+            logging.info(f"Sent {chunk_idx} model chunks to {n_peers} peers.")
 
     @log_exceptions
     async def collect_models(self):
-        #TODO: better stopping condition
+        self._model_chunk_buffer = list()
         collected_parts = max_round = 0
-        time_limit = 30.0
+        time_limit = 40.0
         start_time = get_running_loop().time()
         while True:
             if get_running_loop().time() - start_time > time_limit:
@@ -75,13 +77,13 @@ class MessageManager:
                     msg_round = parsed["round"]
                     max_round = max(max_round, msg_round)
 
-                    self._model_chunk_buffer[msg_round].append(parsed["content"])
-                    logging.debug(f"Received part {part_idx+1}/{total_parts} for round {msg_round}")
+                    self._model_chunk_buffer.append(parsed["content"])
+                    logging.debug(f"Received part {part_idx + 1}/{total_parts} for round {msg_round}")
             except QueueEmpty:
                 await sleep(0.1)
 
         logging.info(f"Received total {collected_parts} parts from {self._transport.active_nodes()} nodes")
-        return self._model_chunk_buffer[max_round], max_round
+        return self._model_chunk_buffer, max_round
 
     @log_exceptions
     def _serialize_msg(self, msg) -> bytes:

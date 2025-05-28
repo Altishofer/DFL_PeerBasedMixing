@@ -23,8 +23,7 @@ class ModelHandler:
 
     _BATCH_SIZE = 64
     _DIRICHLET_ALPHA = 10
-    _N_BACHES_PER_ROUND = 30
-    _N_BATCHES_PER_VALIDATION = 157
+    _N_BACHES_PER_ROUND = 5
 
     def __init__(self, node_id, total_peers):
         self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -51,15 +50,11 @@ class ModelHandler:
 
     @log_exceptions
     def evaluate(self):
-        n_batches = self._N_BATCHES_PER_VALIDATION
-        logging.info(f"Validating on {n_batches} of {self._n_val_batches} batches")
+        logging.info(f"Validating on {len(self._val_loader)} batches")
         self._model.eval()
         correct = total = 0
         with torch.no_grad():
-            batches = list(self._val_loader)
-            selected_batches = random.sample(batches, n_batches)
-            for Xb, yb in selected_batches:
-
+            for Xb, yb in self._val_loader:
                 Xb, yb = Xb.to(self._device), yb.to(self._device)
                 pred = self._model(Xb)
                 correct += (pred.argmax(1) == yb).sum().item()
@@ -83,10 +78,10 @@ class ModelHandler:
         part_hits = np.zeros_like(flat, dtype=np.int32)
         counter = np.ones_like(flat)
 
-        local_model_flat = self._flatten_state_dict()
-        flat += local_model_flat
-        counter += 1
-        part_hits += 1
+        # local_model_flat = self._flatten_state_dict()
+        # flat += local_model_flat
+        # counter += 1
+        # part_hits += 1
 
         for chunk in model_chunks:
             start, end = chunk["start"], chunk["end"]
@@ -148,11 +143,12 @@ class ModelHandler:
         dataset = datasets.MNIST(root="/tmp/mnist", train=True, transform=transform, download=True)
         val_dataset = datasets.MNIST(root="/tmp/mnist", train=False, transform=transform, download=True)
 
-        targets = torch.tensor(dataset.targets)
+        targets = dataset.targets.detach().clone()
         indices_by_class = {int(c): (targets == c).nonzero(as_tuple=True)[0] for c in range(10)}
 
         logging.info(f"Using a Dirichlet distribution with alpha = {self._DIRICHLET_ALPHA}")
-        dirichlet = torch.distributions.Dirichlet(torch.full((total_peers,), self._DIRICHLET_ALPHA))
+        alpha = torch.full((total_peers,), float(self._DIRICHLET_ALPHA), dtype=torch.float32)
+        dirichlet = torch.distributions.Dirichlet(alpha)
 
         node_indices = []
 
