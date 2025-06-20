@@ -87,7 +87,7 @@ class SphinxTransport:
                 await self.send(fragment.payload, fragment.target_node)
                 metrics().increment(MetricField.FRAGMENT_RESENT)
                 logging.info(f"Resent message to node {fragment.target_node}")
-            await asyncio.sleep(1)
+            await asyncio.sleep(20)
 
     @log_exceptions
     async def __unpack_payload_and_send_surb(self, payload_bytes: bytes):

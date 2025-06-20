@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import traceback
 
 from communication.connection import Connection
 from utils.exception_decorator import log_exceptions
@@ -47,8 +48,10 @@ class TcpServer:
             metrics().increment(MetricField.MSG_SENT)
             metrics().increment(MetricField.BYTES_SENT, len(message))
             await asyncio.wait_for(self.connections[peer_id].send(message), timeout=10.0)
+            await asyncio.sleep(0.01)
         except (ConnectionResetError, BrokenPipeError, OSError, asyncio.TimeoutError) as e:
             logging.warning(f"Send failed to peer {peer_id}: {e}")
+            logging.debug(f"Exception details: {traceback.format_exc()}")
 
     @log_exceptions
     async def _handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):

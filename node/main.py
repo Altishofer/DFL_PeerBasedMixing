@@ -41,12 +41,12 @@ async def node_main():
         join=join
     )
 
-    if join:
-        logging.info(f"Node is waiting 3 min before joining.")
-        time.sleep(180)
-    if exit:
-        node_config.rounds = 2
-        logging.info(f"Node will exit after Round {node_config.rounds}")
+    # if join:
+    #     logging.info(f"Node is waiting 3 min before joining.")
+    #     time.sleep(180)
+    # if exit:
+    #     node_config.rounds = 2
+    #     logging.info(f"Node will exit after Round {node_config.rounds}")
 
     node = PeerNode(
         node_config=node_config,
