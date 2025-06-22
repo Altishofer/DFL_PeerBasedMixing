@@ -18,11 +18,9 @@ class SphinxRouter:
     def __init__(self, node_id, peers, params):
         self._max_hops = ConfigStore.max_hops
         self._node_id = node_id
-        self._peers = peers
         self._params = params
         self.cache = Cache()
         self._key_store = KeyStore()
-
         self._surb_key_store = {}
 
     @log_exceptions
@@ -34,9 +32,9 @@ class SphinxRouter:
         self.cache.delete_cache_for_node(target_node)
 
     @log_exceptions
-    def create_forward_msg(self, target_node, payload):
-        path, nodes_routing, keys_nodes = self.build_forward_path(target_node)
-        backward_path, nodes_routing_back, keys_nodes_back = self.build_surb_reply_path(target_node)
+    def create_forward_msg(self, target_node, payload, active_peers):
+        path, nodes_routing, keys_nodes = self.build_forward_path(target_node, active_peers)
+        backward_path, nodes_routing_back, keys_nodes_back = self.build_surb_reply_path(target_node, active_peers)
 
         surbid, surbkeytuple, nymtuple = self.create_and_store_surb(nodes_routing_back, keys_nodes_back)
         header, delta = self.create_forward_packet(nodes_routing, keys_nodes, nymtuple, payload)
@@ -53,13 +51,13 @@ class SphinxRouter:
         return msg_bytes, first_hop
 
     @log_exceptions
-    def build_forward_path(self, target_node):
-        path = self._build_path_to(self._node_id, target_node)
+    def build_forward_path(self, target_node, active_peers):
+        path = self._build_path_to(self._node_id, target_node, active_peers)
         return path, list(map(Nenc, path)), [self._key_store.get_y(nid) for nid in path]
 
     @log_exceptions
-    def build_surb_reply_path(self, target_node):
-        path = self._build_path_to(target_node, self._node_id)
+    def build_surb_reply_path(self, target_node, active_peers):
+        path = self._build_path_to(target_node, self._node_id, active_peers)
         return path, list(map(Nenc, path)), [self._key_store.get_y(nid) for nid in path]
 
     @log_exceptions
@@ -79,12 +77,11 @@ class SphinxRouter:
         return msg
 
     @log_exceptions
-    def _build_path_to(self, start, target):
-        intermediates = [nid for nid in self._peers if nid not in (start, target)]
+    def _build_path_to(self, start, target, active_peers):
+        intermediates = [nid for nid in active_peers if nid not in (start, target)]
         hops = random.sample(intermediates, min(self._max_hops - 1, len(intermediates)))
         return hops + [target]
 
-    @log_exceptions
     def process_incoming(self, data: bytes):
         param_dict = {(self._params.max_len, self._params.m): self._params}
         _, (header, delta) = unpack_message(param_dict, data)

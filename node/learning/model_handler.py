@@ -7,6 +7,7 @@ import warnings
 
 from learning.fed_cnn import FedCNN
 from utils.exception_decorator import log_exceptions
+from utils.logging_config import log_header
 
 import torch
 import torch.nn as nn
@@ -78,10 +79,11 @@ class ModelHandler:
         part_hits = np.zeros_like(flat, dtype=np.int32)
         counter = np.ones_like(flat)
 
-        # local_model_flat = self._flatten_state_dict()
-        # flat += local_model_flat
-        # counter += 1
-        # part_hits += 1
+        # Add local model to the aggregation
+        local_model_flat = self._flatten_state_dict()
+        flat += local_model_flat
+        counter += 1
+        part_hits += 1
 
         for chunk in model_chunks:
             start, end = chunk["start"], chunk["end"]
@@ -131,7 +133,7 @@ class ModelHandler:
         return chunks
 
     def _load_partition(self, node_id, total_peers):
-        self._log_header("Dataset")
+        log_header("Dataset")
 
         torch.manual_seed(42)
 
@@ -181,7 +183,3 @@ class ModelHandler:
         logging.info(f"Training Batches {self._n_train_batches}")
 
         return train_loader, val_loader
-
-    def _log_header(self, title):
-        l = 30 - len(title) // 2
-        logging.info(f"\n\n{'=' * l} {title} {'=' * l}")

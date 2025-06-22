@@ -35,7 +35,6 @@ class MessageManager:
             n_peers = await self.send_model_chunk(current_round, i, chunks[i], n_chunks)
         logging.info(f"Sent {n_chunks} model chunks to {n_peers} peers.")
 
-
     async def send_model_chunk(self, current_round, chunk_idx, chunk, n_chunks):
         msg = {
             "type": "model_part",

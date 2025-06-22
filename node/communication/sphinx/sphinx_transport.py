@@ -49,7 +49,10 @@ class SphinxTransport:
         asyncio.create_task(self.resend_loop())
 
     def active_nodes(self):
-        return len(self._peers) - 1
+        return len(self._peer.active_peers())
+
+    async def close_all_connections(self):
+        await self._peer.close_all_connections()
 
     def get_all_fragments(self):
         fragments = []
@@ -71,12 +74,13 @@ class SphinxTransport:
     async def send_to_peers(self, payload:bytes):
         peers = list(self._peer.active_peers())
         for peer_id in peers:
-            await self.send(payload, peer_id)
+            await self.generate_path_and_send(payload, peer_id, peers)
         return len(peers)
 
-    async def send(self, payload: bytes, target_node: int = None):
-        path, msg_bytes = self.sphinx_router.create_forward_msg(target_node, payload)
-        await self._peer.send(path[0], msg_bytes)
+    @log_exceptions
+    async def generate_path_and_send(self, payload: bytes, target_node: int, peers: list):
+        path, msg_bytes = self.sphinx_router.create_forward_msg(target_node, payload, peers)
+        await self._peer.send_to_peer(path[0], msg_bytes)
 
     @log_exceptions
     async def receive(self) -> bytes:
@@ -90,31 +94,40 @@ class SphinxTransport:
                 if not self._peer.is_active(fragment.target_node):
                     self.sphinx_router.remove_cache_for_disconnected(fragment.target_node)
                 else:
-                    await self.send(fragment.payload, fragment.target_node)
+                    await self.generate_path_and_send(fragment.payload, fragment.target_node, self._peer.active_peers())
                     metrics().increment(MetricField.FRAGMENT_RESENT)
                     logging.info(f"Resent message to node {fragment.target_node}")
-            await asyncio.sleep(20)
+            await asyncio.sleep(ConfigStore.resend_time)
 
     @log_exceptions
     async def __unpack_payload_and_send_surb(self, payload_bytes: bytes):
         nymtuple, payload = payload_bytes
         await self._incoming_queue.put(payload)
         msg_bytes, first_hop = self.sphinx_router.create_surb_reply(nymtuple)
-        await self._peer.send(first_hop, msg_bytes)
+        await self._peer.send_to_peer(first_hop, msg_bytes)
         logging.debug("Sent SURB-based reply.")
 
     @log_exceptions
-    async def __handle_incoming(self, data: bytes):
+    async def __handle_incoming(self, data: bytes, peername: str):
         metrics().increment(MetricField.FRAGMENT_RECEIVED)
         metrics().increment(MetricField.BYTES_RECEIVED, len(data))
-        unpacked = self.sphinx_router.process_incoming(data)
-        await self.__handle_routing_decision(*unpacked)
+        try:
+            unpacked = self.sphinx_router.process_incoming(data)
+        except Exception as e:
+            logging.warning(f"Failed to unpack incoming data: {e} from {peername}")
+            return
+
+        try:
+            await self.__handle_routing_decision(*unpacked)
+        except Exception as e:
+            logging.exception(f"Error handling routing decision: {e} from {peername}")
+            return
 
     @log_exceptions
     async def __handle_routing_decision(self, routing, header, delta, mac_key):
         if routing[0] == Relay_flag:
             metrics().increment(MetricField.FRAGMENTS_FORWARDED)
-            await self._peer.send(routing[1], pack_message(self._params, (header, delta)))
+            await self._peer.send_to_peer(routing[1], pack_message(self._params, (header, delta)))
         elif routing[0] == Dest_flag:
             dest, msg = receive_forward(self._params, mac_key, delta)
             await self.__unpack_payload_and_send_surb(msg)
