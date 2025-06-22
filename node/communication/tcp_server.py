@@ -42,16 +42,13 @@ class TcpServer:
         return [peer_id for peer_id in self.connections]
 
     async def send(self, peer_id, message: bytes):
-        if not self.is_active(peer_id):
-            return
         try:
             metrics().increment(MetricField.MSG_SENT)
             metrics().increment(MetricField.BYTES_SENT, len(message))
             await asyncio.wait_for(self.connections[peer_id].send(message), timeout=10.0)
-            await asyncio.sleep(0.01)
         except (ConnectionResetError, BrokenPipeError, OSError, asyncio.TimeoutError) as e:
             logging.warning(f"Send failed to peer {peer_id}: {e}")
-            logging.debug(f"Exception details: {traceback.format_exc()}")
+            logging.warning(f"Exception details: {traceback.format_exc()}")
 
     @log_exceptions
     async def _handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):

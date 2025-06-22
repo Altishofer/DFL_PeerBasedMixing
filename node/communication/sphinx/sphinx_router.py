@@ -30,6 +30,10 @@ class SphinxRouter:
         return self.cache.get_older_than(time_s)
 
     @log_exceptions
+    def remove_cache_for_disconnected(self, target_node):
+        self.cache.delete_cache_for_node(target_node)
+
+    @log_exceptions
     def create_forward_msg(self, target_node, payload):
         path, nodes_routing, keys_nodes = self.build_forward_path(target_node)
         backward_path, nodes_routing_back, keys_nodes_back = self.build_surb_reply_path(target_node)

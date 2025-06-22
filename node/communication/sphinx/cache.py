@@ -40,9 +40,17 @@ class Cache:
         return self.cache[surb_id].surb_key_tuble
 
     @log_exceptions
+    def delete_cache_for_node(self, target_node):
+        to_delete = [surb_id for surb_id, fragment in self.cache.items() if fragment.target_node == target_node]
+        for surb_id in to_delete:
+            del self.cache[surb_id]
+        logging.info(f"Deleted {len(to_delete)} fragments for node {target_node}.")
+        return len(to_delete)
+
+    @log_exceptions
     def get_older_than(self, seconds: float) -> List[Fragment]:
         cutoff = datetime.now(timezone.utc) - timedelta(seconds=seconds)
         to_resend = [fragment for fragment in self.cache.values() if fragment.timestamp < cutoff and not fragment.acked]
         metrics().increment(MetricField.FRAGMENT_RESENT, len(to_resend))
-        logging.info(f"{self.in_counter=}, {self.out_counter=}")
+        logging.info(f"{self.in_counter=}, {self.out_counter=}, {len(to_resend)=}, {len(self.cache)=}")
         return to_resend

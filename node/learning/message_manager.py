@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import logging
 import pickle
+import time
 from asyncio import get_running_loop, sleep, QueueEmpty
 from collections import defaultdict
 import zlib
@@ -51,26 +52,14 @@ class MessageManager:
         return await self._transport.send_to_peers(serialized_msg)
 
     @log_exceptions
-    async def collect_models(self):
+    def collect_models(self):
         self._model_chunk_buffer.clear()
         collected_parts = max_round = 0
-        time_limit = 40.0
-        start_time = get_running_loop().time()
         seen_hashes = set()
-        while True:
-            if get_running_loop().time() - start_time > time_limit:
-                logging.info(f"Timeout of {time_limit}s reached.")
-                break
-            # if collected_parts >= 170 * self._transport.active_nodes():
-            #     logging.info(f"Received all parts of active peers.")
-            #     break
 
-            try:
-                msg = self._transport.get_next_fragment()
-            except QueueEmpty:
-                await sleep(0.1)
-                continue
+        fragments = self._transport.get_all_fragments()
 
+        for msg in fragments:
             msg_hash = hashlib.sha256(msg).digest()
             if msg_hash in seen_hashes:
                 logging.info("Duplicate fragment dropped.")
@@ -78,10 +67,9 @@ class MessageManager:
             seen_hashes.add(msg_hash)
 
             parsed = self._deserialize_msg(msg)
-
             collected_parts += 1
 
-            logging.info(f"Collected {collected_parts} model parts.")
+            logging.debug(f"Collected {collected_parts} model parts.")
 
             if parsed["type"] == "model_part":
                 part_idx = parsed["part_idx"]
@@ -92,8 +80,10 @@ class MessageManager:
                 self._model_chunk_buffer.append(parsed["content"])
                 logging.debug(f"Received part {part_idx + 1}/{total_parts} for round {msg_round}")
 
-
-        logging.info(f"Received total {collected_parts} parts from {self._transport.active_nodes()} nodes")
+        logging.info(
+            f"Received total {collected_parts} parts from {self._transport.active_nodes()} "
+            f"({collected_parts / self._transport.active_nodes():.2f} parts/node)"
+        )
         return self._model_chunk_buffer, max_round
 
     @log_exceptions

@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import pickle
+from asyncio import QueueEmpty
 
 from sphinxmix.SphinxClient import (
     Relay_flag, Dest_flag, Surb_flag,
@@ -50,8 +51,14 @@ class SphinxTransport:
     def active_nodes(self):
         return len(self._peers) - 1
 
-    def get_next_fragment(self):
-        return self._incoming_queue.get_nowait()
+    def get_all_fragments(self):
+        fragments = []
+        while not self._incoming_queue.empty():
+            try:
+                fragments.append(self._incoming_queue.get_nowait())
+            except QueueEmpty:
+                break
+        return fragments
 
     @log_exceptions
     async def start(self):
@@ -80,13 +87,12 @@ class SphinxTransport:
         while True:
             stale = self.sphinx_router.get_older_than(ConfigStore.resend_time)
             for fragment in stale:
-                # if not fragment.target_node in self._peers:
-                #     logging.info(f"Skipping resending to inactive node {fragment.target_node}")
-                #     self._cache.received_surb(fragment.surb_id)
-                #     continue
-                await self.send(fragment.payload, fragment.target_node)
-                metrics().increment(MetricField.FRAGMENT_RESENT)
-                logging.info(f"Resent message to node {fragment.target_node}")
+                if not self._peer.is_active(fragment.target_node):
+                    self.sphinx_router.remove_cache_for_disconnected(fragment.target_node)
+                else:
+                    await self.send(fragment.payload, fragment.target_node)
+                    metrics().increment(MetricField.FRAGMENT_RESENT)
+                    logging.info(f"Resent message to node {fragment.target_node}")
             await asyncio.sleep(20)
 
     @log_exceptions
