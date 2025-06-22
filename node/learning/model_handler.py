@@ -14,6 +14,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.nn.utils import parameters_to_vector, vector_to_parameters
+from utils.config_store import ConfigStore
 
 import os
 os.environ['TORCH_CPP_LOG_LEVEL'] = 'WARNING'
@@ -22,9 +23,9 @@ warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 class ModelHandler:
 
-    _BATCH_SIZE = 64
-    _DIRICHLET_ALPHA = 10
-    _N_BACHES_PER_ROUND = 5
+    ConfigStore.batch_size = 64
+    ConfigStore.dirichlet_alpha = 10
+    ConfigStore.n_batches_per_round = 5
 
     def __init__(self, node_id, total_peers):
         self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -37,7 +38,7 @@ class ModelHandler:
 
     @log_exceptions
     def train(self):
-        n_batches = self._N_BACHES_PER_ROUND
+        n_batches = ConfigStore.n_batches_per_round
         logging.info(f"Training on {n_batches} of {self._n_train_batches} batches")
         self._model.train()
         batches = list(self._train_loader)
@@ -148,8 +149,8 @@ class ModelHandler:
         targets = dataset.targets.detach().clone()
         indices_by_class = {int(c): (targets == c).nonzero(as_tuple=True)[0] for c in range(10)}
 
-        logging.info(f"Using a Dirichlet distribution with alpha = {self._DIRICHLET_ALPHA}")
-        alpha = torch.full((total_peers,), float(self._DIRICHLET_ALPHA), dtype=torch.float32)
+        logging.info(f"Using a Dirichlet distribution with alpha = {ConfigStore.dirichlet_alpha}")
+        alpha = torch.full((total_peers,), float(ConfigStore.dirichlet_alpha), dtype=torch.float32)
         dirichlet = torch.distributions.Dirichlet(alpha)
 
         node_indices = []
@@ -172,13 +173,13 @@ class ModelHandler:
 
         train_subset = torch.utils.data.Subset(dataset, node_indices.tolist())
 
-        val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=self._BATCH_SIZE, shuffle=False)
-        train_loader = torch.utils.data.DataLoader(train_subset, batch_size=self._BATCH_SIZE, shuffle=True)
+        val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=ConfigStore.batch_size, shuffle=False)
+        train_loader = torch.utils.data.DataLoader(train_subset, batch_size=ConfigStore.batch_size, shuffle=True)
 
         self._n_train_batches = len(train_loader)
         self._n_val_batches = len(val_loader)
 
-        logging.info(f"Batch Size: {self._BATCH_SIZE}")
+        logging.info(f"Batch Size: {ConfigStore.batch_size}")
         logging.info(f"Validation Batches: {self._n_val_batches}")
         logging.info(f"Training Batches {self._n_train_batches}")
 

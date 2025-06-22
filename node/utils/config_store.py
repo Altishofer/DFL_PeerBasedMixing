@@ -7,3 +7,6 @@ class ConfigStore:
     resend_time: int = 10
     push_metric_interval: int = 3
     timeout_model_collection: int = 20
+    batch_size: int = 64
+    n_batches_per_round: int = 10
+    dirichlet_alpha: float = 10.0
