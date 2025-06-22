@@ -96,7 +96,8 @@ class SphinxTransport:
                 else:
                     await self.generate_path_and_send(fragment.payload, fragment.target_node, self._peer.active_peers())
                     metrics().increment(MetricField.FRAGMENT_RESENT)
-                    logging.info(f"Resent message to node {fragment.target_node}")
+            if len(stale) > 0:
+                logging.warning(f"Resent {len(stale)} stale fragments.")
             await asyncio.sleep(ConfigStore.resend_time)
 
     @log_exceptions

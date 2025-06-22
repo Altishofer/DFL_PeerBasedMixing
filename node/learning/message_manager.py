@@ -56,7 +56,7 @@ class MessageManager:
         for msg in fragments:
             msg_hash = hashlib.sha256(msg).digest()
             if msg_hash in self._seen_hashes:
-                logging.info("Duplicate fragment dropped.")
+                logging.warning("Duplicate fragment dropped.")
                 continue
             self._seen_hashes.add(msg_hash)
 

@@ -48,7 +48,7 @@ class Connection:
                 pass
         self._writer = None
         self._reader = None
-        logging.info(f"Connection to peer {self._peer_id} closed.")
+        logging.warning(f"Connection to peer {self._peer_id} closed.")
 
     @property
     def is_active(self):
