@@ -46,7 +46,7 @@ class SphinxTransport:
         )
 
         self._incoming_queue = asyncio.Queue()
-        asyncio.create_task(self.resend_loop())
+        # asyncio.create_task(self.resend_loop())
 
     def active_nodes(self):
         return len(self._peer.active_peers())
@@ -97,7 +97,7 @@ class SphinxTransport:
                     await self.generate_path_and_send(fragment.payload, fragment.target_node, self._peer.active_peers())
                     metrics().increment(MetricField.FRAGMENT_RESENT)
             if len(stale) > 0:
-                logging.warning(f"Resent {len(stale)} stale fragments.")
+                logging.warning(f"Resent {len(stale)} unacked fragments.")
             await asyncio.sleep(ConfigStore.resend_time)
 
     @log_exceptions

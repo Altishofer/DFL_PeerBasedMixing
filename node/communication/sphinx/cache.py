@@ -57,7 +57,7 @@ class Cache:
 
     @log_exceptions
     def get_older_than(self, seconds: float) -> List[Fragment]:
-        self.clear_acked_cache()
+        # self.clear_acked_cache()
         cutoff = datetime.now(timezone.utc) - timedelta(seconds=seconds)
         to_resend = [fragment for fragment in self.cache.values() if fragment.timestamp < cutoff and not fragment.acked]
         for fragment in to_resend:

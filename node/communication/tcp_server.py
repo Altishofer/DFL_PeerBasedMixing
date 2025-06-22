@@ -44,11 +44,12 @@ class TcpServer:
 
     async def send_to_peer(self, peer_id, message: bytes):
         if not self.is_active(peer_id):
-            logging.warning(f"Cannot send message to peer {peer_id}: not connected or inactive.")
+            logging.debug(f"Cannot send message to peer {peer_id}: not connected or inactive.")
             return
         try:
             metrics().increment(MetricField.MSG_SENT)
             metrics().increment(MetricField.BYTES_SENT, len(message))
+            logging.debug(f"Sending message to peer {peer_id}")
             await asyncio.wait_for(self.connections[peer_id].send(message), timeout=1.0)
         except (ConnectionResetError, BrokenPipeError, OSError, asyncio.TimeoutError) as e:
             await self.connections[peer_id].close()
@@ -87,8 +88,8 @@ class TcpServer:
     async def close_all_connections(self):
         for peer_id in list(self.connections.keys()):
             await self.connections[peer_id].close()
-        logging.info("All connections closed.")
+        logging.warning("All connections closed.")
         if self._server is not None:
             self._server.close()
             await self._server.wait_closed()
-            logging.info("TCP server stopped.")
+            logging.warning("TCP server stopped.")
