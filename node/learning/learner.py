@@ -76,7 +76,7 @@ class Learner:
             start = time.time()
 
         logging.info(f"Completed all {self._total_rounds} training rounds")
-        await asyncio.sleep(10)
+        await asyncio.sleep(20)
 
     def _log_header(self, title):
         l = 30 - len(title) // 2

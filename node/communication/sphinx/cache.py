@@ -48,7 +48,16 @@ class Cache:
         return len(to_delete)
 
     @log_exceptions
+    def clear_acked_cache(self):
+        to_delete = [surb_id for surb_id, fragment in self.cache.items() if fragment.acked]
+        for surb_id in to_delete:
+            del self.cache[surb_id]
+        logging.debug(f"Cleared {len(to_delete)} acked fragments from cache.")
+        return len(to_delete)
+
+    @log_exceptions
     def get_older_than(self, seconds: float) -> List[Fragment]:
+        self.clear_acked_cache()
         cutoff = datetime.now(timezone.utc) - timedelta(seconds=seconds)
         to_resend = [fragment for fragment in self.cache.values() if fragment.timestamp < cutoff and not fragment.acked]
         metrics().increment(MetricField.FRAGMENT_RESENT, len(to_resend))
