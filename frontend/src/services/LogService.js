@@ -1,36 +1,33 @@
 import { WS_BASE_URL } from '../constants/constants';
-
+import { createSSEService } from './SseService';
 
 export default class LogService {
   constructor(containerName, onLog, onError) {
     this.containerName = containerName;
     this.onLog = onLog;
     this.onError = onError;
-    this.ws = null;
+    this.wsService = createSSEService();
   }
 
   start() {
     if (!this.containerName) return;
+    const url = `${WS_BASE_URL}/logs/${this.containerName}`;
+    this.wsService.initialize(url, this.handleMessage.bind(this));
+  }
 
-    this.ws = new WebSocket(`${WS_BASE_URL}/logs/${this.containerName}`);
-
-    this.ws.onmessage = (event) => {
-      if (this.onLog) this.onLog(event.data);
-    };
-
-    this.ws.onerror = (err) => {
-      console.error(`WebSocket error for ${this.containerName}:`, err);
-      if (this.onError) this.onError(err);
-    };
-
-    this.ws.onclose = () => {
-      console.log(`WebSocket closed for ${this.containerName}`);
-    };
+  handleMessage(data) {
+    if (typeof data === 'string') {
+      this.onLog?.(data);
+    } else if (data?.data) {
+      this.onLog?.(data.data);
+    }
   }
 
   stop() {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.close();
-    }
+    this.wsService.disconnect();
+  }
+
+  getSocket() {
+    return this.wsService.getSocket();
   }
 }

@@ -18,6 +18,7 @@ import {
  WS_BASE_URL, API_BASE_URL, CHART_PALETTE, MAX_NODES, METRIC_KEYS, getDisplayName
 } from '../../constants/constants';
 import '../../App.css';
+import {createSSEService} from "../../services/SseService";
 
 const defaultConfig = {
   displayMode: 'raw',
@@ -41,6 +42,7 @@ const Dashboard = () => {
   const [selectedNode, setSelectedNode] = useState(null);
   const [activeRound, setActiveRound] = useState(0);
   const wsRef = useRef(null);
+  const wsService = useRef(createSSEService()).current;
 
   const fetchNodeStatus = useNodeStatus(setNodeStatus, setError, setNodeUptimes);
 
@@ -110,39 +112,15 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-  let ws;
-  let reconnectTimeout;
-
-  const connect = () => {
-    if (ws?.readyState === WebSocket.OPEN || ws?.readyState === WebSocket.CONNECTING) return;
-
-    ws = new WebSocket(`${WS_BASE_URL}/metrics/ws`);
-    wsRef.current = ws;
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        const newMetrics = Array.isArray(data) ? data : data?.data;
-        if (Array.isArray(newMetrics)) {
-          setMetrics(prev => [...prev, ...newMetrics]);
-        }
-      } catch {
-        console.warn('Failed to parse WebSocket data');
-      }
-    };
-
-    ws.onerror = () => {
-      console.warn('WebSocket connection error');
-      ws.close();
-    };
-
-    ws.onclose = () => {
-      console.info('WebSocket disconnected. Reconnecting...');
-      reconnectTimeout = setTimeout(connect, 2000);
-    };
+  const handleMessage = (data) => {
+    const newMetrics = Array.isArray(data) ? data : data?.data;
+    if (Array.isArray(newMetrics)) {
+      setMetrics(prev => [...prev, ...newMetrics]);
+    }
   };
 
-  connect();
+  wsService.initialize(`${WS_BASE_URL}/metrics/sse`, handleMessage);
+
   const statusInterval = setInterval(fetchNodeStatus, 3000);
   const uptimeInterval = setInterval(() => {
     setNodeUptimes(prev => {
@@ -159,10 +137,11 @@ const Dashboard = () => {
   return () => {
     clearInterval(statusInterval);
     clearInterval(uptimeInterval);
-    clearTimeout(reconnectTimeout);
-    ws?.close();
+    wsService.disconnect();
   };
 }, [fetchNodeStatus, wsTrigger]);
+
+
 
   const currentRoundByNode = useMemo(() => {
     const latest = {};

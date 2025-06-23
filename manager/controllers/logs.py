@@ -3,6 +3,11 @@ from collections import defaultdict
 from typing import Set, Dict
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from collections import defaultdict
+
+from fastapi import APIRouter, Request
+from sse_starlette.sse import EventSourceResponse
+import asyncio
 
 router = APIRouter(prefix="/logs")
 
@@ -83,3 +88,32 @@ async def broadcast_logs(container_name: str):
 async def clear_log_buffers():
     log_buffers.clear()
     return {"status": "cleared"}
+
+
+@router.get("/sse/{container_name}")
+async def logs_sse(request: Request, container_name: str):
+    async def event_generator():
+        process = await asyncio.create_subprocess_exec(
+            'docker', 'logs', '-f', container_name,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT
+        )
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                line = await process.stdout.readline()
+                if not line:
+                    await asyncio.sleep(0.1)
+                    continue
+                message = line.decode(errors="ignore").strip()
+                if message == last_log_line[container_name]:
+                    continue
+                last_log_line[container_name] = message
+                log_buffers[container_name] += message + "\n"
+                yield {"data": message}
+        finally:
+            process.terminate()
+            await process.wait()
+    return EventSourceResponse(event_generator())
+
