@@ -116,7 +116,7 @@ const Dashboard = () => {
   const connect = () => {
     if (ws?.readyState === WebSocket.OPEN || ws?.readyState === WebSocket.CONNECTING) return;
 
-    ws = new WebSocket(`${API_BASE_URL}/metrics/ws`);
+    ws = new WebSocket(`${WS_BASE_URL}/metrics/ws`);
     wsRef.current = ws;
 
     ws.onmessage = (event) => {
