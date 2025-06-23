@@ -14,25 +14,19 @@ from utils.config_store import ConfigStore
 class MetricField(Enum):
     FRAGMENTS_RECEIVED = "fragments_received"
     FRAGMENTS_SENT = "fragments_sent"
-
     TOTAL_MSG_SENT = "total_sent"
     TOTAL_MSG_RECEIVED = "total_received"
-
-    TOTAL_BYTES_SENT = "total_bytes_sent"
-    TOTAL_BYTES_RECEIVED = "total_bytes_received"
-
+    TOTAL_MBYTES_SENT = "total_mbytes_sent"
+    TOTAL_MBYTES_RECEIVED = "total_mbytes_received"
     FORWARDED = "forwarded"
     SURB_REPLIED = "surb_replied"
     SURB_RECEIVED = "surb_received"
-
     ERRORS = "errors"
-
     CURRENT_ROUND = "current_round"
-
     TRAINING_ACCURACY = "accuracy"
     AGGREGATED_ACCURACY = "aggregated_accuracy"
-
     RESENT = "resent"
+    ACTIVE_PEERS = "active_peers"
 
 
 _metrics_instance = None
@@ -57,11 +51,8 @@ class Metrics:
         self._controller_url = controller_url
         self._host = host_name
 
-        self.set_all_zero()
-
         if controller_url:
             Thread(target=self._push_loop, daemon=True).start()
-
 
     def increment(self, field: MetricField, amount: int = 1):
         with self._data_lock:
@@ -70,11 +61,6 @@ class Metrics:
     def set(self, field: MetricField, value: int):
         with self._data_lock:
             self._data[field] = value
-
-    def set_all_zero(self):
-        with self._data_lock:
-            for field in self._data:
-                self._data[field] = 0
 
     def _flush_metrics(self):
         timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -97,8 +83,7 @@ class Metrics:
 
     def _push_loop(self):
         while True:
-            jitter = random.uniform(-0.1, 0.1)
-            interval = ConfigStore.push_metric_interval + jitter
+            interval = ConfigStore.push_metric_interval
             self._flush_metrics()
             self._push_metrics()
             time.sleep(interval)
@@ -112,7 +97,7 @@ class Metrics:
             response = requests.post(
                 f"{self._controller_url}/metrics/push",
                 json=payload,
-                timeout=3
+                timeout=ConfigStore.push_metric_interval
             )
             if response.status_code == 200:
                 with self._data_lock:

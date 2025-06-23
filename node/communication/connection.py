@@ -33,13 +33,22 @@ class Connection:
 
     # @retry(tries=3, delay=2)
     async def send(self, message: bytes):
+        # logging.info(f"Sending message to peer {self._peer_id}")
         if not self.is_active:
             logging.debug(f"No connection to peer {self._peer_id}")
             return
-        self._writer.write(message)
-        await self._writer.drain()
+
+        try:
+            self._writer.write(message)
+            await asyncio.wait_for(self._writer.drain(), timeout=1)
+        except (asyncio.TimeoutError, ConnectionResetError, BrokenPipeError, OSError) as e:
+            logging.error(f"Exception sending to peer {self._peer_id}. Marking as inactive.")
+            await self.close()
+            return
+
         metrics().increment(MetricField.TOTAL_MSG_SENT)
-        metrics().increment(MetricField.TOTAL_BYTES_SENT, len(message))
+        metrics().increment(MetricField.TOTAL_MBYTES_SENT, len(message) / 1048576)
+        # logging.info(f"Message sent to peer {self._peer_id}")
 
     @log_exceptions
     async def close(self):

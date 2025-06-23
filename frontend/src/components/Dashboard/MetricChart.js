@@ -74,7 +74,7 @@ const MetricChart = ({ metricKey, title, chartData, nodeNames, palette }) => {
             {nodeNames.map((node, index) => (
               <Area
                 key={node}
-                type="monotone"
+                type="linear"
                 dataKey={node}
                 name={node}
                 stroke={palette[index % palette.length]}
@@ -84,6 +84,7 @@ const MetricChart = ({ metricKey, title, chartData, nodeNames, palette }) => {
                 dot={false}
                 activeDot={{ r: 3 }}
                 connectNulls
+                isAnimationActive={false}
               />
             ))}
           </AreaChart>

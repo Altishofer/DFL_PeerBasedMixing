@@ -40,14 +40,15 @@ class TcpServer:
         return self.connections.get(peer_id).is_active
 
     def active_peers(self):
-        return [peer_id for peer_id in self.connections if self.is_active(peer_id)]
+        active_peers = [peer_id for peer_id in self.connections if self.is_active(peer_id)]
+        metrics().set(MetricField.ACTIVE_PEERS, len(active_peers))
+        return active_peers
 
     async def send_to_peer(self, peer_id, message: bytes):
         if not self.is_active(peer_id):
             logging.debug(f"Cannot send message to peer {peer_id}: not connected or inactive.")
             return
         try:
-            logging.debug(f"Sending message to peer {peer_id}")
             await asyncio.wait_for(self.connections[peer_id].send(message), timeout=1.0)
         except (ConnectionResetError, BrokenPipeError, OSError, asyncio.TimeoutError) as e:
             await self.connections[peer_id].close()
@@ -61,7 +62,9 @@ class TcpServer:
                 data = await reader.readexactly(self.packet_size)
                 await self.message_handler(data, peername)
         except asyncio.exceptions.IncompleteReadError:
-            logging.error(f"INCOMPLETE READ ERROR for node {peername}")
+            logging.error(f"Incomplete read error for node {peername}.")
+            peer_id = int(peername[0].split('.')[-1]) - 1
+            await self.remove_peer(peer_id)
 
     def is_me(self, peer_id: int):
         return peer_id == self.node_id
@@ -75,6 +78,7 @@ class TcpServer:
         self.connections[peer_id] = await Connection.create(host, port, peer_id)
 
     async def remove_peer(self, peer_id: int):
+        if peer_id not in self.connections: return
         await self.connections[peer_id].close()
 
     async def _reconnect_loop(self):

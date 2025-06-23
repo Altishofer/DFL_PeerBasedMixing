@@ -13,8 +13,8 @@ export const MAX_NODES = 10;
 export const METRIC_KEYS = {
   TOTAL_SENT: 'total_sent',
   TOTAL_RECEIVED: 'total_received',
-  TOTAL_BYTES_SENT: 'total_bytes_sent',
-  TOTAL_BYTES_RECEIVED: 'total_bytes_received',
+  TOTAL_MBYTES_SENT: 'total_mbytes_sent',
+  TOTAL_MBYTES_RECEIVED: 'total_mbytes_received',
   FRAGMENTS_SENT: 'fragments_sent',
   FRAGMENTS_RECEIVED: 'fragments_received',
   RESENT: 'resent',
@@ -27,13 +27,14 @@ export const METRIC_KEYS = {
   AGGREGATED_ACCURACY: 'aggregated_accuracy',
   CPU_TOTAL_NS: 'cpu_total_ns',
   MEMORY_MB: 'memory_mb',
+  ACTIVE_PEERS: 'active_peers'
 };
 
 export const METRIC_FIELDS = {
   [METRIC_KEYS.TOTAL_SENT]: 'Total Messages Sent',
   [METRIC_KEYS.TOTAL_RECEIVED]: 'Total Messages Received',
-  [METRIC_KEYS.TOTAL_BYTES_SENT]: 'Total Bytes Sent',
-  [METRIC_KEYS.TOTAL_BYTES_RECEIVED]: 'Total Bytes Received',
+  [METRIC_KEYS.TOTAL_MBYTES_SENT]: 'Total Megabytes Sent',
+  [METRIC_KEYS.TOTAL_MBYTES_RECEIVED]: 'Total Megabytes Received',
   [METRIC_KEYS.FRAGMENTS_SENT]: 'Fragments Sent',
   [METRIC_KEYS.FRAGMENTS_RECEIVED]: 'Fragments Received',
   [METRIC_KEYS.RESENT]: 'Fragments Resent',
@@ -46,20 +47,21 @@ export const METRIC_FIELDS = {
   [METRIC_KEYS.AGGREGATED_ACCURACY]: 'Aggregated Accuracy',
   [METRIC_KEYS.CPU_TOTAL_NS]: 'CPU Total Ns',
   [METRIC_KEYS.MEMORY_MB]: 'Memory (MB)',
+  [METRIC_KEYS.ACTIVE_PEERS]: 'Active Peers',
 };
 
 export const METRIC_GROUPS = {
   Communication: [
     METRIC_KEYS.TOTAL_SENT,
     METRIC_KEYS.TOTAL_RECEIVED,
-    METRIC_KEYS.TOTAL_BYTES_SENT,
-    METRIC_KEYS.TOTAL_BYTES_RECEIVED
+    METRIC_KEYS.TOTAL_MBYTES_SENT,
+    METRIC_KEYS.TOTAL_MBYTES_RECEIVED
   ],
   'Model Exchange': [
     METRIC_KEYS.FRAGMENTS_SENT,
     METRIC_KEYS.FRAGMENTS_RECEIVED,
-    METRIC_KEYS.RESENT
-
+    METRIC_KEYS.RESENT,
+    METRIC_KEYS.ACTIVE_PEERS
   ],
   Mixnet: [
     METRIC_KEYS.FORWARDED,

@@ -111,7 +111,7 @@ class SphinxTransport:
 
     @log_exceptions
     async def __handle_incoming(self, data: bytes, peername: str):
-        metrics().increment(MetricField.TOTAL_BYTES_RECEIVED, len(data))
+        metrics().increment(MetricField.TOTAL_MBYTES_RECEIVED, len(data) / 1048576)
         metrics().increment(MetricField.TOTAL_MSG_RECEIVED)
         try:
             unpacked = self.sphinx_router.process_incoming(data)
