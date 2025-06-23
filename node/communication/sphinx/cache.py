@@ -34,7 +34,6 @@ class Cache:
 
     @log_exceptions
     def received_surb(self, surb_id):
-        metrics().increment(MetricField.SURB_RECEIVED)
         self.cache[surb_id].acked = True
         self.in_counter += 1
         return self.cache[surb_id].surb_key_tuble
@@ -62,6 +61,5 @@ class Cache:
         to_resend = [fragment for fragment in self.cache.values() if fragment.timestamp < cutoff and not fragment.acked]
         for fragment in to_resend:
             self.cache[fragment.surb_id].acked = True  # Mark as acked to prevent resending
-        metrics().increment(MetricField.FRAGMENT_RESENT, len(to_resend))
         logging.info(f"{self.in_counter=}, {self.out_counter=}, {len(to_resend)=}, {len(self.cache)=}")
         return to_resend

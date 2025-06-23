@@ -47,8 +47,6 @@ class TcpServer:
             logging.debug(f"Cannot send message to peer {peer_id}: not connected or inactive.")
             return
         try:
-            metrics().increment(MetricField.MSG_SENT)
-            metrics().increment(MetricField.BYTES_SENT, len(message))
             logging.debug(f"Sending message to peer {peer_id}")
             await asyncio.wait_for(self.connections[peer_id].send(message), timeout=1.0)
         except (ConnectionResetError, BrokenPipeError, OSError, asyncio.TimeoutError) as e:

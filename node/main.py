@@ -6,6 +6,7 @@ import logging
 import os
 import asyncio
 from utils.logging_config import setup_logging
+from metrics.node_metrics import metrics, MetricField, init_metrics
 from models.schemas import NodeConfig
 
 def handle_exception(loop, context):
@@ -41,6 +42,8 @@ async def node_main():
         join=join
     )
 
+    init_metrics(controller_url="http://host.docker.internal:8000", host_name=f"node_{node_id}")
+
     # if join:
     #     logging.info(f"Node is waiting 3 min before joining.")
     #     time.sleep(60)
@@ -49,8 +52,7 @@ async def node_main():
         logging.info(f"Node will exit after Round {node_config.rounds}")
 
     node = PeerNode(
-        node_config=node_config,
-        host_name=f"node_{node_id}",
+        node_config=node_config
     )
     await node.start()
 

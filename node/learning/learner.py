@@ -56,7 +56,7 @@ class Learner:
             log_header("Local Model Validation Accuracy")
             accuracy = await asyncio.to_thread(self._model_handler.evaluate)
             logging.info(f"Acc. {aggregated_accuracy:.2f} ➜ {accuracy:.2f} | Δ: {accuracy - aggregated_accuracy:+.2f}")
-            metrics().set(MetricField.ACCURACY, accuracy)
+            metrics().set(MetricField.TRAINING_ACCURACY, accuracy)
 
             log_header(f"Awaiting Model Chunks from Peers ({ConfigStore.timeout_model_collection}s).")
             await asyncio.sleep(ConfigStore.timeout_model_collection)

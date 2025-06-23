@@ -74,6 +74,7 @@ class SphinxTransport:
     async def send_to_peers(self, payload:bytes):
         peers = list(self._peer.active_peers())
         for peer_id in peers:
+            metrics().increment(MetricField.FRAGMENTS_SENT)
             await self.generate_path_and_send(payload, peer_id, peers)
         return len(peers)
 
@@ -95,7 +96,7 @@ class SphinxTransport:
                     self.sphinx_router.remove_cache_for_disconnected(fragment.target_node)
                 else:
                     await self.generate_path_and_send(fragment.payload, fragment.target_node, self._peer.active_peers())
-                    metrics().increment(MetricField.FRAGMENT_RESENT)
+                    metrics().increment(MetricField.RESENT)
             if len(stale) > 0:
                 logging.warning(f"Resent {len(stale)} unacked fragments.")
             await asyncio.sleep(ConfigStore.resend_time)
@@ -110,8 +111,8 @@ class SphinxTransport:
 
     @log_exceptions
     async def __handle_incoming(self, data: bytes, peername: str):
-        metrics().increment(MetricField.FRAGMENT_RECEIVED)
-        metrics().increment(MetricField.BYTES_RECEIVED, len(data))
+        metrics().increment(MetricField.TOTAL_BYTES_RECEIVED, len(data))
+        metrics().increment(MetricField.TOTAL_MSG_RECEIVED)
         try:
             unpacked = self.sphinx_router.process_incoming(data)
         except Exception as e:
@@ -127,10 +128,13 @@ class SphinxTransport:
     @log_exceptions
     async def __handle_routing_decision(self, routing, header, delta, mac_key):
         if routing[0] == Relay_flag:
-            metrics().increment(MetricField.FRAGMENTS_FORWARDED)
+            metrics().increment(MetricField.FORWARDED)
             await self._peer.send_to_peer(routing[1], pack_message(self._params, (header, delta)))
         elif routing[0] == Dest_flag:
+            metrics().increment(MetricField.FRAGMENTS_RECEIVED)
             dest, msg = receive_forward(self._params, mac_key, delta)
             await self.__unpack_payload_and_send_surb(msg)
+            metrics().increment(MetricField.SURB_REPLIED)
         elif routing[0] == Surb_flag:
+            metrics().increment(MetricField.SURB_RECEIVED)
             self.sphinx_router.decrypt_surb(delta, routing[2])

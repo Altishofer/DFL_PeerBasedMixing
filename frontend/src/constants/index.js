@@ -8,17 +8,20 @@ export const CHART_PALETTE = [
 export const MAX_NODES = 10;
 
 export const METRIC_FIELDS = {
-  msg_sent: 'Messages Sent',
-  errors: 'Errors',
+  total_sent: 'Total Messages Sent',
+  total_received: 'Total Messages Received',
+  total_bytes_sent: 'Total Bytes Sent',
+  total_bytes_received: 'Total Bytes Received',
+  fragments_sent: 'Fragments Sent',
+  fragments_received: 'Fragments Received',
+  resent: 'Fragments Resent',
+  forwarded: 'Fragments Forwarded',
+  surb_replied: 'SURBs Replied',
   surb_received: 'SURBs Received',
-  fragment_received: 'Fragments Received',
-  bytes_received: 'Bytes Received',
+  errors: 'Errors',
   current_round: 'Current Round',
-  accuracy: 'Accuracy',
+  accuracy: 'Training Accuracy',
   aggregated_accuracy: 'Aggregated Accuracy',
-  fragment_resent: 'Fragments Resent',
-  bytes_sent: 'Bytes Sent',
-  fragments_forwarded: 'Fragments Forwarded',
   cpu_total_ns: 'CPU Total Ns',
   memory_mb: 'Memory (MB)',
 };

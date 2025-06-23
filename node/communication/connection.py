@@ -2,6 +2,8 @@ import asyncio
 import logging
 
 from retry import retry
+from metrics.node_metrics import metrics, MetricField
+
 
 from utils.exception_decorator import log_exceptions
 
@@ -36,6 +38,8 @@ class Connection:
             return
         self._writer.write(message)
         await self._writer.drain()
+        metrics().increment(MetricField.TOTAL_MSG_SENT)
+        metrics().increment(MetricField.TOTAL_BYTES_SENT, len(message))
 
     @log_exceptions
     async def close(self):
