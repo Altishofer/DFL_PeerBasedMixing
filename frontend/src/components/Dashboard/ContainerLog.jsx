@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import LogService from '../../../services/LogService';
+import LogService from '../../services/LogService';
 
 export default function ContainerLog({ containerName, resetTrigger }) {
   const [logs, setLogs] = useState([]);

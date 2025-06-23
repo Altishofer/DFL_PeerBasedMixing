@@ -4,7 +4,6 @@ export default function SimulationSettings({
   stream, setStream,
   exitNodes, updateExitNodes,
   joinNodes, updateJoinNodes,
-  displayMode, setDisplayMode,
   isLoading
 }) {
   return (

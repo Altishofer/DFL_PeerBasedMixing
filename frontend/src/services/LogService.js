@@ -1,3 +1,6 @@
+import { WS_BASE_URL } from '../constants/constants';
+
+
 export default class LogService {
   constructor(containerName, onLog, onError) {
     this.containerName = containerName;
@@ -9,7 +12,7 @@ export default class LogService {
   start() {
     if (!this.containerName) return;
 
-    this.ws = new WebSocket(`ws://localhost:8000/logs/${this.containerName}`);
+    this.ws = new WebSocket(`${WS_BASE_URL}/logs/${this.containerName}`);
 
     this.ws.onmessage = (event) => {
       if (this.onLog) this.onLog(event.data);

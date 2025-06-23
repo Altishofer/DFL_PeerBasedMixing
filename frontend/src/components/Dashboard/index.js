@@ -5,18 +5,18 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-tabs/style/react-tabs.css';
 import 'react-toastify/dist/ReactToastify.css';
 
-import NodeStatus from '../NodeStatus';
-import MetricChart from '../MetricChart';
-import DockerLogs from './ContainerLog/ContainerLog';
-import BasicControls from './ControlPanel/sections/BasicControl';
-import SimulationSettings from './ControlPanel/sections/SimulationSettings';
-import MetricSelection from './ControlPanel/sections/MetricSelection';
+import NodeStatus from './NodeStatus';
+import MetricChart from './MetricChart';
+import DockerLogs from './ContainerLog';
+import BasicControls from './BasicControl';
+import SimulationSettings from './SimulationSettings';
+import MetricSelection from './MetricSelection';
 
 import useNodeStatus from '../../hooks/useNodeStatus';
 import { buildChartData } from '../../utils/chartUtils';
 import {
-  API_BASE_URL, CHART_PALETTE, MAX_NODES, METRIC_KEYS, getDisplayName
-} from '../../constants';
+ WS_BASE_URL, API_BASE_URL, CHART_PALETTE, MAX_NODES, METRIC_KEYS, getDisplayName
+} from '../../constants/constants';
 import '../../App.css';
 
 const defaultConfig = {
@@ -116,7 +116,7 @@ const Dashboard = () => {
   const connect = () => {
     if (ws?.readyState === WebSocket.OPEN || ws?.readyState === WebSocket.CONNECTING) return;
 
-    ws = new WebSocket('ws://localhost:8000/metrics/ws');
+    ws = new WebSocket(`${API_BASE_URL}/metrics/ws`);
     wsRef.current = ws;
 
     ws.onmessage = (event) => {
