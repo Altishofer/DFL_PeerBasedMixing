@@ -15,13 +15,12 @@ from utils.config_store import ConfigStore
 from utils.exception_decorator import log_exceptions
 from metrics.node_metrics import metrics, MetricField
 
-
-
 class SphinxTransport:
-    def __init__(self, node_id, port, peers):
+    def __init__(self, node_id, port, peers, mixer):
         self._node_id = node_id
         self._port = port
         self._peers = peers
+        self._mixer = mixer
 
         self._params = SphinxParams(
             header_len=192,
@@ -129,7 +128,7 @@ class SphinxTransport:
     async def __handle_routing_decision(self, routing, header, delta, mac_key):
         if routing[0] == Relay_flag:
             metrics().increment(MetricField.FORWARDED)
-            await self._peer.send_to_peer(routing[1], pack_message(self._params, (header, delta)))
+            self.mixer.mix_package(self._peer.send_to_peer(routing[1], pack_message(self._params, (header, delta))))
         elif routing[0] == Dest_flag:
             metrics().increment(MetricField.FRAGMENTS_RECEIVED)
             dest, msg = receive_forward(self._params, mac_key, delta)

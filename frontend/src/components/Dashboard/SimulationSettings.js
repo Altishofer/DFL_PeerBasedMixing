@@ -114,6 +114,7 @@ export default function SimulationSettings({
               type="number"
               value={mixingLambda}
               min="0"
+              step="0.1"
               onChange={(e) => {
                 mixingLambda = parseFloat(e.target.value) || 0;
                 setMixingLambda(mixingLambda);
@@ -129,6 +130,7 @@ export default function SimulationSettings({
               type="number"
               value={mixingMu}
               min="0"
+              step="0.1"
               onChange={(e) => {
                 mixingMu = parseFloat(e.target.value) || 0;
                 setMixingMu(mixingMu);

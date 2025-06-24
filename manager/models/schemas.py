@@ -18,3 +18,4 @@ class StartRequest(BaseModel):
     stream: bool
     exitNodes: int
     joinNodes: int
+    mixing_params: dict

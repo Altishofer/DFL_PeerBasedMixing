@@ -1,4 +1,5 @@
 import asyncio
+import json
 from typing import List
 from manager.config import settings
 from manager.models.schemas import NodeStatus, StartRequest
@@ -37,7 +38,11 @@ class NodeService:
 
             node_config = NodeConfig(**data)
 
-            env_vars = {str(k).upper() : str(v) for k, v in node_config.model_dump().items()}
+            # handle nested data structure
+            env_vars = {
+                str(k).upper(): json.dumps(v) if isinstance(v, dict) else str(v)
+                for k, v in node_config.model_dump().items()
+            }
 
             self._client.containers.run(
                 settings.IMAGE_NAME,

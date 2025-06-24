@@ -8,3 +8,4 @@ class NodeConfig(BaseModel):
     port: int
     join: bool
     exit: bool
+    mixing_params: dict

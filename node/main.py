@@ -2,7 +2,7 @@ import time
 
 from peer_node import PeerNode
 import logging
-
+import json
 import os
 import asyncio
 from utils.logging_config import setup_logging
@@ -29,6 +29,7 @@ async def node_main():
     rounds = int(load_env("ROUNDS"))
     exit = bool(load_env("EXIT") == "True")
     join = bool(load_env("JOIN") == "True")
+    mixing_params = json.loads(load_env("MIXING_PARAMS"))
 
     setup_logging(node_id)
 
@@ -39,7 +40,8 @@ async def node_main():
         stream=stream,
         rounds=rounds,
         exit=exit,
-        join=join
+        join=join,
+        mixing_params=mixing_params
     )
 
     init_metrics(controller_url="http://host.docker.internal:8000", host_name=f"node_{node_id}")

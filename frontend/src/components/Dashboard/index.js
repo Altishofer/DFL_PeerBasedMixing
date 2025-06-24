@@ -25,7 +25,12 @@ const defaultConfig = {
   rounds: 10,
   exitNodes: 0,
   joinNodes: 0,
-  stream: false
+  stream: false,
+  mixing_params: {
+    enabled: false,
+    lambda: 0,
+    mu: 0,
+  }
 };
 
 const Dashboard = () => {
@@ -213,12 +218,24 @@ const Dashboard = () => {
               displayMode={config.displayMode}
               setDisplayMode={(mode) => updateConfig({ displayMode: mode })}
               isLoading={isLoading}
-              mixing={config.mixing}
-              mixingLambda={config.mixing_lambda}
-              mixingMu={config.mixing_mu}
-              setMixing={(m) => updateConfig({ mixing: m })}
-              setMixingLambda={(m) => updateConfig({ mixing_lambda: m })}
-              setMixingMu={(m) => updateConfig({ mixing_mu: m })}
+              mixing={config.mixing_params.enabled}
+              mixingLambda={config.mixing_params.lambda}
+              mixingMu={config.mixing_params.mu}
+              setMixing={(m) => {
+                let mp = config.mixing_params;
+                mp.enabled = m
+                updateConfig({ mixing_params: mp })}
+              }
+              setMixingLambda={(l) => {
+                let mp = config.mixing_params;
+                mp.lambda = l
+                updateConfig({ mixing_params: mp })}
+              }
+              setMixingMu={(m) => {
+                let mp = config.mixing_params;
+                mp.mu = m
+                updateConfig({ mixing_params: mp })}
+              }
             />
           </TabPanel>
 
