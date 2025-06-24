@@ -29,7 +29,7 @@ class Learner:
         aggregated_accuracy = float()
         start = time.time()
 
-        while self._current_round <= self._total_rounds:
+        while self._current_round < self._total_rounds:
 
             self._current_round += 1
 
@@ -44,7 +44,7 @@ class Learner:
             #     )
 
             log_header(f"Start Training")
-            await asyncio.to_thread(self._model_handler.train)
+            await self._model_handler.train()
             logging.info(f"Finished Training")
 
             # if update_task:
@@ -54,7 +54,7 @@ class Learner:
                 await self._message_manager.send_model_updates(self._current_round)
 
             log_header("Local Model Validation Accuracy")
-            accuracy = await asyncio.to_thread(self._model_handler.evaluate)
+            accuracy = await self._model_handler.evaluate()
             logging.info(f"Acc. {aggregated_accuracy:.2f} ➜ {accuracy:.2f} | Δ: {accuracy - aggregated_accuracy:+.2f}")
             metrics().set(MetricField.TRAINING_ACCURACY, accuracy)
 
@@ -66,7 +66,7 @@ class Learner:
             self._model_handler.aggregate(model_chunks)
 
             log_header("Aggregated Model Validation Accuracy")
-            accuracy = await asyncio.to_thread(self._model_handler.evaluate)
+            accuracy = await self._model_handler.evaluate()
             logging.info(f"acc {aggregated_accuracy:.2f} ➜ {accuracy:.2f} | Δ: {accuracy - aggregated_accuracy:+.2f}")
             aggregated_accuracy = accuracy
             metrics().set(MetricField.AGGREGATED_ACCURACY, accuracy)

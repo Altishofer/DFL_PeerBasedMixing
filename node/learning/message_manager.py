@@ -74,9 +74,10 @@ class MessageManager:
                 buffer.append(parsed["content"])
                 logging.debug(f"Received part {part_idx + 1}/{total_parts} for round {msg_round}")
 
+        active_nodes = self._transport.active_nodes()
         logging.info(
-            f"Received total {collected_parts} parts from {self._transport.active_nodes()} "
-            f"({collected_parts / self._transport.active_nodes():.2f} parts/node)"
+            f"Received total {collected_parts} parts from {active_nodes} "
+            f"({collected_parts / active_nodes if active_nodes else 0:.2f} parts/node)"
         )
         return buffer, max_round
 
