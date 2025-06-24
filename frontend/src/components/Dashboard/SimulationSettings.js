@@ -4,7 +4,9 @@ export default function SimulationSettings({
   stream, setStream,
   exitNodes, updateExitNodes,
   joinNodes, updateJoinNodes,
-  isLoading
+  isLoading,
+  mixing, mixingLambda, mixingMu,
+  setMixing, setMixingLambda, setMixingMu
 }) {
   return (
     <>
@@ -82,6 +84,46 @@ export default function SimulationSettings({
               disabled={isLoading}
             />
           </div>
+        </div>
+      </div>
+
+        <div className="control-group-box">
+        <h3>Mixing</h3>
+        <div className="control-row">
+          <div className="control-group control-input-limited">
+            <label htmlFor="mixingToggle">Enable Mixing</label>
+            <input
+              type="checkbox"
+              className="checkbox"
+              id="mixingToggle"
+              checked={mixing}
+              onChange={(e) => setMixing(e.target.checked)}
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className="control-group control-input-limited">
+            <label htmlFor="mixInputA">Traffic rate</label>
+            <input
+              id="mixInputA"
+              type="number"
+              value={mixingLambda}
+              onChange={(e) => setMixingLambda(e.target.value)}
+              disabled={!mixing || isLoading}
+            />
+          </div>
+
+          <div className="control-group control-input-limited">
+            <label htmlFor="mixInputB">Delay</label>
+            <input
+              id="mixInputB"
+              type="number"
+              value={mixingMu}
+              onChange={(e) => setMixingMu(e.target.value)}
+              disabled={!mixing || isLoading}
+            />
+          </div>
+
         </div>
       </div>
     </>
