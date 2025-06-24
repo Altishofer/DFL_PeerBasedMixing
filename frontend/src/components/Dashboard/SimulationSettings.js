@@ -87,8 +87,8 @@ export default function SimulationSettings({
         </div>
       </div>
 
-        <div className="control-group-box">
-        <h3>Mixing</h3>
+      <div className="control-group-box">
+      <h3>Mixing</h3>
         <div className="control-row">
           <div className="control-group control-input-limited">
             <label htmlFor="mixingToggle">Enable Mixing</label>
@@ -97,33 +97,45 @@ export default function SimulationSettings({
               className="checkbox"
               id="mixingToggle"
               checked={mixing}
-              onChange={(e) => setMixing(e.target.checked)}
+              onChange={(e) => {
+                mixing = e.target.checked;
+                setMixing(mixing);
+              }}
               disabled={isLoading}
             />
           </div>
+        </div>
 
+        <div className="control-row">
           <div className="control-group control-input-limited">
-            <label htmlFor="mixInputA">Traffic rate</label>
+            <label htmlFor="mixingLambda" className={!mixing || isLoading ? 'label-disabled' : ''}>Traffic rate</label>
             <input
-              id="mixInputA"
+              id="mixingLambda"
               type="number"
               value={mixingLambda}
-              onChange={(e) => setMixingLambda(e.target.value)}
+              min="0"
+              onChange={(e) => {
+                mixingLambda = parseFloat(e.target.value) || 0;
+                setMixingLambda(mixingLambda);
+              }}
               disabled={!mixing || isLoading}
             />
           </div>
 
           <div className="control-group control-input-limited">
-            <label htmlFor="mixInputB">Delay</label>
+            <label htmlFor="mixingMu" className={!mixing || isLoading ? 'label-disabled' : ''} >Delay</label>
             <input
-              id="mixInputB"
+              id="mixingMu"
               type="number"
               value={mixingMu}
-              onChange={(e) => setMixingMu(e.target.value)}
+              min="0"
+              onChange={(e) => {
+                mixingMu = parseFloat(e.target.value) || 0;
+                setMixingMu(mixingMu);
+              }}
               disabled={!mixing || isLoading}
             />
           </div>
-
         </div>
       </div>
     </>

@@ -206,9 +206,6 @@ const Dashboard = () => {
               stream={config.stream}
               setRounds={(r) => updateConfig({ rounds: r })}
               setStream={(b) => updateConfig({ stream: b })}
-              setMixing={(m) => updateConfig({ mixing: m })}
-              setMixingLambda={(m) => updateConfig({ mixing_lambda: m })}
-              setMixingMu={(m) => updateConfig({ mixing_mu: m })}
               exitNodes={config.exitNodes}
               updateExitNodes={(_, count) => updateConfig({ exitNodes: count > 0 ? [{ round: 1, count }] : [] })}
               joinNodes={config.joinNodes}
@@ -216,6 +213,12 @@ const Dashboard = () => {
               displayMode={config.displayMode}
               setDisplayMode={(mode) => updateConfig({ displayMode: mode })}
               isLoading={isLoading}
+              mixing={config.mixing}
+              mixingLambda={config.mixing_lambda}
+              mixingMu={config.mixing_mu}
+              setMixing={(m) => updateConfig({ mixing: m })}
+              setMixingLambda={(m) => updateConfig({ mixing_lambda: m })}
+              setMixingMu={(m) => updateConfig({ mixing_mu: m })}
             />
           </TabPanel>
 

@@ -491,6 +491,14 @@ td.status-unknown {
   color: #444;
 }
 
+.control-group .label-disabled {
+  opacity: 0.3;
+}
+
+.control-group *:disabled {
+  opacity: 0.5;
+}
+
 .control-group input,
 .control-group select {
   width: 220px;
