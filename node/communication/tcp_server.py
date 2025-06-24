@@ -54,16 +54,24 @@ class TcpServer:
             await self.connections[peer_id].close()
             logging.warning(f"Send failed to peer {peer_id}: {e}")
 
+    def __ip_to_id(self, ip: str):
+        try:
+            return int(ip.split('.')[-1]) - 1
+        except ValueError:
+            logging.error(f"Invalid IP format: {ip}")
+            return None
+
     @log_exceptions
     async def _handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        peername = writer.get_extra_info("peername")
+        ip = writer.get_extra_info("peername")[0]
+        peer_id = self.__ip_to_id(ip)
+        await self.add_peer(peer_id)
         try:
             while True:
                 data = await reader.readexactly(self.packet_size)
-                await self.message_handler(data, peername)
+                await self.message_handler(data, peer_id)
         except asyncio.exceptions.IncompleteReadError:
-            logging.error(f"Incomplete read error for node {peername}.")
-            peer_id = int(peername[0].split('.')[-1]) - 1
+            logging.error(f"Incomplete read error for node {peer_id}.")
             await self.remove_peer(peer_id)
 
     def is_me(self, peer_id: int):

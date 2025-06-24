@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import random
 
@@ -37,32 +38,38 @@ class ModelHandler:
         self._train_loader, self._val_loader = self._load_partition(node_id, total_peers)
 
     @log_exceptions
-    def train(self):
-        n_batches = ConfigStore.n_batches_per_round
-        logging.info(f"Training on {n_batches} of {self._n_train_batches} batches")
-        self._model.train()
-        batches = list(self._train_loader)
-        random_batches = random.sample(batches, n_batches)
-        for Xb, yb in random_batches:
-            Xb, yb = Xb.to(self._device), yb.to(self._device)
-            self._optimizer.zero_grad()
-            loss = self._loss_fn(self._model(Xb), yb)
-            loss.backward()
-            self._optimizer.step()
+    async def train(self):
+        def train_batches():
+            n_batches = ConfigStore.n_batches_per_round
+            logging.info(f"Training on {n_batches} of {self._n_train_batches} batches")
+            self._model.train()
+            batches = list(self._train_loader)
+            random_batches = random.sample(batches, n_batches)
+            for Xb, yb in random_batches:
+                Xb, yb = Xb.to(self._device), yb.to(self._device)
+                self._optimizer.zero_grad()
+                loss = self._loss_fn(self._model(Xb), yb)
+                loss.backward()
+                self._optimizer.step()
+
+        await asyncio.to_thread(train_batches)
 
     @log_exceptions
-    def evaluate(self):
+    async def evaluate(self):
         logging.info(f"Validating on {len(self._val_loader)} batches")
         self._model.eval()
-        correct = total = 0
-        with torch.no_grad():
-            for Xb, yb in self._val_loader:
-                Xb, yb = Xb.to(self._device), yb.to(self._device)
-                pred = self._model(Xb)
-                correct += (pred.argmax(1) == yb).sum().item()
-                total += yb.size(0)
-        accuracy = correct / total
 
+        def evaluate_batches():
+            correct = total = 0
+            with torch.no_grad():
+                for Xb, yb in self._val_loader:
+                    Xb, yb = Xb.to(self._device), yb.to(self._device)
+                    pred = self._model(Xb)
+                    correct += (pred.argmax(1) == yb).sum().item()
+                    total += yb.size(0)
+            return correct / total
+
+        accuracy = await asyncio.to_thread(evaluate_batches)
         return accuracy
 
     @log_exceptions

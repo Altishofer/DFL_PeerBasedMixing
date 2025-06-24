@@ -110,19 +110,19 @@ class SphinxTransport:
         logging.debug("Sent SURB-based reply.")
 
     @log_exceptions
-    async def __handle_incoming(self, data: bytes, peername: str):
+    async def __handle_incoming(self, data: bytes, peer_id: int):
         metrics().increment(MetricField.TOTAL_MBYTES_RECEIVED, len(data) / 1048576)
         metrics().increment(MetricField.TOTAL_MSG_RECEIVED)
         try:
             unpacked = self.sphinx_router.process_incoming(data)
         except Exception as e:
-            logging.warning(f"Failed to unpack incoming data: {e} from {peername}")
+            logging.warning(f"Failed to unpack incoming data: {e} from {peer_id}")
             return
 
         try:
             await self.__handle_routing_decision(*unpacked)
         except Exception as e:
-            logging.exception(f"Error handling routing decision: {e} from {peername}")
+            logging.exception(f"Error handling routing decision: {e} from {peer_id}")
             return
 
     @log_exceptions
