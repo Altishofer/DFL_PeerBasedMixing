@@ -123,12 +123,16 @@ class SphinxTransport:
         except Exception as e:
             logging.exception(f"Error handling routing decision: {e} from {peer_id}")
             return
+        
 
     @log_exceptions
     async def __handle_routing_decision(self, routing, header, delta, mac_key):
         if routing[0] == Relay_flag:
+            logging.debug(f"Mixing message: {header[0]}")
+            relay = self._peer.send_to_peer(routing[1], pack_message(self._params, (header, delta)))
+            await self._mixer.mix_relay(relay)
+            logging.debug(f"Out mixed message: {header[0]}")
             metrics().increment(MetricField.FORWARDED)
-            self.mixer.mix_package(self._peer.send_to_peer(routing[1], pack_message(self._params, (header, delta))))
         elif routing[0] == Dest_flag:
             metrics().increment(MetricField.FRAGMENTS_RECEIVED)
             dest, msg = receive_forward(self._params, mac_key, delta)

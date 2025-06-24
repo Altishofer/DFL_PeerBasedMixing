@@ -1,5 +1,6 @@
 import random
 import logging
+import secrets
 
 from sphinxmix.SphinxClient import (
     create_forward_message, PFdecode,
@@ -34,6 +35,7 @@ class SphinxRouter:
     @log_exceptions
     def create_forward_msg(self, target_node, payload, active_peers):
         path, nodes_routing, keys_nodes = self.build_forward_path(target_node, active_peers)
+        logging.debug(f"path: {path}")
         backward_path, nodes_routing_back, keys_nodes_back = self.build_surb_reply_path(target_node, active_peers)
 
         surbid, surbkeytuple, nymtuple = self.create_and_store_surb(nodes_routing_back, keys_nodes_back)
@@ -79,7 +81,7 @@ class SphinxRouter:
     @log_exceptions
     def _build_path_to(self, start, target, active_peers):
         intermediates = [nid for nid in active_peers if nid not in (start, target)]
-        hops = random.sample(intermediates, min(self._max_hops - 1, len(intermediates)))
+        hops = SphinxRouter.secure_sample(intermediates, min(self._max_hops - 1, len(intermediates)))
         return hops + [target]
 
     def process_incoming(self, data: bytes):
@@ -89,4 +91,20 @@ class SphinxRouter:
         tag, info, (header, delta), mac_key = sphinx_process(self._params, x, header, delta)
         routing = PFdecode(self._params, info)
         return routing, header, delta, mac_key
+    
+    # secure random path that can revisit nodes but not consequetively
+    def secure_random_path(nodes, max_path_length):
+        path_length = secrets.randbelow(max_path_length + 1)
+        nodes = list(nodes)
+        path = []
+
+        current = secrets.choice(nodes)
+        path.append(current)
+
+        for _ in range(path_length):
+            candidates = [node for node in nodes if node != current]
+            current = secrets.choice(candidates)
+            path.append(current)
+
+        return path
 

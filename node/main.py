@@ -39,7 +39,7 @@ async def node_main():
         port=port,
         stream=stream,
         rounds=rounds,
-        exit=exit,
+        exit=False, # TODO: REMOVE LATER
         join=join,
         mixing_params=mixing_params
     )
