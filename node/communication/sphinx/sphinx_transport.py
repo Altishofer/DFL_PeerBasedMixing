@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import pickle
+import secrets
 from asyncio import QueueEmpty
 
 from sphinxmix.SphinxClient import (
@@ -21,6 +22,7 @@ class SphinxTransport:
         self._port = port
         self._peers = peers
         self._mixer = mixer
+        self._mixer.set_cover_generator(self._generate_cover_traffic)
 
         self._params = SphinxParams(
             header_len=192,
@@ -68,13 +70,15 @@ class SphinxTransport:
         await asyncio.sleep(5)
         await self._peer.connect_peers()
         await asyncio.sleep(10)
+        await self._mixer.start()
 
     @log_exceptions
-    async def send_to_peers(self, payload:bytes):
+    def send_to_peers(self, payload:bytes):
         peers = list(self._peer.active_peers())
         for peer_id in peers:
             metrics().increment(MetricField.FRAGMENTS_SENT)
-            await self.generate_path_and_send(payload, peer_id, peers)
+            self._mixer.add_outgoing_message(self.generate_path_and_send(payload, peer_id, peers))
+            # await self.generate_path_and_send(payload, peer_id, peers)
         return len(peers)
 
     @log_exceptions
@@ -128,10 +132,8 @@ class SphinxTransport:
     @log_exceptions
     async def __handle_routing_decision(self, routing, header, delta, mac_key):
         if routing[0] == Relay_flag:
-            logging.debug(f"Mixing message: {header[0]}")
             relay = self._peer.send_to_peer(routing[1], pack_message(self._params, (header, delta)))
             await self._mixer.mix_relay(relay)
-            logging.debug(f"Out mixed message: {header[0]}")
             metrics().increment(MetricField.FORWARDED)
         elif routing[0] == Dest_flag:
             metrics().increment(MetricField.FRAGMENTS_RECEIVED)
@@ -141,3 +143,9 @@ class SphinxTransport:
         elif routing[0] == Surb_flag:
             metrics().increment(MetricField.SURB_RECEIVED)
             self.sphinx_router.decrypt_surb(delta, routing[2])
+
+    @log_exceptions
+    async def _generate_cover_traffic(self):
+        target_node = secrets.choice(self._peer.active_peers())
+        payload = secrets.token_bytes(ConfigStore.bytes_per_chunk)
+        await self.generate_path_and_send(payload, target_node, self._peer.active_peers())

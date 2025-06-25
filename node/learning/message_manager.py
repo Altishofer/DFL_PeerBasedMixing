@@ -28,7 +28,6 @@ class MessageManager:
 
     @log_exceptions
     async def send_model_updates(self, current_round):
-        # TODO: implement some early stopping?
         chunks, n_chunks = self.chunks()
         n_peers = 0
         for i in range(n_chunks):
@@ -44,7 +43,7 @@ class MessageManager:
             "content": chunk
         }
         serialized_msg = self._serialize_msg(msg)
-        return await self._transport.send_to_peers(serialized_msg)
+        return self._transport.send_to_peers(serialized_msg)
 
     @log_exceptions
     def collect_models(self):
