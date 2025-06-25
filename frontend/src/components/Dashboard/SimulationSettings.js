@@ -108,7 +108,7 @@ export default function SimulationSettings({
 
         <div className="control-row">
           <div className="control-group control-input-limited">
-            <label htmlFor="mixingLambda" className={!mixing || isLoading ? 'label-disabled' : ''}>Traffic rate</label>
+            <label htmlFor="mixingLambda" className={!mixing || isLoading ? 'label-disabled' : ''}>Avg. Traffic Interval (s)</label>
             <input
               id="mixingLambda"
               type="number"
@@ -124,7 +124,7 @@ export default function SimulationSettings({
           </div>
 
           <div className="control-group control-input-limited">
-            <label htmlFor="mixingMu" className={!mixing || isLoading ? 'label-disabled' : ''} >Delay</label>
+            <label htmlFor="mixingMu" className={!mixing || isLoading ? 'label-disabled' : ''} >Avg. Delay (s)</label>
             <input
               id="mixingMu"
               type="number"

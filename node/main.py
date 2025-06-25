@@ -39,19 +39,20 @@ async def node_main():
         port=port,
         stream=stream,
         rounds=rounds,
-        exit=False, # TODO: REMOVE LATER
+        exit=exit
         join=join,
         mixing_params=mixing_params
     )
 
     init_metrics(controller_url="http://host.docker.internal:8000", host_name=f"node_{node_id}")
 
-    if join:
-        logging.info(f"Node is waiting 3 min before joining.")
-        await asyncio.sleep(60)
-    if exit:
-        node_config.rounds = 1
-        logging.info(f"Node will exit after Round {node_config.rounds}")
+    # TODO: disabled for testing
+    # if join:
+    #     logging.info(f"Node is waiting 3 min before joining.")
+    #     await asyncio.sleep(60)
+    # if exit:
+    #     node_config.rounds = 1
+    #     logging.info(f"Node will exit after Round {node_config.rounds}")
 
     node = PeerNode(
         node_config=node_config

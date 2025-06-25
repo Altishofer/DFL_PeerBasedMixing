@@ -80,8 +80,9 @@ class SphinxRouter:
 
     @log_exceptions
     def _build_path_to(self, start, target, active_peers):
-        intermediates = [nid for nid in active_peers if nid not in (start, target)]
-        hops = SphinxRouter.secure_sample(intermediates, min(self._max_hops - 1, len(intermediates)))
+        intermediates = [nid for nid in active_peers if nid not in [start, target]]
+        hops = SphinxRouter.secure_random_path(intermediates, self._max_hops)
+        # hops = SphinxRouter.secure_random_walk(start, active_peers, self._max_hops)
         return hops + [target]
 
     def process_incoming(self, data: bytes):
@@ -92,19 +93,35 @@ class SphinxRouter:
         routing = PFdecode(self._params, info)
         return routing, header, delta, mac_key
     
-    # secure random path that can revisit nodes but not consequetively
-    def secure_random_path(nodes, max_path_length):
-        path_length = secrets.randbelow(max_path_length + 1)
+    # secure random walk that can revisit nodes
+    def secure_random_walk(start, nodes, max_path_length):
+        path_length = secrets.randbelow(max_path_length) + 1
         nodes = list(nodes)
         path = []
 
-        current = secrets.choice(nodes)
-        path.append(current)
+        if (len(nodes) == 0):
+            return path
 
         for _ in range(path_length):
-            candidates = [node for node in nodes if node != current]
+            current = secrets.choice(nodes)
+            path.append(current)
+
+        return path
+    
+    # secure random path that cannot revisit nodes or edges
+    def secure_random_path(nodes, max_path_length):
+        path_length = secrets.randbelow(min(max_path_length, len(nodes)) + 1)
+        nodes = list(nodes)
+        path = []
+
+        if (len(nodes) == 0):
+            return path
+
+        for _ in range(path_length):
+            candidates = [node for node in nodes if node not in path]
             current = secrets.choice(candidates)
             path.append(current)
 
         return path
+
 
