@@ -22,6 +22,7 @@ import {createSSEService} from "../../services/SseService";
 
 const defaultConfig = {
   displayMode: 'raw',
+  nodeCount : 6,
   rounds: 10,
   exitNodes: 0,
   joinNodes: 0,
@@ -34,7 +35,6 @@ const defaultConfig = {
 };
 
 const Dashboard = () => {
-  const [nodeCount, setNodeCount] = useState(6);
   const [nodeStatus, setNodeStatus] = useState([]);
   const [metrics, setMetrics] = useState([]);
   const [selectedMetrics, setSelectedMetrics] = useState([]);
@@ -79,7 +79,6 @@ const Dashboard = () => {
   }, [fetchNodeStatus]);
 
   const resetDashboard = useCallback(() => {
-    setNodeCount(6);
     axios.post(`${API_BASE_URL}/logs/clear`);
     setNodeStatus([]);
     setMetrics([]);
@@ -97,11 +96,11 @@ const Dashboard = () => {
 
   const startNodes = useCallback(async () => {
     resetDashboard();
-    const data = { count: nodeCount, ...config };
+    const data = config;
     await manageNodes(`/nodes/start`, data, 'Failed to start nodes');
     await new Promise(resolve => setTimeout(resolve, 3000));
     await fetchNodeStatus();
-  }, [nodeCount, config, manageNodes, resetDashboard, fetchNodeStatus]);
+  }, [config, manageNodes, resetDashboard, fetchNodeStatus]);
 
   const stopNodes = useCallback(async () => {
     await manageNodes('/nodes/stop', {}, 'Failed to stop nodes');
@@ -145,7 +144,6 @@ const Dashboard = () => {
     wsService.disconnect();
   };
 }, [fetchNodeStatus, wsTrigger]);
-
 
 
   const currentRoundByNode = useMemo(() => {
@@ -204,13 +202,22 @@ const Dashboard = () => {
 
           <TabPanel className="tab-panel">
             <SimulationSettings
-              nodeCount={nodeCount}
-              setNodeCount={setNodeCount}
+              nodeCount={config.nodeCount}
+              setNodeCount={(n) => {
+                config.nodeCount = n
+                updateConfig({nodeCount : n})
+              }}
               maxNodes={MAX_NODES}
               rounds={config.rounds}
               stream={config.stream}
-              setRounds={(r) => updateConfig({ rounds: r })}
-              setStream={(b) => updateConfig({ stream: b })}
+              setRounds={(r) => {
+                config.rounds = r
+                  updateConfig({rounds : r})
+              }}
+              setStream={(b) => {
+                config.stream = b
+                updateConfig({stream : b})
+              }}
               exitNodes={config.exitNodes}
               updateExitNodes={(_, count) => updateConfig({ exitNodes: count > 0 ? [{ round: 1, count }] : [] })}
               joinNodes={config.joinNodes}

@@ -36,7 +36,7 @@ class SphinxRouter:
     def create_forward_msg(self, target_node, payload, active_peers):
         path, nodes_routing, keys_nodes = self.build_forward_path(target_node, active_peers)
         logging.debug(f"path: {path}")
-        backward_path, nodes_routing_back, keys_nodes_back = self.build_surb_reply_path(target_node, active_peers)
+        _, nodes_routing_back, keys_nodes_back = self.build_surb_reply_path(target_node, active_peers)
 
         surbid, surbkeytuple, nymtuple = self.create_and_store_surb(nodes_routing_back, keys_nodes_back)
         header, delta = self.create_forward_packet(nodes_routing, keys_nodes, nymtuple, payload)
@@ -89,24 +89,9 @@ class SphinxRouter:
         param_dict = {(self._params.max_len, self._params.m): self._params}
         _, (header, delta) = unpack_message(param_dict, data)
         x = self._key_store.get_x(self._node_id)
-        tag, info, (header, delta), mac_key = sphinx_process(self._params, x, header, delta)
+        _, info, (header, delta), mac_key = sphinx_process(self._params, x, header, delta)
         routing = PFdecode(self._params, info)
         return routing, header, delta, mac_key
-    
-    # secure random walk that can revisit nodes
-    def secure_random_walk(start, nodes, max_path_length):
-        path_length = secrets.randbelow(max_path_length) + 1
-        nodes = list(nodes)
-        path = []
-
-        if (len(nodes) == 0):
-            return path
-
-        for _ in range(path_length):
-            current = secrets.choice(nodes)
-            path.append(current)
-
-        return path
     
     # secure random path that cannot revisit nodes or edges
     def secure_random_path(nodes, max_path_length):

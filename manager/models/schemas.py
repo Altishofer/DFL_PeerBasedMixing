@@ -13,7 +13,7 @@ class MetricPoint(BaseModel):
     node: str
 
 class StartRequest(BaseModel):
-    count: int
+    nodeCount: int
     rounds: int
     stream: bool
     exitNodes: int

@@ -22,18 +22,18 @@ class NodeService:
     def _start_nodes_sync(self, start_request: StartRequest) -> None:
         stop_all_nodes()
         create_network()
-        generate_keys(start_request.count)
+        generate_keys(start_request.nodeCount)
 
-        for i in range(start_request.count):
+        for i in range(start_request.nodeCount):
             name = f"node_{i}"
 
             data = start_request.model_dump()
-            data["n_nodes"] = data.pop("count")
+            data["n_nodes"] = data.pop("nodeCount")
             data.update({
                 "node_id": i, 
                 "port": 8000,
                 "exit": i == 0,
-                "join": i == start_request.count -1
+                "join": i == start_request.nodeCount -1
             })
 
             node_config = NodeConfig(**data)

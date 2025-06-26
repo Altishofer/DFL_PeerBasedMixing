@@ -11,6 +11,9 @@ class Mixer:
         self._outbox = asyncio.Queue()
         self._cover_generator = None
         self._outbox_loop = None
+        self._config = {
+            "nr_cover_bytes" : 100
+        }
 
     # inverse transform sampling of exponential distribution
     @staticmethod
@@ -36,7 +39,7 @@ class Mixer:
             else:
                 if self._cover_generator != None:
                     logging.debug(f"Sending cover from outbox")
-                    await self._cover_generator()
+                    await self._cover_generator(nr_bytes=self._config["nr_cover_bytes"])
                 else:
                     logging.warning("No cover generator specified in mixer")
 
