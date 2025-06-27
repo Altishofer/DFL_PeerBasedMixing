@@ -1,8 +1,9 @@
 import math
 import secrets
 import asyncio
-from asyncio import QueueEmpty
 import logging
+from utils.exception_decorator import log_exceptions
+from metrics.node_metrics import metrics, MetricField
 
 class Mixer:
     def __init__(self, params):
@@ -25,21 +26,29 @@ class Mixer:
         if self._enabled: 
             delay = Mixer.secure_exponential(self._params["mu"])
             await asyncio.sleep(delay)
+        else:
+            await asyncio.sleep(0)
         await relay
 
+    @log_exceptions
     async def __outbox_loop(self):
         while (True):
-            interval = Mixer.secure_exponential(self._params["lambda"])
-            logging.debug(f"Checking outbox in: {interval}s")
-            await asyncio.sleep(interval)
+            if (self._enabled):
+                interval = Mixer.secure_exponential(self._params["lambda"])
+                logging.debug(f"Checking outbox in: {interval}s")
+                await asyncio.sleep(interval)
+            else:
+                await asyncio.sleep(0)
+
             if not self._outbox.empty():
-                logging.debug(f"Sending message from outbox")
                 out_message = self._outbox.get_nowait()
                 await out_message
-            else:
+                logging.debug(f"Sent message from outbox")
+                metrics().increment(MetricField.FRAGMENTS_SENT)
+            elif self._outbox.empty() and self._enabled:
                 if self._cover_generator != None:
-                    logging.debug(f"Sending cover from outbox")
                     await self._cover_generator(nr_bytes=self._config["nr_cover_bytes"])
+                    logging.debug(f"Sent cover from outbox")
                 else:
                     logging.warning("No cover generator specified in mixer")
 

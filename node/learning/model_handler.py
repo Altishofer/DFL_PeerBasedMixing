@@ -123,7 +123,7 @@ class ModelHandler:
         return self._model.state_dict()
 
     @log_exceptions
-    def create_chunks(self, bytes_per_chunk=600):
+    def create_chunks(self, bytes_per_chunk=512):
         data = self._flatten_state_dict()
         float32_size = 4
         chunk_len = bytes_per_chunk // float32_size

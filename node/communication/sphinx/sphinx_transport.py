@@ -75,18 +75,17 @@ class SphinxTransport:
         await self._mixer.start()
 
     @log_exceptions
-    def send_to_peers(self, payload:bytes):
+    def send_to_peers(self, message):
         peers = list(self._peer.active_peers())
         for peer_id in peers:
-            metrics().increment(MetricField.FRAGMENTS_SENT)
-            self._mixer.add_outgoing_message(self.generate_path_and_send(payload, peer_id, peers))
-            # await self.generate_path_and_send(payload, peer_id, peers)
+            self._mixer.add_outgoing_message(self.generate_path_and_send(message, peer_id, peers))
         return len(peers)
 
     @log_exceptions
     async def generate_path_and_send(self, message, target_node: int, peers: list):
         payload = PackageHelper.serialize_msg(message)
         path, msg_bytes = self.sphinx_router.create_forward_msg(target_node, payload, peers)
+        logging.debug(f"path: {path}")
         await self._peer.send_to_peer(path[0], msg_bytes)
 
     @log_exceptions

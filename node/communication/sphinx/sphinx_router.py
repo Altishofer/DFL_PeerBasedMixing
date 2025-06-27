@@ -35,7 +35,6 @@ class SphinxRouter:
     @log_exceptions
     def create_forward_msg(self, target_node, payload, active_peers):
         path, nodes_routing, keys_nodes = self.build_forward_path(target_node, active_peers)
-        logging.debug(f"path: {path}")
         _, nodes_routing_back, keys_nodes_back = self.build_surb_reply_path(target_node, active_peers)
 
         surbid, surbkeytuple, nymtuple = self.create_and_store_surb(nodes_routing_back, keys_nodes_back)
