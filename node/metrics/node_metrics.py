@@ -26,6 +26,9 @@ class MetricField(Enum):
     AGGREGATED_ACCURACY = "aggregated_accuracy"
     RESENT = "resent"
     ACTIVE_PEERS = "active_peers"
+    COVERS_SENT = "covers_sent"
+    MIX_DELAY = "mix_delay"
+    OUT_INTERVAL = "out_interval"
 
 
 _metrics_instance = None
@@ -57,7 +60,7 @@ class Metrics:
         with self._data_lock:
             self._data[field] += amount
 
-    def set(self, field: MetricField, value: int):
+    def set(self, field: MetricField, value):
         with self._data_lock:
             self._data[field] = value
 

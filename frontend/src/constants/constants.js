@@ -27,7 +27,10 @@ export const METRIC_KEYS = {
   AGGREGATED_ACCURACY: 'aggregated_accuracy',
   CPU_TOTAL_NS: 'cpu_total_ns',
   MEMORY_MB: 'memory_mb',
-  ACTIVE_PEERS: 'active_peers'
+  ACTIVE_PEERS: 'active_peers',
+  COVERS_SENT: 'covers_sent',
+  MIX_DELAY: 'mix_delay',
+  OUT_INTERVAL: 'out_interval'
 };
 
 export const METRIC_FIELDS = {
@@ -48,6 +51,9 @@ export const METRIC_FIELDS = {
   [METRIC_KEYS.CPU_TOTAL_NS]: 'CPU Total Ns',
   [METRIC_KEYS.MEMORY_MB]: 'Memory (MB)',
   [METRIC_KEYS.ACTIVE_PEERS]: 'Active Peers',
+  [METRIC_KEYS.COVERS_SENT]: 'Covers Sent',
+  [METRIC_KEYS.MIX_DELAY]: 'Mix Delays',
+  [METRIC_KEYS.OUT_INTERVAL]: 'Outgoing Interval'
 };
 
 export const METRIC_GROUPS = {
@@ -66,7 +72,11 @@ export const METRIC_GROUPS = {
   Mixnet: [
     METRIC_KEYS.FORWARDED,
     METRIC_KEYS.SURB_REPLIED,
-    METRIC_KEYS.SURB_RECEIVED
+    METRIC_KEYS.SURB_RECEIVED,
+    METRIC_KEYS.FRAGMENTS_SENT,
+    METRIC_KEYS.COVERS_SENT,
+    METRIC_KEYS.MIX_DELAY,
+    METRIC_KEYS.OUT_INTERVAL
   ],
   Errors: [METRIC_KEYS.ERRORS],
   Learning: [

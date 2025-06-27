@@ -23,22 +23,22 @@ class Mixer:
         return -math.log(1 - u) / (1/q)
 
     async def mix_relay(self, relay):
+        delay = 0
         if self._enabled: 
             delay = Mixer.secure_exponential(self._params["mu"])
-            await asyncio.sleep(delay)
-        else:
-            await asyncio.sleep(0)
+        await asyncio.sleep(delay)
+        metrics().set(MetricField.MIX_DELAY, delay)
         await relay
 
     @log_exceptions
     async def __outbox_loop(self):
         while (True):
+            interval = 0
             if (self._enabled):
                 interval = Mixer.secure_exponential(self._params["lambda"])
                 logging.debug(f"Checking outbox in: {interval}s")
-                await asyncio.sleep(interval)
-            else:
-                await asyncio.sleep(0)
+            await asyncio.sleep(interval)
+            metrics().set(MetricField.OUT_INTERVAL, interval)
 
             if not self._outbox.empty():
                 out_message = self._outbox.get_nowait()
@@ -49,6 +49,7 @@ class Mixer:
                 if self._cover_generator != None:
                     await self._cover_generator(nr_bytes=self._config["nr_cover_bytes"])
                     logging.debug(f"Sent cover from outbox")
+                    metrics().increment(MetricField.COVERS_SENT)
                 else:
                     logging.warning("No cover generator specified in mixer")
 
