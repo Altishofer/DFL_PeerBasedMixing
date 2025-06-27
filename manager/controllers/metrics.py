@@ -38,7 +38,7 @@ async def metrics_sse(request: Request):
             if latest_cache:
                 data = [m.model_dump() for m in latest_cache]
                 yield {"data": json.dumps(data)}
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.0001)
     return EventSourceResponse(event_generator())
 
 
@@ -62,6 +62,16 @@ async def broadcast_loop():
                 for ws in disconnected:
                     active_connections.remove(ws)
         await asyncio.sleep(1)
+
+
+@router.get("/clear")
+async def clear_metrics():
+    try:
+        await cache_service.clear_cache()
+        return {"status": "success", "message": "Metrics cleared"}
+    except Exception as e:
+        logger.error(f"Failed to clear metrics: {e}")
+        raise HTTPException(status_code=500, detail="Failed to clear metrics")
 
 
 @router.post("/push", response_model=List[MetricPoint])

@@ -22,4 +22,8 @@ class CacheService:
         async with self._lock:
             return list(self._metrics_cache)
 
+    async def clear_cache(self) -> None:
+        async with self._lock:
+            self._metrics_cache.clear()
+
 cache_service = CacheService()
