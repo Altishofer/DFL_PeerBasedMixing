@@ -55,7 +55,7 @@ const Dashboard = () => {
     setConfig(prev => ({ ...prev, ...updates }));
   }, []);
 
-  const nodeNames = useEffect(() => {
+  const nodeNames = useMemo(() => {
     const nodes = new Set();
     metrics.forEach(m => m.node && nodes.add(m.node));
     nodeStatus.forEach(({ name }) => name && nodes.add(name));
