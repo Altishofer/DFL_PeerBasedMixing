@@ -1,17 +1,11 @@
-import time
-
 from peer_node import PeerNode
 import logging
 
 import os
 import asyncio
+from utils.config_store import ConfigStore
 from utils.logging_config import setup_logging
-from metrics.node_metrics import metrics, MetricField, init_metrics
-from models.schemas import NodeConfig
-
-def handle_exception(loop, context):
-    msg = context.get("exception", context["message"])
-    logging.error(f"💥 Unhandled exception: {msg}")
+from metrics.node_metrics import init_metrics
 
 
 def load_env(key):
@@ -22,38 +16,26 @@ def load_env(key):
 
 
 async def node_main():
-    node_id = int(load_env("NODE_ID"))
-    n_nodes = int(load_env("N_NODES"))
-    port = int(load_env("PORT"))
-    stream = load_env("STREAM") == "True"
-    rounds = int(load_env("ROUNDS"))
-    exit = bool(load_env("EXIT") == "True")
-    join = bool(load_env("JOIN") == "True")
 
-    setup_logging(node_id)
-
-    node_config = NodeConfig(
-        node_id=node_id,
-        n_nodes=n_nodes,
-        port=port,
-        stream=stream,
-        rounds=rounds,
-        exit=exit,
-        join=join
+    config = ConfigStore(
+        node_id=int(load_env("NODE_ID")),
+        n_nodes=int(load_env("N_NODES")),
+        n_rounds=int(load_env("N_ROUNDS")),
     )
 
-    init_metrics(controller_url="http://host.docker.internal:8000", host_name=f"node_{node_id}")
+    setup_logging(config.node_id)
 
-    if join:
+    init_metrics(controller_url="http://host.docker.internal:8000", host_name=f"node_{config.node_id}")
+
+
+    if config.node_id in config.join_nodes:
         logging.info(f"Node is waiting 3 min before joining.")
         await asyncio.sleep(60)
-    if exit:
-        node_config.rounds = 1
-        logging.info(f"Node will exit after Round {node_config.rounds}")
+    if config.node_id in config.exit_nodes:
+        config.n_rounds = 1
+        logging.info(f"Node will exit after Round {config.n_rounds}")
 
-    node = PeerNode(
-        node_config=node_config
-    )
+    node = PeerNode(config)
     await node.start()
 
 if __name__ == "__main__":

@@ -1,9 +1,9 @@
 import asyncio
 from typing import List
 from manager.config import settings
-from manager.models.schemas import NodeStatus, StartRequest
-from node.models.schemas import NodeConfig
+from manager.models.schemas import NodeStatus
 from manager.config import Settings
+from manager.models.schemas import NodeConfig
 from manager.utils.docker_utils import (
     get_docker_client,
     create_network,
@@ -15,34 +15,25 @@ class NodeService:
     def __init__(self):
         self._client = get_docker_client()
 
-    async def start_nodes(self, start_request: StartRequest) -> None:
-        await asyncio.to_thread(self._start_nodes_sync, start_request)
+    async def start_nodes(self) -> None:
+        await asyncio.to_thread(self._start_nodes_sync)
 
-    def _start_nodes_sync(self, start_request: StartRequest) -> None:
+    def _start_nodes_sync(self) -> None:
         stop_all_nodes()
         create_network()
-        generate_keys(start_request.count)
+        generate_keys(NodeConfig.n_nodes)
 
-        for i in range(start_request.count):
+        for i in range(NodeConfig.n_nodes):
             name = f"node_{i}"
-
-            data = start_request.model_dump()
-            data["n_nodes"] = data.pop("count")
-            data.update({
-                "node_id": i, 
-                "port": 8000,
-                "exit": i == 0,
-                "join": i == start_request.count -1
-            })
-
-            node_config = NodeConfig(**data)
-
-            env_vars = {str(k).upper() : str(v) for k, v in node_config.model_dump().items()}
 
             self._client.containers.run(
                 settings.IMAGE_NAME,
                 name=name,
-                environment=env_vars,
+                environment={
+                    "NODE_ID": i,
+                    "N_NODES": NodeConfig.n_nodes,
+                    "N_ROUNDS": NodeConfig.n_rounds,
+                },
                 volumes={
                     Settings.SECRETS_PATH: {"bind": "/config/", "mode": "ro"},
                     Settings.NODE_PATH: {"bind": "/node", "mode": "ro"}

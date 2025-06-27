@@ -5,24 +5,21 @@ import time
 from learning.message_manager import MessageManager
 from learning.model_handler import ModelHandler
 from metrics.node_metrics import metrics, MetricField
-from models.schemas import NodeConfig
 from utils.logging_config import log_exceptions, log_header
 from utils.config_store import ConfigStore
 
 
 class Learner:
 
-    def __init__(self, node_config : NodeConfig, transport):
+    def __init__(self, node_config : ConfigStore, transport):
         self._node_id = node_config.node_id
         self._transport = transport
         self._total_peers = node_config.n_nodes
-        self._total_rounds = node_config.rounds
+        self._total_rounds = node_config.n_rounds
         self._current_round = 0
         self._model_handler = ModelHandler(self._node_id, self._total_peers)
         self._message_manager = MessageManager(self._node_id, transport, self._model_handler)
-        self._stream_based = node_config.stream
-        self._exit_node = node_config.exit
-        self._join_node = node_config.join
+        self._stream_based = node_config.stream_mode
 
     @log_exceptions
     async def run(self):

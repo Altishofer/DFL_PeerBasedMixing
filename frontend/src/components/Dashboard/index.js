@@ -1,54 +1,32 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { Tabs, TabList, Tab, TabPanel } from 'react-tabs';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
-import 'react-tabs/style/react-tabs.css';
 import 'react-toastify/dist/ReactToastify.css';
 
 import NodeStatus from './NodeStatus';
 import MetricChart from './MetricChart';
-import DockerLogs from './ContainerLog';
 import BasicControls from './BasicControl';
-import SimulationSettings from './SimulationSettings';
 import MetricSelection from './MetricSelection';
 
 import useNodeStatus from '../../hooks/useNodeStatus';
 import { buildChartData } from '../../utils/chartUtils';
 import {
- WS_BASE_URL, API_BASE_URL, CHART_PALETTE, MAX_NODES, METRIC_KEYS, getDisplayName
+  WS_BASE_URL, API_BASE_URL, CHART_PALETTE, METRIC_KEYS, getDisplayName
 } from '../../constants/constants';
 import '../../App.css';
-import {createSSEService} from "../../services/SseService";
-
-const defaultConfig = {
-  displayMode: 'raw',
-  rounds: 10,
-  exitNodes: 0,
-  joinNodes: 0,
-  stream: false
-};
+import { createSSEService } from "../../services/SseService";
 
 const Dashboard = () => {
-  const [nodeCount, setNodeCount] = useState(6);
   const [nodeStatus, setNodeStatus] = useState([]);
   const [metrics, setMetrics] = useState([]);
   const [selectedMetrics, setSelectedMetrics] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [nodeUptimes, setNodeUptimes] = useState({});
-  const [logsResetCounter, setLogsResetCounter] = useState(0);
-  const [config, setConfig] = useState(defaultConfig);
   const [wsTrigger, setWsTrigger] = useState(0);
-  const [selectedNode, setSelectedNode] = useState(null);
-  const [activeRound, setActiveRound] = useState(0);
-  const wsRef = useRef(null);
   const wsService = useRef(createSSEService()).current;
 
   const fetchNodeStatus = useNodeStatus(setNodeStatus, setError, setNodeUptimes);
-
-  const updateConfig = useCallback((updates) => {
-    setConfig(prev => ({ ...prev, ...updates }));
-  }, []);
 
   const nodeNames = useMemo(() => {
     const nodes = new Set();
@@ -74,30 +52,24 @@ const Dashboard = () => {
   }, [fetchNodeStatus]);
 
   const resetDashboard = useCallback(() => {
-    setNodeCount(6);
     axios.post(`${API_BASE_URL}/logs/clear`);
     axios.get(`${WS_BASE_URL}/metrics/clear`);
     setNodeStatus([]);
     setMetrics([]);
     setSelectedMetrics([]);
     setIsLoading(false);
-    setSelectedNode(null);
-    setLogsResetCounter(prev => prev + 1);
     setError('');
     setNodeUptimes({});
-    setConfig(defaultConfig);
-    setActiveRound(0);
     setWsTrigger(prev => prev + 1);
     fetchNodeStatus();
   }, [fetchNodeStatus]);
 
   const startNodes = useCallback(async () => {
     resetDashboard();
-    const data = { count: nodeCount, ...config };
-    await manageNodes(`/nodes/start`, data, 'Failed to start nodes');
+    await manageNodes(`/nodes/start`, 'Failed to start nodes');
     await new Promise(resolve => setTimeout(resolve, 3000));
     await fetchNodeStatus();
-  }, [nodeCount, config, manageNodes, resetDashboard, fetchNodeStatus]);
+  }, [manageNodes, resetDashboard, fetchNodeStatus]);
 
   const stopNodes = useCallback(async () => {
     await manageNodes('/nodes/stop', {}, 'Failed to stop nodes');
@@ -113,36 +85,34 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-  const handleMessage = (data) => {
-    const newMetrics = Array.isArray(data) ? data : data?.data;
-    if (Array.isArray(newMetrics)) {
-      setMetrics(prev => [...prev, ...newMetrics]);
-    }
-  };
+    const handleMessage = (data) => {
+      const newMetrics = Array.isArray(data) ? data : data?.data;
+      if (Array.isArray(newMetrics)) {
+        setMetrics(prev => [...prev, ...newMetrics]);
+      }
+    };
 
-  wsService.initialize(`${WS_BASE_URL}/metrics/sse`, handleMessage);
+    wsService.initialize(`${WS_BASE_URL}/metrics/sse`, handleMessage);
 
-  const statusInterval = setInterval(fetchNodeStatus, 3000);
-  const uptimeInterval = setInterval(() => {
-    setNodeUptimes(prev => {
-      const updated = {};
-      Object.entries(prev).forEach(([name, { startTime, isRunning }]) => {
-        if (isRunning && startTime) {
-          updated[name] = { ...prev[name], elapsedMs: Date.now() - startTime };
-        }
+    const statusInterval = setInterval(fetchNodeStatus, 3000);
+    const uptimeInterval = setInterval(() => {
+      setNodeUptimes(prev => {
+        const updated = {};
+        Object.entries(prev).forEach(([name, { startTime, isRunning }]) => {
+          if (isRunning && startTime) {
+            updated[name] = { ...prev[name], elapsedMs: Date.now() - startTime };
+          }
+        });
+        return { ...prev, ...updated };
       });
-      return { ...prev, ...updated };
-    });
-  }, 1000);
+    }, 1000);
 
-  return () => {
-    clearInterval(statusInterval);
-    clearInterval(uptimeInterval);
-    wsService.disconnect();
-  };
-}, [fetchNodeStatus, wsTrigger]);
-
-
+    return () => {
+      clearInterval(statusInterval);
+      clearInterval(uptimeInterval);
+      wsService.disconnect();
+    };
+  }, [fetchNodeStatus, wsTrigger]);
 
   const currentRoundByNode = useMemo(() => {
     const latest = {};
@@ -167,93 +137,47 @@ const Dashboard = () => {
       </header>
 
       <div className="dashboard-content">
-        <Tabs className="custom-tabs">
-          <TabList className="tab-list">
-            <Tab className="tab" selectedClassName="tab--selected"><span className="tab-content">Nodes</span></Tab>
-            <Tab className="tab" selectedClassName="tab--selected"><span className="tab-content">Settings</span></Tab>
-            <Tab className="tab" selectedClassName="tab--selected"><span className="tab-content">Metrics</span></Tab>
-          </TabList>
+        <NodeStatus
+          nodeNames={nodeNames}
+          nodeStatus={nodeStatus}
+          nodeUptimes={nodeUptimes}
+          palette={CHART_PALETTE}
+          currentRounds={currentRoundByNode}
+          totalRounds={10}
+        />
 
-          <TabPanel className="tab-panel">
-            <div className="panel-grid">
-              <div className="node-status-container">
-                <NodeStatus
-                  nodeNames={nodeNames}
-                  nodeStatus={nodeStatus}
-                  nodeUptimes={nodeUptimes}
-                  palette={CHART_PALETTE}
-                  onSelectNode={setSelectedNode}
-                  selectedNode={selectedNode}
-                  currentRounds={currentRoundByNode}
-                  totalRounds={config.rounds}
-                />
-              </div>
-              <div className="docker-logs-container">
-                <div className="docker-logs-header">
-                  <h3>Node Logs</h3>
-                  <strong>{!selectedNode && "Select a node to view logs"}</strong>
-                </div>
-                <DockerLogs key={selectedNode || 'empty'} containerName={selectedNode} resetTrigger={logsResetCounter} />
-              </div>
-            </div>
-          </TabPanel>
-
-          <TabPanel className="tab-panel">
-            <SimulationSettings
-              nodeCount={nodeCount}
-              setNodeCount={setNodeCount}
-              maxNodes={MAX_NODES}
-              rounds={config.rounds}
-              stream={config.stream}
-              setRounds={(r) => updateConfig({ rounds: r })}
-              setStream={(b) => updateConfig({ stream: b })}
-              exitNodes={config.exitNodes}
-              updateExitNodes={(_, count) => updateConfig({ exitNodes: count > 0 ? [{ round: 1, count }] : [] })}
-              joinNodes={config.joinNodes}
-              updateJoinNodes={(_, count) => updateConfig({ joinNodes: count > 0 ? [{ round: 1, count }] : [] })}
-              displayMode={config.displayMode}
-              setDisplayMode={(mode) => updateConfig({ displayMode: mode })}
-              isLoading={isLoading}
+        <div className="metrics-grid">
+          <div className="metric-selection-container">
+            <MetricSelection
+              selectedMetrics={selectedMetrics}
+              metricKeys={METRIC_KEYS}
+              getDisplayName={getDisplayName}
+              onToggleMetric={toggleMetric}
             />
-          </TabPanel>
-
-          <TabPanel className="tab-panel">
-            <div className="metrics-grid">
-              <div className="metric-selection-container">
-                <MetricSelection
-                  selectedMetrics={selectedMetrics}
-                  metricKeys={METRIC_KEYS}
-                  getDisplayName={getDisplayName}
-                  onToggleMetric={toggleMetric}
-                />
+          </div>
+          <div className="metric-charts-container">
+            {selectedMetrics.length === 0 ? (
+              <div className="no-metrics-selected"><p>Select metrics to display charts</p></div>
+            ) : (
+              <div className="metric-charts-grid">
+                {selectedMetrics.map(metricKey => (
+                  <MetricChart
+                    key={metricKey}
+                    metricKey={metricKey}
+                    title={getDisplayName(metricKey)}
+                    chartData={buildChartData(metrics, metricKey)}
+                    nodeNames={nodeNames}
+                    palette={CHART_PALETTE}
+                  />
+                ))}
               </div>
-              <div className="metric-charts-container">
-                {selectedMetrics.length === 0 ? (
-                  <div className="no-metrics-selected"><p>Select metrics to display charts</p></div>
-                ) : (
-                  <div className="metric-charts-grid">
-                    {selectedMetrics.map(metricKey => (
-                      <MetricChart
-                        key={metricKey}
-                        metricKey={metricKey}
-                        title={getDisplayName(metricKey)}
-                        chartData={buildChartData(metrics, metricKey)}
-                        nodeNames={nodeNames}
-                        palette={CHART_PALETTE}
-                        displayMode={config.displayMode}
-                        activeRound={activeRound}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </TabPanel>
-        </Tabs>
-
-        {error && <div className="status-message error">{error}</div>}
-        {isLoading && <div className="overlay-loading"><div className="spinner" /><div>Loading...</div></div>}
+            )}
+          </div>
+        </div>
       </div>
+
+      {error && <div className="status-message error">{error}</div>}
+      {isLoading && <div className="overlay-loading"><div className="spinner" /><div>Loading...</div></div>}
 
       <footer className="dashboard-footer">
         <div className="footer-content">

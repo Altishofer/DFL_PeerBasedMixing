@@ -5,8 +5,6 @@ const NodeStatus = ({
   nodeStatus,
   nodeUptimes,
   palette,
-  onSelectNode,
-  selectedNode,
   currentRounds,
   totalRounds
 }) => {
@@ -14,7 +12,6 @@ const NodeStatus = ({
     const statusInfo = nodeStatus.find(({ name }) => name === node);
     const uptimeInfo = nodeUptimes[node];
     const isRunning = statusInfo?.status?.toLowerCase() === 'running';
-    const isSelected = node === selectedNode;
 
     const displayUptime =
       uptimeInfo && !isNaN(uptimeInfo.elapsedMs)
@@ -45,19 +42,13 @@ const NodeStatus = ({
             const elapsed = uptimeInfo.elapsedMs;
             const estimatedMs = elapsed * (totalRounds - currentRound) / currentRound;
             let minutes = Math.floor(estimatedMs / 60000);
-            // const seconds = Math.floor((estimatedMs % 60000) / 1000);
             minutes = Math.max(0, minutes);
             return `${minutes}m`;
           })()
         : '--';
 
     return (
-      <tr
-        key={node}
-        onClick={() => onSelectNode?.(node)}
-        className={isSelected ? 'selected-node' : ''}
-        style={{ cursor: 'pointer' }}
-      >
+      <tr key={node}>
         <td style={{ color: palette[index % palette.length] }}>{node}</td>
         <td className={`status-${statusInfo?.status?.toLowerCase() || 'unknown'}`}>
           {statusInfo?.status || 'Unknown'}

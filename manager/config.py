@@ -14,6 +14,8 @@ class Settings:
     FLUSH_INTERVAL = 1
     SECRETS_PATH = os.path.abspath("./secrets")
     NODE_PATH = os.path.abspath("./node")
+    N_ROUNDS: int = 10
+    N_NODES: int = 5
 
     def __init__(self):
         self.METRICS_DIR.mkdir(exist_ok=True)

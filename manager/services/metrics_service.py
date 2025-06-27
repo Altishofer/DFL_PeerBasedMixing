@@ -1,8 +1,6 @@
 import asyncio
 import datetime
 import logging
-import msgpack
-import time
 from typing import List
 
 from manager.config import settings

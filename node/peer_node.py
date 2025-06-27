@@ -2,12 +2,11 @@ import asyncio
 
 from communication.sphinx.sphinx_transport import SphinxTransport
 from learning.learner import Learner
-from metrics.node_metrics import init_metrics
-from models.schemas import NodeConfig
+from utils.config_store import ConfigStore
 
 
 class PeerNode:
-    def __init__(self, node_config : NodeConfig):
+    def __init__(self, node_config : ConfigStore):
         self._node_id = node_config.node_id
         peers = {
             i: (f"node_{i}", node_config.port)
@@ -21,3 +20,4 @@ class PeerNode:
         await self._learning.run()
         await asyncio.sleep(10)
         await self._transport.close_all_connections()
+        await asyncio.sleep(100)
