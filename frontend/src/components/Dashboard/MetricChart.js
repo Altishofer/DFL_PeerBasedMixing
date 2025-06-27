@@ -10,7 +10,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
-const MetricChart = ({ metricKey, title, chartData, nodeNames, palette }) => {
+const MetricChart = ({ metricKey, title, nodeNames, chartData, palette }) => {
   const [data, setData] = useState(chartData);
 
   useEffect(() => {

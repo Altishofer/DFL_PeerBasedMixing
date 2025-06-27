@@ -30,7 +30,9 @@ export const METRIC_KEYS = {
   ACTIVE_PEERS: 'active_peers',
   COVERS_SENT: 'covers_sent',
   MIX_DELAY: 'mix_delay',
-  OUT_INTERVAL: 'out_interval'
+  OUT_INTERVAL: 'out_interval',
+  SENDING_COVERS: 'sending_covers',
+  SENDING_FRAGMENTS: 'sending_fragments'
 };
 
 export const METRIC_FIELDS = {
@@ -53,7 +55,9 @@ export const METRIC_FIELDS = {
   [METRIC_KEYS.ACTIVE_PEERS]: 'Active Peers',
   [METRIC_KEYS.COVERS_SENT]: 'Covers Sent',
   [METRIC_KEYS.MIX_DELAY]: 'Mix Delays',
-  [METRIC_KEYS.OUT_INTERVAL]: 'Outgoing Interval'
+  [METRIC_KEYS.OUT_INTERVAL]: 'Outgoing Interval',
+  [METRIC_KEYS.SENDING_COVERS]: 'Sending Covers',
+  [METRIC_KEYS.SENDING_FRAGMENTS]: 'Sending Fragments'
 };
 
 export const METRIC_GROUPS = {
@@ -76,7 +80,9 @@ export const METRIC_GROUPS = {
     METRIC_KEYS.FRAGMENTS_SENT,
     METRIC_KEYS.COVERS_SENT,
     METRIC_KEYS.MIX_DELAY,
-    METRIC_KEYS.OUT_INTERVAL
+    METRIC_KEYS.OUT_INTERVAL,
+    METRIC_KEYS.SENDING_COVERS,
+    METRIC_KEYS.SENDING_FRAGMENTS
   ],
   Errors: [METRIC_KEYS.ERRORS],
   Learning: [

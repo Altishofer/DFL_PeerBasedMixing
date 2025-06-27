@@ -44,12 +44,12 @@ class Mixer:
                 out_message = self._outbox.get_nowait()
                 await out_message
                 logging.debug(f"Sent message from outbox")
-                metrics().increment(MetricField.FRAGMENTS_SENT)
+                self.__toggle_cover_metric(False)
             elif self._outbox.empty() and self._enabled:
                 if self._cover_generator != None:
                     await self._cover_generator(nr_bytes=self._config["nr_cover_bytes"])
                     logging.debug(f"Sent cover from outbox")
-                    metrics().increment(MetricField.COVERS_SENT)
+                    self.__toggle_cover_metric(True)
                 else:
                     logging.warning("No cover generator specified in mixer")
 
@@ -61,3 +61,11 @@ class Mixer:
 
     def set_cover_generator(self, callback):
         self._cover_generator = callback
+
+    def __toggle_cover_metric(sending_covers):
+        if (sending_covers):
+            metrics().increment(MetricField.COVERS_SENT)
+        else:
+            metrics().increment(MetricField.FRAGMENTS_SENT)
+        metrics().set(MetricField.SENDING_COVERS, 1 if sending_covers else 0)
+        metrics().set(MetricField.SENDING_FRAGMENTS, 0 if sending_covers else 1)

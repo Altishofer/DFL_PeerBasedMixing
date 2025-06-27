@@ -29,6 +29,8 @@ class MetricField(Enum):
     COVERS_SENT = "covers_sent"
     MIX_DELAY = "mix_delay"
     OUT_INTERVAL = "out_interval"
+    SENDING_COVERS = "sending_covers"
+    SENDING_FRAGMENTS = "sending_fragments"
 
 
 _metrics_instance = None

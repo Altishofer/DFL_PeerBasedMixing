@@ -55,7 +55,7 @@ const Dashboard = () => {
     setConfig(prev => ({ ...prev, ...updates }));
   }, []);
 
-  const nodeNames = useMemo(() => {
+  const nodeNames = useEffect(() => {
     const nodes = new Set();
     metrics.forEach(m => m.node && nodes.add(m.node));
     nodeStatus.forEach(({ name }) => name && nodes.add(name));
@@ -204,18 +204,15 @@ const Dashboard = () => {
             <SimulationSettings
               nodeCount={config.nodeCount}
               setNodeCount={(n) => {
-                config.nodeCount = n
                 updateConfig({nodeCount : n})
               }}
               maxNodes={MAX_NODES}
               rounds={config.rounds}
               stream={config.stream}
               setRounds={(r) => {
-                config.rounds = r
-                  updateConfig({rounds : r})
+                updateConfig({rounds : r})
               }}
               setStream={(b) => {
-                config.stream = b
                 updateConfig({stream : b})
               }}
               exitNodes={config.exitNodes}
