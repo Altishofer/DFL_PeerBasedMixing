@@ -21,9 +21,6 @@ async def node_main():
         node_id=int(load_env("NODE_ID")),
         n_nodes=int(load_env("N_NODES")),
         n_rounds=int(load_env("N_ROUNDS")),
-        mix_enabled=load_env("MIX_ENABLED").lower() == "true",
-        mix_lambda=float(load_env("MIX_LAMBDA")),
-        mix_mu=float(load_env("MIX_MU"))
     )
 
     setup_logging(config.node_id)

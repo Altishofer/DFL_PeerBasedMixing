@@ -71,8 +71,8 @@ class SphinxTransport:
         asyncio.create_task(self._peer.start())
         await asyncio.sleep(5)
         await self._peer.connect_peers()
-        await asyncio.sleep(10)
         await self._mixer.start()
+        await asyncio.sleep(10)
 
     @log_exceptions
     def send_to_peers(self, message):
@@ -83,11 +83,8 @@ class SphinxTransport:
 
     @log_exceptions
     async def generate_path_and_send(self, message, target_node: int, peers: list):
-        logging.debug(f"message: {message}")
         payload = PackageHelper.serialize_msg(message)
-        logging.debug(f"payload: {payload}")
         path, msg_bytes = self.sphinx_router.create_forward_msg(target_node, payload, peers)
-        logging.debug(f"path: {path}")
         await self._peer.send_to_peer(path[0], msg_bytes)
 
     @log_exceptions
@@ -119,6 +116,7 @@ class SphinxTransport:
         if (msg["type"] == PackageType.MODEL_PART):
             await self._incoming_queue.put(msg)
         elif (msg["type"] == PackageType.COVER):
+            metrics().increment(MetricField.COVERS_RECEIVED)
             logging.debug(f"Dropping cover package.")
         else:
             logging.warning(f"Unknown package type.")
@@ -127,6 +125,7 @@ class SphinxTransport:
     async def __unpack_payload_and_send_surb(self, payload_bytes: bytes):
         nymtuple, payload = payload_bytes
         await self.__handle_payload(payload)
+        metrics().increment(MetricField.TOTAL_PACKAGES_RECEIVED)
         msg_bytes, first_hop = self.sphinx_router.create_surb_reply(nymtuple)
         await self._peer.send_to_peer(first_hop, msg_bytes)
         logging.debug("Sent SURB-based reply.")

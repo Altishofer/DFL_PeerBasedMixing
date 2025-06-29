@@ -21,6 +21,8 @@ class Mixer:
     @staticmethod
     def secure_exponential(q):
         u = int.from_bytes(secrets.token_bytes(7), "big") / 2**56
+        if q == 0:
+            q = 0.0001
         return -math.log(1 - u) / (1/q)
 
     async def mix_relay(self, relay):
@@ -45,12 +47,12 @@ class Mixer:
                 logging.debug(f"sending message {out_message}")
                 await out_message
                 logging.debug(f"Sent message from outbox")
-                self.__toggle_cover_metric(sending_covers=False)
+                self.__udpdate_message_metric(sending_covers=False)
             elif self._outbox.empty() and self._config["enabled"]:
                 if self._cover_generator != None:
                     await self._cover_generator(nr_bytes=self._config["nr_cover_bytes"])
                     logging.debug(f"Sent cover from outbox")
-                    self.__toggle_cover_metric(sending_covers=True)
+                    self.__udpdate_message_metric(sending_covers=True)
                 else:
                     logging.warning("No cover generator specified in mixer")
 
@@ -64,7 +66,7 @@ class Mixer:
     def set_cover_generator(self, callback):
         self._cover_generator = callback
 
-    def __toggle_cover_metric(self, sending_covers):
+    def __udpdate_message_metric(self, sending_covers):
         if (sending_covers):
             metrics().increment(MetricField.COVERS_SENT)
         else:

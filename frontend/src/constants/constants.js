@@ -13,6 +13,7 @@ export const MAX_NODES = 10;
 export const METRIC_KEYS = {
   TOTAL_SENT: 'total_sent',
   TOTAL_RECEIVED: 'total_received',
+  TOTAL_PACKAGES_RECEIVED: "total_packages_received", // this counts the packages delivered to you, as receiver
   TOTAL_MBYTES_SENT: 'total_mbytes_sent',
   TOTAL_MBYTES_RECEIVED: 'total_mbytes_received',
   FRAGMENTS_SENT: 'fragments_sent',
@@ -29,6 +30,7 @@ export const METRIC_KEYS = {
   MEMORY_MB: 'memory_mb',
   ACTIVE_PEERS: 'active_peers',
   COVERS_SENT: 'covers_sent',
+  COVERS_RECEIVED: "covers_received",
   MIX_DELAY: 'mix_delay',
   OUT_INTERVAL: 'out_interval',
   SENDING_COVERS: 'sending_covers',
@@ -38,6 +40,7 @@ export const METRIC_KEYS = {
 export const METRIC_FIELDS = {
   [METRIC_KEYS.TOTAL_SENT]: 'Total Messages Sent',
   [METRIC_KEYS.TOTAL_RECEIVED]: 'Total Messages Received',
+  [METRIC_KEYS.TOTAL_PACKAGES_RECEIVED]: 'Total Messages Received (Final)',
   [METRIC_KEYS.TOTAL_MBYTES_SENT]: 'Total Megabytes Sent',
   [METRIC_KEYS.TOTAL_MBYTES_RECEIVED]: 'Total Megabytes Received',
   [METRIC_KEYS.FRAGMENTS_SENT]: 'Fragments Sent',
@@ -54,6 +57,7 @@ export const METRIC_FIELDS = {
   [METRIC_KEYS.MEMORY_MB]: 'Memory (MB)',
   [METRIC_KEYS.ACTIVE_PEERS]: 'Active Peers',
   [METRIC_KEYS.COVERS_SENT]: 'Covers Sent',
+  [METRIC_KEYS.COVERS_RECEIVED]: 'Covers Received',
   [METRIC_KEYS.MIX_DELAY]: 'Mix Delays',
   [METRIC_KEYS.OUT_INTERVAL]: 'Outgoing Interval',
   [METRIC_KEYS.SENDING_COVERS]: 'Sending Covers',
@@ -74,15 +78,16 @@ export const METRIC_GROUPS = {
     METRIC_KEYS.ACTIVE_PEERS
   ],
   Mixnet: [
+    METRIC_KEYS.FRAGMENTS_SENT,
+    METRIC_KEYS.COVERS_SENT,
+    METRIC_KEYS.COVERS_RECEIVED,
     METRIC_KEYS.FORWARDED,
     METRIC_KEYS.SURB_REPLIED,
     METRIC_KEYS.SURB_RECEIVED,
-    METRIC_KEYS.FRAGMENTS_SENT,
-    METRIC_KEYS.COVERS_SENT,
+    METRIC_KEYS.SENDING_COVERS,
+    METRIC_KEYS.SENDING_FRAGMENTS,
     METRIC_KEYS.MIX_DELAY,
     METRIC_KEYS.OUT_INTERVAL,
-    METRIC_KEYS.SENDING_COVERS,
-    METRIC_KEYS.SENDING_FRAGMENTS
   ],
   Errors: [METRIC_KEYS.ERRORS],
   Learning: [

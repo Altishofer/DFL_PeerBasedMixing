@@ -34,9 +34,6 @@ class NodeService:
                     "NODE_ID": i,
                     "N_NODES": NodeConfig.n_nodes,
                     "N_ROUNDS": NodeConfig.n_rounds,
-                    "MIX_ENABLED": settings.MIX_ENABLED,
-                    "MIX_LAMBDA": settings.MIX_LAMBDA,
-                    "MIX_MU": settings.MIX_MU
                 },
                 volumes={
                     Settings.SECRETS_PATH: {"bind": "/config/", "mode": "ro"},
