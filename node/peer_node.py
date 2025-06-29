@@ -20,4 +20,4 @@ class PeerNode:
         await self._learning.run()
         await asyncio.sleep(10)
         await self._transport.close_all_connections()
-        await asyncio.sleep(100)
+        await asyncio.sleep(360)

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from manager.controllers import nodes, metrics, logs
+from manager.controllers import nodes, metrics
 from manager.services.metrics_service import metrics_service
 from fastapi_cache.backends.inmemory import InMemoryBackend
 from fastapi_cache import FastAPICache
@@ -26,7 +26,6 @@ app.add_middleware(
 
 app.include_router(nodes.router)
 app.include_router(metrics.router)
-app.include_router(logs.router)
 
 @app.get("/health")
 async def health_check():

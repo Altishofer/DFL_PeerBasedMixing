@@ -52,7 +52,6 @@ const Dashboard = () => {
   }, [fetchNodeStatus]);
 
   const resetDashboard = useCallback(() => {
-    axios.post(`${API_BASE_URL}/logs/clear`);
     axios.get(`${WS_BASE_URL}/metrics/clear`);
     setNodeStatus([]);
     setMetrics([]);

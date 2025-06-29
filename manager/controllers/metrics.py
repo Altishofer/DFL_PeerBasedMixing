@@ -30,7 +30,7 @@ async def metrics_sse(request: Request):
     async def event_generator():
         all_metrics = await metrics_service.get_all_metrics()
         if all_metrics:
-            yield {"data": json.dumps(all_metrics)}
+            yield {"data": json.dumps([m.model_dump() for m in all_metrics])}
         while True:
             if await request.is_disconnected():
                 break
@@ -67,6 +67,7 @@ async def broadcast_loop():
 @router.get("/clear")
 async def clear_metrics():
     try:
+        await metrics_service.save_to_csv()
         await cache_service.clear_cache()
         return {"status": "success", "message": "Metrics cleared"}
     except Exception as e:

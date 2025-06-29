@@ -9,7 +9,6 @@ router = APIRouter(prefix="/nodes")
 
 @router.post("/start")
 async def start_nodes():
-    await metrics_service.reset_file()
     await node_service.start_nodes()
     return {"status": "started"}
 
