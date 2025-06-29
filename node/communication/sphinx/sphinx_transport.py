@@ -83,7 +83,9 @@ class SphinxTransport:
 
     @log_exceptions
     async def generate_path_and_send(self, message, target_node: int, peers: list):
+        logging.debug(f"message: {message}")
         payload = PackageHelper.serialize_msg(message)
+        logging.debug(f"payload: {payload}")
         path, msg_bytes = self.sphinx_router.create_forward_msg(target_node, payload, peers)
         logging.debug(f"path: {path}")
         await self._peer.send_to_peer(path[0], msg_bytes)

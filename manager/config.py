@@ -16,7 +16,7 @@ class Settings:
     NODE_PATH = os.path.abspath("./node")
     N_ROUNDS: int = 10
     N_NODES: int = 5
-    MIX_ENABLED = False
+    MIX_ENABLED = True
     MIX_LAMBDA = 0.5
     MIX_MU = 0.2
 

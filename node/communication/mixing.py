@@ -40,31 +40,31 @@ class Mixer:
                 logging.debug(f"Checking outbox in: {interval}s")
             await asyncio.sleep(interval)
             metrics().set(MetricField.OUT_INTERVAL, interval)
-
             if not self._outbox.empty():
                 out_message = self._outbox.get_nowait()
+                logging.debug(f"sending message {out_message}")
                 await out_message
                 logging.debug(f"Sent message from outbox")
-                self.__toggle_cover_metric(False)
-            elif self._outbox.empty() and self._enabled:
+                self.__toggle_cover_metric(sending_covers=False)
+            elif self._outbox.empty() and self._config["enabled"]:
                 if self._cover_generator != None:
                     await self._cover_generator(nr_bytes=self._config["nr_cover_bytes"])
                     logging.debug(f"Sent cover from outbox")
-                    self.__toggle_cover_metric(True)
+                    self.__toggle_cover_metric(sending_covers=True)
                 else:
                     logging.warning("No cover generator specified in mixer")
 
     async def start(self):
         self._outbox_loop = asyncio.create_task(self.__outbox_loop())
+        logging.info(f"Started mixer, enabled: {self._config['enabled']}, lambda: {self._config['lambda']}, mu: {self._config['mu']}")
 
     def add_outgoing_message(self, message):
-        logging.debug("added msg to outbox")
         self._outbox.put_nowait(message)
 
     def set_cover_generator(self, callback):
         self._cover_generator = callback
 
-    def __toggle_cover_metric(sending_covers):
+    def __toggle_cover_metric(self, sending_covers):
         if (sending_covers):
             metrics().increment(MetricField.COVERS_SENT)
         else:
