@@ -26,6 +26,8 @@ async def node_main():
         mix_mu=bool(load_env("MIX_MU"))
     )
 
+    setup_logging(config.node_id)
+
     init_metrics(controller_url="http://host.docker.internal:8000", host_name=f"node_{config.node_id}")
 
     # if config.node_id in config.join_nodes:
