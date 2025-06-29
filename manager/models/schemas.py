@@ -1,5 +1,6 @@
+from dataclasses import dataclass
+
 from pydantic import BaseModel
-from typing import List, Dict, Any
 
 class NodeStatus(BaseModel):
     name: str
@@ -12,10 +13,7 @@ class MetricPoint(BaseModel):
     value: float
     node: str
 
-class StartRequest(BaseModel):
-    nodeCount: int
-    rounds: int
-    stream: bool
-    exitNodes: int
-    joinNodes: int
-    mixing_params: dict
+@dataclass
+class NodeConfig:
+    n_nodes: int = 5
+    n_rounds: int = 10

@@ -2,9 +2,9 @@ import asyncio
 import json
 from typing import List
 from manager.config import settings
-from manager.models.schemas import NodeStatus, StartRequest
-from node.models.schemas import NodeConfig
+from manager.models.schemas import NodeStatus
 from manager.config import Settings
+from manager.models.schemas import NodeConfig
 from manager.utils.docker_utils import (
     get_docker_client,
     create_network,
@@ -16,38 +16,28 @@ class NodeService:
     def __init__(self):
         self._client = get_docker_client()
 
-    async def start_nodes(self, start_request: StartRequest) -> None:
-        await asyncio.to_thread(self._start_nodes_sync, start_request)
+    async def start_nodes(self) -> None:
+        await asyncio.to_thread(self._start_nodes_sync)
 
-    def _start_nodes_sync(self, start_request: StartRequest) -> None:
+    def _start_nodes_sync(self) -> None:
         stop_all_nodes()
         create_network()
-        generate_keys(start_request.nodeCount)
+        generate_keys(NodeConfig.n_nodes)
 
-        for i in range(start_request.nodeCount):
+        for i in range(NodeConfig.n_nodes):
             name = f"node_{i}"
-
-            data = start_request.model_dump()
-            data["n_nodes"] = data.pop("nodeCount")
-            data.update({
-                "node_id": i, 
-                "port": 8000,
-                "exit": i == 0,
-                "join": i == start_request.nodeCount -1
-            })
-
-            node_config = NodeConfig(**data)
-
-            # handle nested data structure
-            env_vars = {
-                str(k).upper(): json.dumps(v) if isinstance(v, dict) else str(v)
-                for k, v in node_config.model_dump().items()
-            }
 
             self._client.containers.run(
                 settings.IMAGE_NAME,
                 name=name,
-                environment=env_vars,
+                environment={
+                    "NODE_ID": i,
+                    "N_NODES": NodeConfig.n_nodes,
+                    "N_ROUNDS": NodeConfig.n_rounds,
+                    "MIX_ENABLED": settings.MIX_ENABLED,
+                    "MIX_LAMBDA": settings.MIX_LAMBDA,
+                    "MIX_MU": settings.MIX_MU
+                },
                 volumes={
                     Settings.SECRETS_PATH: {"bind": "/config/", "mode": "ro"},
                     Settings.NODE_PATH: {"bind": "/node", "mode": "ro"}

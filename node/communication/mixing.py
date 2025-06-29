@@ -6,14 +6,15 @@ from utils.exception_decorator import log_exceptions
 from metrics.node_metrics import metrics, MetricField
 
 class Mixer:
-    def __init__(self, params):
-        self._params = params
-        self._enabled = params["enabled"]
+    def __init__(self, enabled, mix_lambda, mix_mu):
         self._outbox = asyncio.Queue()
         self._cover_generator = None
         self._outbox_loop = None
         self._config = {
-            "nr_cover_bytes" : 100
+            "nr_cover_bytes" : 100,
+            "enabled": enabled,
+            "lambda": mix_lambda, 
+            "mu": mix_mu
         }
 
     # inverse transform sampling of exponential distribution
@@ -24,8 +25,8 @@ class Mixer:
 
     async def mix_relay(self, relay):
         delay = 0
-        if self._enabled: 
-            delay = Mixer.secure_exponential(self._params["mu"])
+        if self._config["enabled"]: 
+            delay = Mixer.secure_exponential(self._config["mu"])
         await asyncio.sleep(delay)
         metrics().set(MetricField.MIX_DELAY, delay)
         await relay
@@ -34,8 +35,8 @@ class Mixer:
     async def __outbox_loop(self):
         while (True):
             interval = 0
-            if (self._enabled):
-                interval = Mixer.secure_exponential(self._params["lambda"])
+            if self._config["enabled"]:
+                interval = Mixer.secure_exponential(self._config["lambda"])
                 logging.debug(f"Checking outbox in: {interval}s")
             await asyncio.sleep(interval)
             metrics().set(MetricField.OUT_INTERVAL, interval)
@@ -57,6 +58,7 @@ class Mixer:
         self._outbox_loop = asyncio.create_task(self.__outbox_loop())
 
     def add_outgoing_message(self, message):
+        logging.debug("added msg to outbox")
         self._outbox.put_nowait(message)
 
     def set_cover_generator(self, callback):

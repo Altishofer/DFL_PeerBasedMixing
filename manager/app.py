@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from manager.controllers import nodes, metrics, logs
 from manager.services.metrics_service import metrics_service
-from manager.config import settings
 from fastapi_cache.backends.inmemory import InMemoryBackend
 from fastapi_cache import FastAPICache
 
