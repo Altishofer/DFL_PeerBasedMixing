@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import NodeStatus from './NodeStatus';
 import MetricChart from './MetricChart';
-import BasicControls from './BasicControl';
 import MetricSelection from './MetricSelection';
 
 import useNodeStatus from '../../hooks/useNodeStatus';
@@ -126,14 +125,28 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
-      <ToastContainer position="top-right" autoClose={5000} />
-      <div className="fixed-controls">
-        <BasicControls onStart={startNodes} onStop={stopNodes} onClear={resetDashboard} isLoading={isLoading} />
-      </div>
 
       <header className="dashboard-header">
-        <div className="header-content"><h1>Peer-Based Mixing</h1></div>
+        <h1>Peer Based Mixing</h1>
+        <div className="header-buttons">
+          <button
+            className="action-button start-button"
+            onClick={startNodes}
+            disabled={isLoading}
+          >
+            Start
+          </button>
+          <button
+            className="action-button stop-button"
+            onClick={stopNodes}
+            disabled={isLoading}
+          >
+            Stop
+          </button>
+        </div>
       </header>
+
+
 
       <div className="dashboard-content">
         <NodeStatus

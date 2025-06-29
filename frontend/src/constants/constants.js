@@ -1,5 +1,3 @@
-import {MetricField} from "../components/Dashboard/MetricSelection";
-
 export const API_BASE_URL = 'http://localhost:8000';
 export const WS_BASE_URL = 'http://localhost:8000';
 
@@ -7,8 +5,6 @@ export const CHART_PALETTE = [
   '#3182CE', '#38A169', '#DD6B20', '#805AD5',
   '#E53E3E', '#D69E2E', '#319795', '#00B5D8'
 ];
-
-export const MAX_NODES = 10;
 
 export const METRIC_KEYS = {
   TOTAL_SENT: 'total_sent',
@@ -27,7 +23,8 @@ export const METRIC_KEYS = {
   AGGREGATED_ACCURACY: 'aggregated_accuracy',
   CPU_TOTAL_NS: 'cpu_total_ns',
   MEMORY_MB: 'memory_mb',
-  ACTIVE_PEERS: 'active_peers'
+  ACTIVE_PEERS: 'active_peers',
+  STAGE: 'stage'
 };
 
 export const METRIC_FIELDS = {
@@ -48,6 +45,7 @@ export const METRIC_FIELDS = {
   [METRIC_KEYS.CPU_TOTAL_NS]: 'CPU Total Ns',
   [METRIC_KEYS.MEMORY_MB]: 'Memory (MB)',
   [METRIC_KEYS.ACTIVE_PEERS]: 'Active Peers',
+  [METRIC_KEYS.STAGE]: 'Node Stage',
 };
 
 export const METRIC_GROUPS = {
@@ -68,7 +66,10 @@ export const METRIC_GROUPS = {
     METRIC_KEYS.SURB_REPLIED,
     METRIC_KEYS.SURB_RECEIVED
   ],
-  Errors: [METRIC_KEYS.ERRORS],
+  Miscellaneous: [
+      METRIC_KEYS.ERRORS,
+      METRIC_KEYS.STAGE
+  ],
   Learning: [
     METRIC_KEYS.ACCURACY,
     METRIC_KEYS.AGGREGATED_ACCURACY,

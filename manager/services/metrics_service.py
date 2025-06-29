@@ -75,14 +75,19 @@ class MetricsService:
                 return
 
             filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S_metrics.csv")
-            with open(filename, mode="w", newline="") as file:
+            path = settings.METRICS_DIR / filename
+            with open(path, mode="w", newline="") as file:
                 writer = csv.writer(file)
                 writer.writerow(["timestamp", "field", "value", "node"])
 
                 while not self._write_queue.empty():
-                    metrics = await self._write_queue.get()
-                    for metric in metrics:
+                    metric = await self._write_queue.get()
+                    if isinstance(metric, MetricPoint):
                         writer.writerow([metric.timestamp, metric.field, metric.value, metric.node])
+                    elif isinstance(metric, tuple):
+                        logger.warning(f"Tuple found in queue: {metric}. Skipping.")
+                    else:
+                        logger.error(f"Unexpected item in queue: {metric} (type: {type(metric)})")
 
         except Exception as e:
             logger.error(f"Failed to save metrics to CSV: {e}")
