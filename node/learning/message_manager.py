@@ -20,7 +20,7 @@ class MessageManager:
         _, n_chunks = self.chunks()
         for i in range(n_chunks):
             chunks, n_chunks = self.chunks()
-            await self.send_model_chunk(current_round, i, chunks[i], n_chunks)
+            self.send_model_chunk(current_round, i, chunks[i], n_chunks)
             await asyncio.sleep(interval)
 
     @log_exceptions
@@ -28,10 +28,10 @@ class MessageManager:
         chunks, n_chunks = self.chunks()
         n_peers = 0
         for i in range(n_chunks):
-            n_peers = await self.send_model_chunk(current_round, i, chunks[i], n_chunks)
+            n_peers = self.send_model_chunk(current_round, i, chunks[i], n_chunks)
         logging.info(f"Sent {n_chunks} model chunks to {n_peers} peers.")
 
-    async def send_model_chunk(self, current_round, chunk_idx, chunk, n_chunks):
+    def send_model_chunk(self, current_round, chunk_idx, chunk, n_chunks):
         msg = PackageHelper.format_model_package(current_round, chunk_idx, chunk, n_chunks)
         return self._transport.send_to_peers(msg)
 

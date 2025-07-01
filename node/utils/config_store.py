@@ -6,7 +6,7 @@ class ConfigStore:
     max_hops: int = 2
     resend_time: int = 2
     push_metric_interval: int = 1
-    timeout_model_collection: int = 240
+    timeout_model_collection: int = 360
     batch_size: int = 64
     n_batches_per_round: int = 10
     dirichlet_alpha: float = 10.0
@@ -18,5 +18,5 @@ class ConfigStore:
     join_nodes: List[int] = field(default_factory=lambda: [4])
     stream_mode: bool = False
     mix_enabled: bool = True
-    mix_lambda: float = 0.2
-    mix_mu: float = 0.0
+    mix_lambda: float = 0.05
+    mix_shuffle: bool = True

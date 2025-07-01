@@ -23,7 +23,6 @@ class SphinxTransport:
         self._port = port
         self._peers = peers
         self._mixer = mixer
-        self._mixer.set_cover_generator(self._generate_cover_traffic)
 
         self._params = SphinxParams(
             header_len=192,
@@ -71,14 +70,16 @@ class SphinxTransport:
         asyncio.create_task(self._peer.start())
         await asyncio.sleep(5)
         await self._peer.connect_peers()
-        await self._mixer.start()
+        await self._mixer.start(self.generate_cover_traffic)
         await asyncio.sleep(10)
 
     @log_exceptions
     def send_to_peers(self, message):
         peers = list(self._peer.active_peers())
         for peer_id in peers:
-            self._mixer.add_outgoing_message(self.generate_path_and_send(message, peer_id, peers))
+            self._mixer.push_to_outbox(
+                lambda: self.generate_path_and_send(message, peer_id, peers), 
+                lambda: metrics().increment(MetricField.FRAGMENTS_SENT))
         return len(peers)
 
     @log_exceptions
@@ -99,8 +100,9 @@ class SphinxTransport:
                 if not self._peer.is_active(fragment.target_node):
                     self.sphinx_router.remove_cache_for_disconnected(fragment.target_node)
                 else:
-                    await self.generate_path_and_send(fragment.payload, fragment.target_node, self._peer.active_peers())
-                    metrics().increment(MetricField.RESENT)
+                    self._mixer.push_to_outbox(
+                        lambda: self.generate_path_and_send(fragment.payload, fragment.target_node, self._peer.active_peers()), 
+                        lambda: metrics().increment(MetricField.RESENT))
             if len(stale) > 0:
                 logging.warning(f"Resent {len(stale)} unacked fragments.")
             await asyncio.sleep(ConfigStore.resend_time)
@@ -122,13 +124,16 @@ class SphinxTransport:
             logging.warning(f"Unknown package type.")
 
     @log_exceptions
-    async def __unpack_payload_and_send_surb(self, payload_bytes: bytes):
+    async def __unpack_payload(self, payload_bytes: bytes):
         nymtuple, payload = payload_bytes
         await self.__handle_payload(payload)
-        metrics().increment(MetricField.TOTAL_PACKAGES_RECEIVED)
+        metrics().increment(MetricField.FRAGMENTS_RECEIVED)
+        return nymtuple
+
+    async def __send_surb(self, nymtuple):
         msg_bytes, first_hop = self.sphinx_router.create_surb_reply(nymtuple)
-        await self._peer.send_to_peer(first_hop, msg_bytes)
         logging.debug("Sent SURB-based reply.")
+        await self._peer.send_to_peer(first_hop, msg_bytes)
 
     @log_exceptions
     async def __handle_incoming(self, data: bytes, peer_id: int):
@@ -149,20 +154,21 @@ class SphinxTransport:
     @log_exceptions
     async def __handle_routing_decision(self, routing, header, delta, mac_key):
         if routing[0] == Relay_flag:
-            relay = self._peer.send_to_peer(routing[1], pack_message(self._params, (header, delta)))
-            await self._mixer.mix_relay(relay)
-            metrics().increment(MetricField.FORWARDED)
+            self._mixer.push_to_outbox(
+                lambda: self._peer.send_to_peer(routing[1], pack_message(self._params, (header, delta))), 
+                lambda: metrics().increment(MetricField.FORWARDED))
         elif routing[0] == Dest_flag:
-            metrics().increment(MetricField.FRAGMENTS_RECEIVED)
             _, msg = receive_forward(self._params, mac_key, delta)
-            await self.__unpack_payload_and_send_surb(msg)
-            metrics().increment(MetricField.SURB_REPLIED)
+            nymtuple = await self.__unpack_payload(msg)
+            self._mixer.push_to_outbox(
+                lambda: self.__send_surb(nymtuple), 
+                lambda: metrics().increment(MetricField.SURB_REPLIED))
         elif routing[0] == Surb_flag:
             metrics().increment(MetricField.SURB_RECEIVED)
             self.sphinx_router.decrypt_surb(delta, routing[2])
 
     @log_exceptions
-    async def _generate_cover_traffic(self, nr_bytes):
+    async def generate_cover_traffic(self, nr_bytes):
         target_node = secrets.choice(self._peer.active_peers())
         content = secrets.token_bytes(nr_bytes)
         payload = PackageHelper.format_cover_package(content)

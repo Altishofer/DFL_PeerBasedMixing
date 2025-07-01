@@ -12,7 +12,6 @@ from utils.config_store import ConfigStore
 
 class MetricField(Enum):
     FRAGMENTS_RECEIVED = "fragments_received"
-    TOTAL_PACKAGES_RECEIVED = "total_packages_received" # this counts the packages delivered to you, as receiver
     FRAGMENTS_SENT = "fragments_sent"
     TOTAL_MSG_SENT = "total_sent"
     TOTAL_MSG_RECEIVED = "total_received"
@@ -29,10 +28,9 @@ class MetricField(Enum):
     ACTIVE_PEERS = "active_peers"
     COVERS_SENT = "covers_sent"
     COVERS_RECEIVED = "covers_received"
-    MIX_DELAY = "mix_delay"
     OUT_INTERVAL = "out_interval"
     SENDING_COVERS = "sending_covers"
-    SENDING_FRAGMENTS = "sending_fragments"
+    SENDING_MESSAGES = "sending_messages"
 
 
 _metrics_instance = None

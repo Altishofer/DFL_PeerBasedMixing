@@ -13,7 +13,6 @@ export const MAX_NODES = 10;
 export const METRIC_KEYS = {
   TOTAL_SENT: 'total_sent',
   TOTAL_RECEIVED: 'total_received',
-  TOTAL_PACKAGES_RECEIVED: "total_packages_received", // this counts the packages delivered to you, as receiver
   TOTAL_MBYTES_SENT: 'total_mbytes_sent',
   TOTAL_MBYTES_RECEIVED: 'total_mbytes_received',
   FRAGMENTS_SENT: 'fragments_sent',
@@ -31,16 +30,14 @@ export const METRIC_KEYS = {
   ACTIVE_PEERS: 'active_peers',
   COVERS_SENT: 'covers_sent',
   COVERS_RECEIVED: "covers_received",
-  MIX_DELAY: 'mix_delay',
   OUT_INTERVAL: 'out_interval',
   SENDING_COVERS: 'sending_covers',
-  SENDING_FRAGMENTS: 'sending_fragments'
+  SENDING_MESSAGES: 'sending_messages'
 };
 
 export const METRIC_FIELDS = {
   [METRIC_KEYS.TOTAL_SENT]: 'Total Messages Sent',
   [METRIC_KEYS.TOTAL_RECEIVED]: 'Total Messages Received',
-  [METRIC_KEYS.TOTAL_PACKAGES_RECEIVED]: 'Total Messages Received (Final)',
   [METRIC_KEYS.TOTAL_MBYTES_SENT]: 'Total Megabytes Sent',
   [METRIC_KEYS.TOTAL_MBYTES_RECEIVED]: 'Total Megabytes Received',
   [METRIC_KEYS.FRAGMENTS_SENT]: 'Fragments Sent',
@@ -58,10 +55,9 @@ export const METRIC_FIELDS = {
   [METRIC_KEYS.ACTIVE_PEERS]: 'Active Peers',
   [METRIC_KEYS.COVERS_SENT]: 'Covers Sent',
   [METRIC_KEYS.COVERS_RECEIVED]: 'Covers Received',
-  [METRIC_KEYS.MIX_DELAY]: 'Mix Delays',
   [METRIC_KEYS.OUT_INTERVAL]: 'Outgoing Interval',
   [METRIC_KEYS.SENDING_COVERS]: 'Sending Covers',
-  [METRIC_KEYS.SENDING_FRAGMENTS]: 'Sending Fragments'
+  [METRIC_KEYS.SENDING_MESSAGES]: 'Sending Messages'
 };
 
 export const METRIC_GROUPS = {
