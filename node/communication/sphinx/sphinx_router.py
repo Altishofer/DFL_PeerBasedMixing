@@ -74,14 +74,12 @@ class SphinxRouter:
     def decrypt_surb(self, delta: bytes, surb_id):
         key = self.cache.received_surb(surb_id)
         msg = receive_surb(self._params, key, delta)
-        logging.debug(f"Resolved surb with message: {msg.decode()}")
         return msg
 
     @log_exceptions
     def _build_path_to(self, start, target, active_peers):
         intermediates = [nid for nid in active_peers if nid not in [start, target]]
         hops = SphinxRouter.secure_random_path(intermediates, self._max_hops)
-        # hops = SphinxRouter.secure_random_walk(start, active_peers, self._max_hops)
         return hops + [target]
 
     def process_incoming(self, data: bytes):

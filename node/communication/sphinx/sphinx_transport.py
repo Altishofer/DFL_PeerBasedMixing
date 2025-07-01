@@ -78,7 +78,7 @@ class SphinxTransport:
         peers = list(self._peer.active_peers())
         for peer_id in peers:
             self._mixer.push_to_outbox(
-                lambda: self.generate_path_and_send(message, peer_id, peers), 
+                lambda message=message, peer_id=peer_id : self.generate_path_and_send(message, peer_id, peers), 
                 lambda: metrics().increment(MetricField.FRAGMENTS_SENT))
         return len(peers)
 
@@ -101,7 +101,7 @@ class SphinxTransport:
                     self.sphinx_router.remove_cache_for_disconnected(fragment.target_node)
                 else:
                     self._mixer.push_to_outbox(
-                        lambda: self.generate_path_and_send(fragment.payload, fragment.target_node, self._peer.active_peers()), 
+                        lambda payload=fragment.payload, target_node=fragment.target_node: self.generate_path_and_send(payload, target_node, self._peer.active_peers()), 
                         lambda: metrics().increment(MetricField.RESENT))
             if len(stale) > 0:
                 logging.warning(f"Resent {len(stale)} unacked fragments.")
@@ -119,7 +119,7 @@ class SphinxTransport:
             await self._incoming_queue.put(msg)
         elif (msg["type"] == PackageType.COVER):
             metrics().increment(MetricField.COVERS_RECEIVED)
-            logging.debug(f"Dropping cover package.")
+            # logging.debug(f"Dropping cover package.")
         else:
             logging.warning(f"Unknown package type.")
 
@@ -132,7 +132,7 @@ class SphinxTransport:
 
     async def __send_surb(self, nymtuple):
         msg_bytes, first_hop = self.sphinx_router.create_surb_reply(nymtuple)
-        logging.debug("Sent SURB-based reply.")
+        # logging.debug("Sent SURB-based reply.")
         await self._peer.send_to_peer(first_hop, msg_bytes)
 
     @log_exceptions
@@ -155,13 +155,13 @@ class SphinxTransport:
     async def __handle_routing_decision(self, routing, header, delta, mac_key):
         if routing[0] == Relay_flag:
             self._mixer.push_to_outbox(
-                lambda: self._peer.send_to_peer(routing[1], pack_message(self._params, (header, delta))), 
+                lambda routing=routing[1], msg=pack_message(self._params, (header, delta)): self._peer.send_to_peer(routing, msg), 
                 lambda: metrics().increment(MetricField.FORWARDED))
         elif routing[0] == Dest_flag:
             _, msg = receive_forward(self._params, mac_key, delta)
             nymtuple = await self.__unpack_payload(msg)
             self._mixer.push_to_outbox(
-                lambda: self.__send_surb(nymtuple), 
+                lambda nymtuple=nymtuple: self.__send_surb(nymtuple), 
                 lambda: metrics().increment(MetricField.SURB_REPLIED))
         elif routing[0] == Surb_flag:
             metrics().increment(MetricField.SURB_RECEIVED)

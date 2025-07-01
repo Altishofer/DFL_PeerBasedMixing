@@ -57,15 +57,19 @@ class Mixer:
         self._cover_generator = cover_generator
         logging.info(f"Started mixer, enabled: {self._config['enabled']}, lambda: {self._config['lambda']}, shuffle: {self._config['shuffle']}")
 
+
+    def __shuffle_outbox(self):
+        for i in reversed(range(1, len(self._outbox))):
+            j = secrets.randbelow(i + 1)  # cryptographically secure random index
+            self._outbox[i], self._outbox[j] = self._outbox[j], self._outbox[i]
+        return self._outbox
+
     def push_to_outbox(self, msg_coroutine : Awaitable, update_metrics: Callable):
         queue_obj = QueueObject(msg_coroutine, update_metrics)
-        
-        idx = 0
-        if self._config["shuffle"] and not self.queue_is_empty():
-            idx = secrets.randbelow(len(self._outbox) + 1)
+        self._outbox.append(queue_obj)
 
-        logging.debug(f"inserted into queue of length: {len(self._outbox)}, at index: {idx}")
-        self._outbox.insert(idx, queue_obj)
+        if self._config["shuffle"]:
+            self.__shuffle_outbox()
 
     def queue_is_empty(self):
         return len(self._outbox) == 0
