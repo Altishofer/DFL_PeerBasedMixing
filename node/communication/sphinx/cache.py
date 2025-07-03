@@ -43,7 +43,6 @@ class Cache:
         to_delete = [surb_id for surb_id, fragment in self.cache.items() if fragment.target_node == target_node]
         for surb_id in to_delete:
             del self.cache[surb_id]
-        logging.debug(f"Deleted {len(to_delete)} fragments for node {target_node}.")
         return len(to_delete)
 
     @log_exceptions

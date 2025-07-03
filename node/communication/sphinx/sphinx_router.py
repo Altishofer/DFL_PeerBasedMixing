@@ -34,7 +34,8 @@ class SphinxRouter:
 
     @log_exceptions
     def remove_cache_for_disconnected(self, target_node):
-        self.cache.delete_cache_for_node(target_node)
+        n_deleted = self.cache.delete_cache_for_node(target_node)
+        logging.warning(f"Deleted {n_deleted} fragments for node {target_node}.")
 
     @log_exceptions
     def create_forward_msg(self, target_node, payload, active_peers):
