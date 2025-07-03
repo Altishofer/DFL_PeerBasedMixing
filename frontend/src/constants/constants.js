@@ -1,5 +1,3 @@
-import {MetricField} from "../components/Dashboard/MetricSelection";
-
 export const API_BASE_URL = 'http://localhost:8000';
 export const WS_BASE_URL = 'http://localhost:8000';
 
@@ -7,8 +5,6 @@ export const CHART_PALETTE = [
   '#3182CE', '#38A169', '#DD6B20', '#805AD5',
   '#E53E3E', '#D69E2E', '#319795', '#00B5D8'
 ];
-
-export const MAX_NODES = 10;
 
 export const METRIC_KEYS = {
   TOTAL_SENT: 'total_sent',
@@ -27,12 +23,7 @@ export const METRIC_KEYS = {
   AGGREGATED_ACCURACY: 'aggregated_accuracy',
   CPU_TOTAL_NS: 'cpu_total_ns',
   MEMORY_MB: 'memory_mb',
-  ACTIVE_PEERS: 'active_peers',
-  COVERS_SENT: 'covers_sent',
-  COVERS_RECEIVED: "covers_received",
-  OUT_INTERVAL: 'out_interval',
-  SENDING_COVERS: 'sending_covers',
-  SENDING_MESSAGES: 'sending_messages'
+  ACTIVE_PEERS: 'active_peers'
 };
 
 export const METRIC_FIELDS = {
@@ -53,11 +44,6 @@ export const METRIC_FIELDS = {
   [METRIC_KEYS.CPU_TOTAL_NS]: 'CPU Total Ns',
   [METRIC_KEYS.MEMORY_MB]: 'Memory (MB)',
   [METRIC_KEYS.ACTIVE_PEERS]: 'Active Peers',
-  [METRIC_KEYS.COVERS_SENT]: 'Covers Sent',
-  [METRIC_KEYS.COVERS_RECEIVED]: 'Covers Received',
-  [METRIC_KEYS.OUT_INTERVAL]: 'Outgoing Interval',
-  [METRIC_KEYS.SENDING_COVERS]: 'Sending Covers',
-  [METRIC_KEYS.SENDING_MESSAGES]: 'Sending Messages'
 };
 
 export const METRIC_GROUPS = {
@@ -74,16 +60,9 @@ export const METRIC_GROUPS = {
     METRIC_KEYS.ACTIVE_PEERS
   ],
   Mixnet: [
-    METRIC_KEYS.FRAGMENTS_SENT,
-    METRIC_KEYS.COVERS_SENT,
-    METRIC_KEYS.COVERS_RECEIVED,
     METRIC_KEYS.FORWARDED,
     METRIC_KEYS.SURB_REPLIED,
-    METRIC_KEYS.SURB_RECEIVED,
-    METRIC_KEYS.SENDING_COVERS,
-    METRIC_KEYS.SENDING_FRAGMENTS,
-    METRIC_KEYS.MIX_DELAY,
-    METRIC_KEYS.OUT_INTERVAL,
+    METRIC_KEYS.SURB_RECEIVED
   ],
   Errors: [METRIC_KEYS.ERRORS],
   Learning: [

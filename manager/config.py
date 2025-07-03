@@ -11,11 +11,8 @@ class Settings:
     SUBNET = "192.168.0.0/24"
     GATEWAY = "192.168.0.254"
     METRICS_INTERVAL = 3
-    FLUSH_INTERVAL = 1
     SECRETS_PATH = os.path.abspath("./secrets")
     NODE_PATH = os.path.abspath("./node")
-    N_ROUNDS: int = 10
-    N_NODES: int = 5
 
     def __init__(self):
         self.METRICS_DIR.mkdir(exist_ok=True)

@@ -32,6 +32,15 @@ class MetricField(Enum):
     SENDING_COVERS = "sending_covers"
     SENDING_MESSAGES = "sending_messages"
 
+    STAGE = "stage"
+    """
+      Training: 1,
+      Broadcasting: 2
+      Validation: 3
+      Collection: 4
+      Aggregation: 5
+    """
+
 
 _metrics_instance = None
 
@@ -62,7 +71,7 @@ class Metrics:
         with self._data_lock:
             self._data[field] += amount
 
-    def set(self, field: MetricField, value):
+    def set(self, field: MetricField, value: int | str):
         with self._data_lock:
             self._data[field] = value
 

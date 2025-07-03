@@ -11,3 +11,4 @@ manager/metrics
 *.jsonl
 *.msgpack
 metrics/
+*.csv

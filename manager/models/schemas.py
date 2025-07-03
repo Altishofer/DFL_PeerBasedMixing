@@ -10,7 +10,7 @@ class NodeStatus(BaseModel):
 class MetricPoint(BaseModel):
     timestamp: str
     field: str
-    value: float
+    value: float | str
     node: str
 
 @dataclass

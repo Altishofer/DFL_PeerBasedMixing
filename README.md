@@ -178,3 +178,50 @@ sudo snap remove --purge docker
 https://docs.docker.com/engine/install/ubuntu/
 
 uvicorn app:app  --host 0.0.0.0 --port 8000 --workers 1
+
+
+
+
+# Experiments
+
+## Time per scenario
+- y: time per whole scenario
+- x: delay in seconds
+
+## CPU utilization per state (training, waiting, aggregating, broadcasting)
+- y: Total CPU time per stage
+- x:
+  - number of batches
+  - number of nodes
+  - number of hops
+
+
+## Memory utilization per state (training, waiting, aggregating, broadcasting)
+- y: RTT
+- x:
+  - delay in seconds
+  - number of hops
+- compute data rate with same data
+
+## Transmission size comparison between encrypted and raw payload
+- y: size in bytes
+- x:
+  - number of hops
+
+## Number of forwardings 
+- y: number of forwardings
+- x:
+  - number of hops
+  - number of nodes
+
+## Aggregated Accuracy (show that framework works, fragment base FedAvg)
+- y: accuracy
+- x: dirichlet distribution
+
+
+## Exit and joining nodes
+- y: active nodes, number of resent packets, number of lost packets, number of dropped unacked message
+- x: time
+- show that mixnet is resilient to node exits and joins
+
+
