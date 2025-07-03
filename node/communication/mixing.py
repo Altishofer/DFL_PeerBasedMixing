@@ -20,12 +20,6 @@ class Mixer:
         self._cover_generator = None
         self._outbox_loop = None
         self._config = node_config
-        # self._config = {
-        #     "enabled": enabled,
-        #     "lambda": mix_lambda,
-        #     "shuffle": shuffle,
-        #     "nr_cover_bytes": 100,
-        # } ode_config.mix_enabled, node_config.mix_lambda, node_config.mix_shuffle
 
     # inverse transform sampling of exponential distribution
     @staticmethod
@@ -37,7 +31,7 @@ class Mixer:
     
     @log_exceptions
     async def __outbox_loop(self):
-        while (True):
+        while True:
             interval = 0
             if self._config.mix_enabled:
                 interval = Mixer.secure_exponential(self._config.mix_lambda)
@@ -60,7 +54,6 @@ class Mixer:
         self._cover_generator = cover_generator
         logging.info(f"Started mixer, enabled: {self._config.mix_enabled}, lambda: {self._config.mix_lambda}, shuffle: {self._config.mix_shuffle}, nr_cover_bytes: {self._config.nr_cover_bytes}")
 
-
     def __shuffle_outbox(self):
         for i in reversed(range(1, len(self._outbox))):
             j = secrets.randbelow(i + 1)  # cryptographically secure random index
@@ -78,7 +71,7 @@ class Mixer:
         return len(self._outbox) == 0
 
     def __udpdate_message_metric(self, sending_covers):
-        if (sending_covers):
+        if sending_covers:
             metrics().increment(MetricField.COVERS_SENT)
         metrics().set(MetricField.SENDING_COVERS, 1 if sending_covers else 0)
         metrics().set(MetricField.SENDING_MESSAGES, 0 if sending_covers else 1)

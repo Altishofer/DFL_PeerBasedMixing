@@ -11,6 +11,7 @@ from sphinxmix.SphinxNode import sphinx_process
 
 from communication.sphinx.cache import Cache
 from communication.sphinx.key_store import KeyStore
+from metrics.node_metrics import metrics, MetricField
 from utils.config_store import ConfigStore
 from utils.exception_decorator import log_exceptions
 
@@ -35,6 +36,7 @@ class SphinxRouter:
     @log_exceptions
     def remove_cache_for_disconnected(self, target_node):
         n_deleted = self.cache.delete_cache_for_node(target_node)
+        metrics().increment(MetricField.DELETED_CACHE_FOR_INACTIVE, n_deleted)
         logging.warning(f"Deleted {n_deleted} fragments for node {target_node}.")
 
     @log_exceptions
@@ -96,6 +98,7 @@ class SphinxRouter:
         return routing, header, delta, mac_key
     
     # secure random path that cannot revisit nodes or edges
+    @staticmethod
     def secure_random_path(nodes, max_path_length):
         path_length = secrets.randbelow(min(max_path_length, len(nodes)) + 1)
         nodes = list(nodes)

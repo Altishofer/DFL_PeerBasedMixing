@@ -79,6 +79,7 @@ class Learner:
 
             log_header(f"Finished Round {self._current_round}")
             logging.info(f"Finished in {time.time() - start:.0f}s")
+            metrics().set(MetricField.ROUND_TIME, time.time() - start)
             start = time.time()
 
         logging.info(f"Completed all {self._total_rounds} training rounds")

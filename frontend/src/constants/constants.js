@@ -23,7 +23,9 @@ export const METRIC_KEYS = {
   AGGREGATED_ACCURACY: 'aggregated_accuracy',
   CPU_TOTAL_NS: 'cpu_total_ns',
   MEMORY_MB: 'memory_mb',
-  ACTIVE_PEERS: 'active_peers'
+  ACTIVE_PEERS: 'active_peers',
+  DELETED_CACHE_FOR_INACTIVE: 'deleted_cache_for_inactive',
+  ROUND_TIME: 'round_time'
 };
 
 export const METRIC_FIELDS = {
@@ -44,6 +46,8 @@ export const METRIC_FIELDS = {
   [METRIC_KEYS.CPU_TOTAL_NS]: 'CPU Total Ns',
   [METRIC_KEYS.MEMORY_MB]: 'Memory (MB)',
   [METRIC_KEYS.ACTIVE_PEERS]: 'Active Peers',
+  [METRIC_KEYS.DELETED_CACHE_FOR_INACTIVE]: 'deleted_cache_for_inactive',
+  [METRIC_KEYS.ROUND_TIME]: 'round_time'
 };
 
 export const METRIC_GROUPS = {
@@ -64,11 +68,15 @@ export const METRIC_GROUPS = {
     METRIC_KEYS.SURB_REPLIED,
     METRIC_KEYS.SURB_RECEIVED
   ],
-  Errors: [METRIC_KEYS.ERRORS],
+  Miscellaneous: [
+      METRIC_KEYS.ERRORS,
+      METRIC_KEYS.DELETED_CACHE_FOR_INACTIVE
+  ],
   Learning: [
     METRIC_KEYS.ACCURACY,
     METRIC_KEYS.AGGREGATED_ACCURACY,
-    METRIC_KEYS.CURRENT_ROUND
+    METRIC_KEYS.CURRENT_ROUND,
+    METRIC_KEYS.ROUND_TIME
   ]
 };
 
