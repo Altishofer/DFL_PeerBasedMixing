@@ -2,6 +2,9 @@ import math
 import secrets
 import asyncio
 import logging
+
+from models.schemas import NodeConfig
+from utils.config_store import ConfigStore
 from utils.exception_decorator import log_exceptions
 from metrics.node_metrics import metrics, MetricField
 from dataclasses import dataclass
@@ -13,16 +16,17 @@ class QueueObject:
     update_metrics: Callable
 
 class Mixer:
-    def __init__(self, enabled, mix_lambda, shuffle):
+    def __init__(self, node_config:ConfigStore):
         self._outbox = []
         self._cover_generator = None
         self._outbox_loop = None
-        self._config = {
-            "enabled": enabled,
-            "lambda": mix_lambda, 
-            "shuffle": shuffle,
-            "nr_cover_bytes": 100,
-        }
+        self._config = node_config
+        # self._config = {
+        #     "enabled": enabled,
+        #     "lambda": mix_lambda,
+        #     "shuffle": shuffle,
+        #     "nr_cover_bytes": 100,
+        # } ode_config.mix_enabled, node_config.mix_lambda, node_config.mix_shuffle
 
     # inverse transform sampling of exponential distribution
     @staticmethod
@@ -36,8 +40,8 @@ class Mixer:
     async def __outbox_loop(self):
         while (True):
             interval = 0
-            if self._config["enabled"]:
-                interval = Mixer.secure_exponential(self._config["lambda"])
+            if self._config.mix_enabled:
+                interval = Mixer.secure_exponential(self._config.mix_lambda)
             await asyncio.sleep(interval)
             metrics().set(MetricField.OUT_INTERVAL, interval)
             if not self.queue_is_empty():
@@ -45,7 +49,7 @@ class Mixer:
                 await queue_obj.send_message()
                 queue_obj.update_metrics()
                 self.__udpdate_message_metric(sending_covers=False)
-            elif self.queue_is_empty() and self._config["enabled"]:
+            elif self.queue_is_empty() and self._config.mix_enabled:
                 if self._cover_generator != None:
                     await self._cover_generator(nr_bytes=self._config["nr_cover_bytes"])
                     self.__udpdate_message_metric(sending_covers=True)
@@ -55,7 +59,7 @@ class Mixer:
     async def start(self, cover_generator: Callable):
         self._outbox_loop = asyncio.create_task(self.__outbox_loop())
         self._cover_generator = cover_generator
-        logging.info(f"Started mixer, enabled: {self._config['enabled']}, lambda: {self._config['lambda']}, shuffle: {self._config['shuffle']}")
+        logging.info(f"Started mixer, enabled: {self._config.mix_enabled}, lambda: {self._config.mix_lambda}, shuffle: {self._config.mix_shuffle}, nr_cover_bytes: {self._config.nr_cover_bytes}")
 
 
     def __shuffle_outbox(self):
@@ -68,7 +72,7 @@ class Mixer:
         queue_obj = QueueObject(msg_coroutine, update_metrics)
         self._outbox.append(queue_obj)
 
-        if self._config["shuffle"]:
+        if self._config.mix_shuffle:
             self.__shuffle_outbox()
 
     def queue_is_empty(self):

@@ -20,3 +20,4 @@ class ConfigStore:
     mix_enabled: bool = True
     mix_lambda: float = 0.05
     mix_shuffle: bool = True
+    nr_cover_bytes: int = 100
