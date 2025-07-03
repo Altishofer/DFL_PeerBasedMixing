@@ -63,3 +63,8 @@ class Cache:
             self.cache[fragment.surb_id].acked = True  # Mark as acked to prevent resending
         logging.info(f"{self.in_counter=}, {self.out_counter=}, {len(to_resend)=}, {len(self.cache)=}")
         return to_resend
+
+    @log_exceptions
+    async def all_acked(self):
+        return not [fragment for fragment in self.cache.values() if not fragment.acked]
+

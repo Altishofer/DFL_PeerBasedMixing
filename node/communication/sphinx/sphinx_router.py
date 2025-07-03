@@ -25,6 +25,10 @@ class SphinxRouter:
         self._surb_key_store = {}
 
     @log_exceptions
+    async def all_acked(self):
+        return await self.cache.all_acked()
+
+    @log_exceptions
     def get_older_than(self, time_s: int):
         return self.cache.get_older_than(time_s)
 

@@ -50,6 +50,10 @@ class SphinxTransport:
         self._seen_hashes = set()
         # asyncio.create_task(self.resend_loop())
 
+    @log_exceptions
+    async def all_acked(self):
+        return await self.sphinx_router.all_acked()
+
     def active_nodes(self):
         return len(self._peer.active_peers())
 

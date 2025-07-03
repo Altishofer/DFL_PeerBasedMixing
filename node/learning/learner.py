@@ -60,7 +60,10 @@ class Learner:
 
             log_header(f"Awaiting Model Chunks from Peers ({ConfigStore.timeout_model_collection}s).")
             metrics().set(MetricField.STAGE, 4)
-            await asyncio.sleep(ConfigStore.timeout_model_collection)
+
+            await self._message_manager.wait_until_all_acked(timeout=ConfigStore.timeout_model_collection)
+
+
             model_chunks, highest_peer_round = self._message_manager.collect_models()
 
             log_header(f"Aggregating {len(model_chunks)} Model Chunks.")
