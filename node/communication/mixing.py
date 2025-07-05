@@ -3,6 +3,7 @@ import secrets
 import asyncio
 import logging
 
+from utils.logging_config import log_header
 from utils.config_store import ConfigStore
 from utils.exception_decorator import log_exceptions
 from metrics.node_metrics import metrics, MetricField
@@ -27,7 +28,9 @@ class Mixer:
         u = int.from_bytes(secrets.token_bytes(7), "big") / 2**56
         if q == 0:
             q = 0.0001
-        return -math.log(1 - u) / (1/q)
+        sleep_time = -math.log(1 - u) / (1/q)
+        # logging.warning(f"Secure exponential sleep time: {sleep_time} seconds")
+        return sleep_time
     
     @log_exceptions
     async def __outbox_loop(self):
@@ -44,7 +47,7 @@ class Mixer:
                 self.__udpdate_message_metric(sending_covers=False)
             elif self.queue_is_empty() and self._config.mix_enabled:
                 if self._cover_generator != None:
-                    await self._cover_generator(nr_bytes=self._config["nr_cover_bytes"])
+                    await self._cover_generator(nr_bytes=self._config.nr_cover_bytes)
                     self.__udpdate_message_metric(sending_covers=True)
                 else:
                     logging.warning("No cover generator specified in mixer")
@@ -52,7 +55,11 @@ class Mixer:
     async def start(self, cover_generator: Callable):
         self._outbox_loop = asyncio.create_task(self.__outbox_loop())
         self._cover_generator = cover_generator
-        logging.info(f"Started mixer, enabled: {self._config.mix_enabled}, lambda: {self._config.mix_lambda}, shuffle: {self._config.mix_shuffle}, nr_cover_bytes: {self._config.nr_cover_bytes}")
+        log_header("Peer-Based Mixer")
+        logging.info(f"Enabled: {self._config.mix_enabled}")
+        logging.info(f"Lambda: {self._config.mix_lambda}")
+        logging.info(f"Shuffle: {self._config.mix_shuffle}")
+        logging.info(f"N Cover Bytes: {self._config.nr_cover_bytes}")
 
     def __shuffle_outbox(self):
         for i in reversed(range(1, len(self._outbox))):

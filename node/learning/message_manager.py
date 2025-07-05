@@ -35,14 +35,14 @@ class MessageManager:
         msg = PackageHelper.format_model_package(current_round, chunk_idx, chunk, n_chunks)
         return self._transport.send_to_peers(msg)
 
-    async def wait_until_all_acked(self, timeout):
+    async def wait_until_all_acked(self, timeout: int):
         try:
-            with asyncio.timeout(timeout):
-                while not await self._transport.all_acked():
+            async with asyncio.timeout(timeout):
+                while not await self._transport.transport_all_acked():
                     await asyncio.sleep(1)
                 logging.info("Early stopping, all SURBS received.")
-        except TimeoutError:
-            logging.warning(f"Timeout of {timeout} was reached while waiting for SURBS.")
+        except asyncio.TimeoutError:
+            logging.warning(f"Timeout of {timeout}s was reached while waiting for SURBS.")
 
     @log_exceptions
     def collect_models(self):

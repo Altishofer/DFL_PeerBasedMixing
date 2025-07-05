@@ -5,6 +5,7 @@ from enum import Enum
 class PackageType(Enum):
     MODEL_PART = 1
     COVER = 2
+    ROUND_FINISHED = 3
 
 class PackageHelper:
     @staticmethod
@@ -15,6 +16,13 @@ class PackageHelper:
             "part_idx": chunk_idx,
             "total_parts": n_chunks,
             "content": chunk
+        }
+
+    @staticmethod
+    def format_round_finished_package():
+        return {
+            "type": PackageType.ROUND_FINISHED,
+            "content": None
         }
     
     @staticmethod

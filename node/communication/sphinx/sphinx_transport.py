@@ -48,11 +48,15 @@ class SphinxTransport:
 
         self._incoming_queue = asyncio.Queue()
         self._seen_hashes = set()
-        # asyncio.create_task(self.resend_loop())
+        asyncio.create_task(self.resend_loop())
 
     @log_exceptions
-    async def all_acked(self):
-        return await self.sphinx_router.all_acked()
+    async def reset_all_finished(self):
+        self._n_finished = 0
+
+    @log_exceptions
+    async def transport_all_acked(self):
+        return await self.sphinx_router.router_all_acked()
 
     def active_nodes(self):
         return len(self._peer.active_peers())
@@ -119,9 +123,9 @@ class SphinxTransport:
         self._seen_hashes.add(msg_hash)
         
         msg = PackageHelper.deserialize_msg(payload)
-        if (msg["type"] == PackageType.MODEL_PART):
+        if msg["type"] == PackageType.MODEL_PART:
             await self._incoming_queue.put(msg)
-        elif (msg["type"] == PackageType.COVER):
+        elif msg["type"] == PackageType.COVER:
             metrics().increment(MetricField.COVERS_RECEIVED)
             # logging.debug(f"Dropping cover package.")
         else:

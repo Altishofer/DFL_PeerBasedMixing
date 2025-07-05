@@ -43,11 +43,11 @@ export const METRIC_FIELDS = {
   [METRIC_KEYS.CURRENT_ROUND]: 'Current Round',
   [METRIC_KEYS.ACCURACY]: 'Training Accuracy',
   [METRIC_KEYS.AGGREGATED_ACCURACY]: 'Aggregated Accuracy',
-  [METRIC_KEYS.CPU_TOTAL_NS]: 'CPU Total Ns',
+  [METRIC_KEYS.CPU_TOTAL_NS]: 'CPU Total (Ns)',
   [METRIC_KEYS.MEMORY_MB]: 'Memory (MB)',
   [METRIC_KEYS.ACTIVE_PEERS]: 'Active Peers',
-  [METRIC_KEYS.DELETED_CACHE_FOR_INACTIVE]: 'deleted_cache_for_inactive',
-  [METRIC_KEYS.ROUND_TIME]: 'round_time'
+  [METRIC_KEYS.DELETED_CACHE_FOR_INACTIVE]: 'Deleted Cache for Inactive Peers',
+  [METRIC_KEYS.ROUND_TIME]: 'Time per Round (s)'
 };
 
 export const METRIC_GROUPS = {
