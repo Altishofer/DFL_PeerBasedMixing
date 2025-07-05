@@ -88,7 +88,8 @@ class SphinxTransport:
 
     @log_exceptions
     async def generate_path_and_send(self, message, target_node: int, peers: list):
-        payload = PackageHelper.serialize_msg(message)
+        # payload = PackageHelper.serialize_msg(message)
+        payload = message
         path, msg_bytes = self.sphinx_router.create_forward_msg(target_node, payload, peers)
         await self._peer.send_to_peer(path[0], msg_bytes)
 
@@ -106,7 +107,8 @@ class SphinxTransport:
                 else:
                     self._mixer.push_to_outbox(
                         lambda payload=fragment.payload, target_node=fragment.target_node: self.generate_path_and_send(payload, target_node, self._peer.active_peers()), 
-                        lambda: metrics().increment(MetricField.RESENT))
+                        lambda: metrics().increment(MetricField.RESENT)
+                    )
             if len(stale) > 0:
                 logging.warning(f"Resent {len(stale)} unacked fragments.")
             await asyncio.sleep(ConfigStore.resend_time)
@@ -118,7 +120,8 @@ class SphinxTransport:
             return
         self._seen_hashes.add(msg_hash)
         
-        msg = PackageHelper.deserialize_msg(payload)
+        # msg = PackageHelper.deserialize_msg(payload)
+        msg = payload
         if msg["type"] == PackageType.MODEL_PART:
             await self._incoming_queue.put(msg)
         elif msg["type"] == PackageType.COVER:
