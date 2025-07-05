@@ -19,13 +19,6 @@ class PackageHelper:
         }
 
     @staticmethod
-    def format_round_finished_package():
-        return {
-            "type": PackageType.ROUND_FINISHED,
-            "content": None
-        }
-    
-    @staticmethod
     def format_cover_package(content):
         return {
             "type": PackageType.COVER,

@@ -51,10 +51,6 @@ class SphinxTransport:
         asyncio.create_task(self.resend_loop())
 
     @log_exceptions
-    async def reset_all_finished(self):
-        self._n_finished = 0
-
-    @log_exceptions
     async def transport_all_acked(self):
         return await self.sphinx_router.router_all_acked()
 
