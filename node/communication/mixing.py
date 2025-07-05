@@ -29,8 +29,8 @@ class Mixer:
         if q == 0:
             q = 0.0001
         sleep_time = -math.log(1 - u) / (1/q)
-        # logging.warning(f"Secure exponential sleep time: {sleep_time} seconds")
-        return sleep_time
+        # logging.warning(f"Secure exponential sleep time: {sleep_time} seconds, max_rate = {1 / sleep_time}")
+        return max(sleep_time, 1)
     
     @log_exceptions
     async def __outbox_loop(self):

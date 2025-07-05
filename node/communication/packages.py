@@ -5,7 +5,6 @@ from enum import Enum
 class PackageType(Enum):
     MODEL_PART = 1
     COVER = 2
-    ROUND_FINISHED = 3
 
 class PackageHelper:
     @staticmethod

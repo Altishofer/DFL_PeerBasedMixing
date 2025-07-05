@@ -60,7 +60,7 @@ class Cache:
         to_resend = [fragment for fragment in self.cache.values() if fragment.timestamp < cutoff and not fragment.acked]
         for fragment in to_resend:
             self.cache[fragment.surb_id].acked = True  # Mark as acked to prevent resending
-        # logging.info(f"{self.in_counter=}, {self.out_counter=}, {len(to_resend)=}, {len(self.cache)=}")
+        logging.info(f"{self.in_counter=}, {self.out_counter=}, {len(to_resend)=}, {len(self.cache)=}")
         return to_resend
 
     @log_exceptions
@@ -68,4 +68,3 @@ class Cache:
         unacked_fragments = [fragment for fragment in self.cache.values() if not fragment.acked]
         logging.debug(f"Unacked fragments: {len(unacked_fragments)}")
         return not unacked_fragments
-
