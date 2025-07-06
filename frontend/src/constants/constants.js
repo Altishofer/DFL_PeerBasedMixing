@@ -25,7 +25,13 @@ export const METRIC_KEYS = {
   MEMORY_MB: 'memory_mb',
   ACTIVE_PEERS: 'active_peers',
   DELETED_CACHE_FOR_INACTIVE: 'deleted_cache_for_inactive',
-  ROUND_TIME: 'round_time'
+  ROUND_TIME: 'round_time',
+  COVERS_SENT: 'covers_sent',
+  COVERS_RECEIVED: 'covers_received',
+  OUT_INTERVAL: 'out_interval',
+  SENDING_COVERS: 'sending_covers',
+  SENDING_MESSAGES: 'sending_messages',
+  STAGE: 'stage'
 };
 
 export const METRIC_FIELDS = {
@@ -47,7 +53,13 @@ export const METRIC_FIELDS = {
   [METRIC_KEYS.MEMORY_MB]: 'Memory (MB)',
   [METRIC_KEYS.ACTIVE_PEERS]: 'Active Peers',
   [METRIC_KEYS.DELETED_CACHE_FOR_INACTIVE]: 'Deleted Cache for Inactive Peers',
-  [METRIC_KEYS.ROUND_TIME]: 'Time per Round (s)'
+  [METRIC_KEYS.ROUND_TIME]: 'Time per Round (s)',
+  [METRIC_KEYS.COVERS_SENT]: 'Covers Sent',
+  [METRIC_KEYS.COVERS_RECEIVED]: 'Covers Received',
+  [METRIC_KEYS.OUT_INTERVAL]: 'Outgoing Interval',
+  [METRIC_KEYS.SENDING_COVERS]: 'Sending Covers',
+  [METRIC_KEYS.SENDING_MESSAGES]: 'Sending Messages',
+  [METRIC_KEYS.STAGE]: 'Stage'
 };
 
 export const METRIC_GROUPS = {
@@ -66,17 +78,23 @@ export const METRIC_GROUPS = {
   Mixnet: [
     METRIC_KEYS.FORWARDED,
     METRIC_KEYS.SURB_REPLIED,
-    METRIC_KEYS.SURB_RECEIVED
+    METRIC_KEYS.SURB_RECEIVED,
+    METRIC_KEYS.COVERS_SENT,
+    METRIC_KEYS.COVERS_RECEIVED
   ],
   Miscellaneous: [
-      METRIC_KEYS.ERRORS,
-      METRIC_KEYS.DELETED_CACHE_FOR_INACTIVE
+    METRIC_KEYS.ERRORS,
+    METRIC_KEYS.DELETED_CACHE_FOR_INACTIVE,
+    METRIC_KEYS.OUT_INTERVAL,
+    METRIC_KEYS.SENDING_COVERS,
+    METRIC_KEYS.SENDING_MESSAGES
   ],
   Learning: [
     METRIC_KEYS.ACCURACY,
     METRIC_KEYS.AGGREGATED_ACCURACY,
     METRIC_KEYS.CURRENT_ROUND,
-    METRIC_KEYS.ROUND_TIME
+    METRIC_KEYS.ROUND_TIME,
+    METRIC_KEYS.STAGE
   ]
 };
 
