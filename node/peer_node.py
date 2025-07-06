@@ -14,7 +14,7 @@ class PeerNode:
             for i in range(node_config.n_nodes)
         }
 
-        self._mixer = Mixer(node_config.mix_enabled, node_config.mix_lambda, node_config.mix_shuffle)
+        self._mixer = Mixer(node_config)
         self._transport = SphinxTransport(node_config.node_id, node_config.port, peers, self._mixer)
         self._learning = Learner(node_config, self._transport)
 

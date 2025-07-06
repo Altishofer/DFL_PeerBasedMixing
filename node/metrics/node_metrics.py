@@ -31,6 +31,8 @@ class MetricField(Enum):
     OUT_INTERVAL = "out_interval"
     SENDING_COVERS = "sending_covers"
     SENDING_MESSAGES = "sending_messages"
+    DELETED_CACHE_FOR_INACTIVE = "deleted_cache_for_inactive"
+    ROUND_TIME = "round_time"
 
     STAGE = "stage"
     """
