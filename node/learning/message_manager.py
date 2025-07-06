@@ -17,7 +17,6 @@ class MessageManager:
                 logging.info("Received 200 fragments from each active node.")
         except asyncio.TimeoutError:
             logging.warning(f"Timeout of {timeout}s was reached while waiting for SURBS.")
-        await asyncio.sleep(timeout)
 
     @log_exceptions
     def chunks(self):

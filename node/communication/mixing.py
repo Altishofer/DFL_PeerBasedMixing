@@ -2,6 +2,7 @@ import math
 import secrets
 import asyncio
 import logging
+from collections import deque
 
 from utils.logging_config import log_header
 from utils.config_store import ConfigStore
@@ -19,7 +20,7 @@ class QueueObject:
 
 class Mixer:
     def __init__(self, node_config: ConfigStore):
-        self._outbox = []
+        self._outbox = deque()
         self._cover_generator = None
         self._outbox_loop = None
         self._config = node_config
@@ -43,7 +44,7 @@ class Mixer:
             await asyncio.sleep(interval)
             metrics().set(MetricField.OUT_INTERVAL, interval)
             if not self.queue_is_empty():
-                queue_obj = self._outbox.pop()
+                queue_obj = self._outbox.popleft()
                 await queue_obj.send_message()
                 queue_obj.update_metrics()
                 self.__udpdate_message_metric(sending_covers=False)
@@ -64,10 +65,10 @@ class Mixer:
         logging.info(f"N Cover Bytes: {self._config.nr_cover_bytes}")
 
     def __shuffle_outbox(self, n=20):
-        n = min(n, len(self._outbox))
-        for i in reversed(range(1, n)):
-            j = secrets.randbelow(i + 1)  # cryptographically secure random index
-            self._outbox[i], self._outbox[j] = self._outbox[j], self._outbox[i]
+        # n = min(n, len(self._outbox))
+        # for i in reversed(range(1, n)):
+        #     j = secrets.randbelow(i + 1)  # cryptographically secure random index
+        #     self._outbox[i], self._outbox[j] = self._outbox[j], self._outbox[i]
         return self._outbox
 
     def push_to_outbox(self, msg_coroutine: Awaitable, update_metrics: Callable):
