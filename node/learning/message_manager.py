@@ -9,6 +9,16 @@ class MessageManager:
         self._transport = transport
         self._model_handler = model_handler
 
+    async def wait_until_all_acked(self, timeout: int):
+        try:
+            async with asyncio.timeout(timeout):
+                while not self._transport.len_incoming_queue() == 200 * self._transport.active_nodes():
+                    await asyncio.sleep(1)
+                logging.info("Received 200 fragments from each active node.")
+        except asyncio.TimeoutError:
+            logging.warning(f"Timeout of {timeout}s was reached while waiting for SURBS.")
+        await asyncio.sleep(timeout)
+
     @log_exceptions
     def chunks(self):
         chunks = self._model_handler.create_chunks()

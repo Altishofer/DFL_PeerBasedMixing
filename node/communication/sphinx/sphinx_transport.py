@@ -50,6 +50,9 @@ class SphinxTransport:
         self._seen_hashes = set()
         # asyncio.create_task(self.resend_loop())
 
+    def len_incoming_queue(self):
+        return self._incoming_queue.qsize()
+
     def active_nodes(self):
         return len(self._peer.active_peers())
 
