@@ -3,10 +3,10 @@ import logging
 from utils.exception_decorator import log_exceptions
 
 LOG_COLORS = {
-    'DEBUG': '\033[96;1m',    # Bright cyan bold
-    'INFO': '\033[97;1m',     # Bright white bold
-    'WARNING': '\033[95;1m',  # Bright magenta bold
-    'ERROR': '\033[91;1m',    # Bright red bold
+    'DEBUG': '\033[96;1m',
+    'INFO': '\033[97;1m',
+    'WARNING': '\033[95;1m',
+    'ERROR': '\033[91;1m',
 }
 RESET = '\033[0m'
 

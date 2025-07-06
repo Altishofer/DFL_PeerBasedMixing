@@ -36,13 +36,17 @@ class MessageManager:
         return self._transport.send_to_peers(msg)
 
     async def wait_until_all_acked(self, timeout: int):
-        try:
-            async with asyncio.timeout(timeout):
-                while not await self._transport.transport_all_acked():
-                    await asyncio.sleep(1)
-                logging.info("Early stopping, all SURBS received.")
-        except asyncio.TimeoutError:
-            logging.warning(f"Timeout of {timeout}s was reached while waiting for SURBS.")
+        # try:
+        #     async with asyncio.timeout(timeout):
+        #         while not await self._transport.transport_all_acked():
+        #             await asyncio.sleep(1)
+        #         logging.info("All SURBS received.")
+        #         while not self._transport.len_incoming_queue() == 200 * self._transport.active_nodes():
+        #             await asyncio.sleep(1)
+        #         logging.info("Received 200 fragments from each active node.")
+        # except asyncio.TimeoutError:
+        #     logging.warning(f"Timeout of {timeout}s was reached while waiting for SURBS.")
+        await asyncio.sleep(timeout)
 
     @log_exceptions
     def collect_models(self):

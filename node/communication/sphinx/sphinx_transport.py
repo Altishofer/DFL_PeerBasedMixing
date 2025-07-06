@@ -48,7 +48,7 @@ class SphinxTransport:
 
         self._incoming_queue = asyncio.Queue()
         self._seen_hashes = set()
-        asyncio.create_task(self.resend_loop())
+        # asyncio.create_task(self.resend_loop())
 
     @log_exceptions
     async def transport_all_acked(self):
@@ -60,14 +60,15 @@ class SphinxTransport:
     async def close_all_connections(self):
         await self._peer.close_all_connections()
 
+    def len_incoming_queue(self):
+        return self._incoming_queue.qsize()
+
     def get_all_fragments(self):
-        fragments = []
         while not self._incoming_queue.empty():
             try:
-                fragments.append(self._incoming_queue.get_nowait())
+                yield self._incoming_queue.get_nowait()
             except QueueEmpty:
                 break
-        return fragments
 
     @log_exceptions
     async def start(self):
