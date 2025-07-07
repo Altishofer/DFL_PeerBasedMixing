@@ -2,6 +2,7 @@ import math
 import secrets
 import asyncio
 import logging
+import time
 
 from utils.logging_config import log_header
 from utils.config_store import ConfigStore
@@ -31,7 +32,7 @@ class Mixer:
         sleep_time = -math.log(1 - u) / (1/q)
         # logging.warning(f"Secure exponential sleep time: {sleep_time} seconds, max_rate = {1 / sleep_time}")
         return min(sleep_time, 0.01)
-    
+
     @log_exceptions
     async def __outbox_loop(self):
         while True:
@@ -67,8 +68,11 @@ class Mixer:
             self._outbox[i], self._outbox[j] = self._outbox[j], self._outbox[i]
         return self._outbox
 
-    def push_to_outbox(self, msg_coroutine : Awaitable, update_metrics: Callable):
-        queue_obj = QueueObject(msg_coroutine, update_metrics)
+    async def push_to_outbox(self, msg_coroutine : Awaitable, update_metrics: Callable):
+        queue_obj = QueueObject(
+            send_message=msg_coroutine,
+            update_metrics=update_metrics
+        )
         self._outbox.append(queue_obj)
 
         if self._config.mix_shuffle:
@@ -82,3 +86,4 @@ class Mixer:
             metrics().increment(MetricField.COVERS_SENT)
         metrics().set(MetricField.SENDING_COVERS, 1 if sending_covers else 0)
         metrics().set(MetricField.SENDING_MESSAGES, 0 if sending_covers else 1)
+

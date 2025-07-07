@@ -22,7 +22,7 @@ class MessageManager:
         _, n_chunks = self.chunks()
         for i in range(n_chunks):
             chunks, n_chunks = self.chunks()
-            self.send_model_chunk(current_round, i, chunks[i], n_chunks)
+            await self.send_model_chunk(current_round, i, chunks[i], n_chunks)
             await asyncio.sleep(interval)
 
     @log_exceptions
@@ -30,18 +30,33 @@ class MessageManager:
         chunks, n_chunks = self.chunks()
         n_peers = 0
         for i in range(n_chunks):
-            n_peers = self.send_model_chunk(current_round, i, chunks[i], n_chunks)
+            n_peers = await self.send_model_chunk(current_round, i, chunks[i], n_chunks)
         logging.info(f"Sent {n_chunks} model chunks to {n_peers} peers.")
 
-    def send_model_chunk(self, current_round, chunk_idx, chunk, n_chunks):
+    async def send_model_chunk(self, current_round, chunk_idx, chunk, n_chunks):
         msg = PackageHelper.format_model_package(current_round, chunk_idx, chunk, n_chunks)
-        return self._transport.send_to_peers(msg)
+        return await self._transport.send_to_peers(msg)
 
-    async def wait_until_all_acked(self, timeout: int):
+    async def await_fragments(self, timeout: int):
         try:
             start_time = time.time()
+            received_all_surbs = False
+            received_all_expected_fragments = False
+
             while True:
-                if await self._transport.transport_all_acked() and self._transport.received_all_expected_fragments():
+                try:
+                    # if not received_all_surbs:
+                    #     received_all_surbs = asyncio.wait_for(
+                    #         self._transport.transport_all_acked(), timeout=1
+                    #     )
+                    if not received_all_expected_fragments:
+                        received_all_expected_fragments = asyncio.wait_for(
+                            self._transport.received_all_expected_fragments(), timeout=1
+                        )
+                except asyncio.TimeoutError:
+                    pass
+
+                if received_all_surbs and received_all_expected_fragments:
                     logging.info("All fragments and acknowledgments received.")
                     break
 
@@ -51,13 +66,12 @@ class MessageManager:
                         f"Timeout reached after {timeout}s while waiting for fragments and acknowledgments.")
                     break
 
-                await asyncio.sleep(1)
-
+                await asyncio.sleep(2)
         except Exception as e:
-            logging.exception(f"Error in wait_until_all_acked: {e}")
+            logging.error(f"An error occurred while waiting for fragments: {e}")
 
     @log_exceptions
-    def collect_models(self):
+    async def collect_models(self):
         buffer = []
         collected_parts = 0
 

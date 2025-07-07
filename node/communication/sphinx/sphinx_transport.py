@@ -10,6 +10,7 @@ from sphinxmix.SphinxClient import (
 )
 from sphinxmix.SphinxParams import SphinxParams
 
+from communication.mixing import QueueObject
 from communication.sphinx.sphinx_router import SphinxRouter
 from communication.tcp_server import TcpServer
 from communication.packages import PackageHelper, PackageType
@@ -51,8 +52,7 @@ class SphinxTransport:
         # asyncio.create_task(self.resend_loop())
 
     @log_exceptions
-    def received_all_expected_fragments(self):
-        logging.info(f"Incoming queue size = {self._incoming_queue.qsize()}")
+    async def received_all_expected_fragments(self):
         return self._incoming_queue.qsize() >= self.active_nodes() * 200
 
     @log_exceptions
@@ -83,13 +83,25 @@ class SphinxTransport:
         await asyncio.sleep(10)
 
     @log_exceptions
-    def send_to_peers(self, message):
+    async def send_to_peers(self, message):
         peers = list(self._peer.active_peers())
         for peer_id in peers:
-            self._mixer.push_to_outbox(
-                lambda message=message, peer_id=peer_id : self.generate_path_and_send(message, peer_id, peers), 
-                lambda: metrics().increment(MetricField.FRAGMENTS_SENT))
+            send_message_task = self.create_send_message_task(message, peer_id, peers)
+            update_metrics_task = self.increment_metric_task(MetricField.FRAGMENTS_SENT)
+            await self._mixer.push_to_outbox(send_message_task, update_metrics_task)
         return len(peers)
+
+    def create_send_message_task(self, message, peer_id, peers):
+        async def send_message():
+            await self.generate_path_and_send(message, peer_id, peers)
+
+        return send_message
+
+    def increment_metric_task(self, metric_field):
+        def update_metrics():
+            metrics().increment(metric_field)
+
+        return update_metrics
 
     @log_exceptions
     async def generate_path_and_send(self, message, target_node: int, peers: list, serialize: bool = True):
@@ -103,7 +115,6 @@ class SphinxTransport:
     async def receive(self) -> bytes:
         return await self._incoming_queue.get()
 
-    @log_exceptions
     async def resend_loop(self):
         while True:
             stale = self.sphinx_router.get_older_than(ConfigStore.resend_time)
@@ -111,18 +122,23 @@ class SphinxTransport:
                 if not self._peer.is_active(fragment.target_node):
                     self.sphinx_router.remove_cache_for_disconnected(fragment.target_node)
                 else:
-                    self._mixer.push_to_outbox(
-                        lambda payload=fragment.payload, target_node=fragment.target_node: self.generate_path_and_send(
-                            payload,
-                            target_node,
-                            self._peer.active_peers(),
-                            serialize=False
-                        ),
-                        lambda: metrics().increment(MetricField.RESENT)
-                    )
-            if len(stale) > 0:
+                    send_message_task = self.create_resend_task(fragment)
+                    update_metrics_task = self.increment_metric_task(MetricField.RESENT)
+                    await self._mixer.push_to_outbox(send_message_task, update_metrics_task)
+            if stale:
                 logging.warning(f"Resent {len(stale)} unacked fragments.")
             await asyncio.sleep(ConfigStore.resend_time)
+
+    def create_resend_task(self, fragment):
+        async def send_message():
+            await self.generate_path_and_send(
+                fragment.payload,
+                fragment.target_node,
+                self._peer.active_peers(),
+                serialize=False
+            )
+
+        return send_message
 
     async def __handle_payload(self, payload):
         msg_hash = hashlib.sha256(payload).digest()
@@ -167,24 +183,39 @@ class SphinxTransport:
         except Exception as e:
             logging.exception(f"Error handling routing decision: {e} from {peer_id}")
             return
-        
+
     @log_exceptions
     async def __handle_routing_decision(self, routing, header, delta, mac_key):
         if routing[0] == Relay_flag:
-            self._mixer.push_to_outbox(
-                lambda routing=routing[1], msg=pack_message(self._params, (header, delta)): self._peer.send_to_peer(routing, msg), 
-                lambda: metrics().increment(MetricField.FORWARDED))
+            send_message_task = self.create_forward_task(routing[1], header, delta)
+            update_metrics_task = self.increment_metric_task(MetricField.FORWARDED)
+            await self._mixer.push_to_outbox(send_message_task, update_metrics_task)
+
         elif routing[0] == Dest_flag:
             _, msg = receive_forward(self._params, mac_key, delta)
             nymtuple = await self.__unpack_payload(msg)
-            self._mixer.push_to_outbox(
-                lambda nymtuple=nymtuple: self.__send_surb(nymtuple), 
-                lambda: metrics().increment(MetricField.SURB_REPLIED))
+            send_message_task = self.create_surb_reply_task(nymtuple)
+            update_metrics_task = self.increment_metric_task(MetricField.SURB_REPLIED)
+            await self._mixer.push_to_outbox(send_message_task, update_metrics_task)
+
         elif routing[0] == Surb_flag:
             metrics().increment(MetricField.SURB_RECEIVED)
             self.sphinx_router.decrypt_surb(delta, routing[2])
         else:
             logging.info(f"Unexpected routing flag: {routing[0]} from {routing[1]}")
+
+    def create_forward_task(self, routing, header, delta):
+        async def send_message():
+            msg = pack_message(self._params, (header, delta))
+            await self._peer.send_to_peer(routing, msg)
+
+        return send_message
+
+    def create_surb_reply_task(self, nymtuple):
+        async def send_message():
+            await self.__send_surb(nymtuple)
+
+        return send_message
 
     @log_exceptions
     async def generate_cover_traffic(self, nr_bytes):

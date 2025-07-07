@@ -65,6 +65,6 @@ class Cache:
 
     @log_exceptions
     async def cache_all_acked(self):
-        unacked_fragments = [fragment for fragment in self.cache.values() if not fragment.acked]
-        logging.debug(f"Unacked fragments: {len(unacked_fragments)}")
+        unacked_fragments = sum(1 for fragment in self.cache.values() if not fragment.acked)
+        logging.debug(f"Unacked fragments: {unacked_fragments}")
         return not unacked_fragments
