@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import time
+
 from utils.exception_decorator import log_exceptions
 from communication.packages import PackageHelper
 
@@ -37,19 +39,27 @@ class MessageManager:
 
     async def wait_until_all_acked(self, timeout: int):
         try:
-            async with asyncio.timeout(timeout):
-                while not await self._transport.transport_all_acked():
-                    await asyncio.sleep(1)
-                logging.info("Early stopping, all SURBS received.")
-                while not self._transport.received_all_expected_fragments():
-                    await asyncio.sleep(1)
-        except asyncio.TimeoutError:
-            logging.warning(f"Timeout of {timeout}s was reached while waiting for SURBS.")
+            start_time = time.time()
+            while True:
+                if await self._transport.transport_all_acked() and self._transport.received_all_expected_fragments():
+                    logging.info("All fragments and acknowledgments received.")
+                    break
+
+                elapsed_time = time.time() - start_time
+                if elapsed_time > timeout:
+                    logging.warning(
+                        f"Timeout reached after {timeout}s while waiting for fragments and acknowledgments.")
+                    break
+
+                await asyncio.sleep(1)
+
+        except Exception as e:
+            logging.exception(f"Error in wait_until_all_acked: {e}")
 
     @log_exceptions
     def collect_models(self):
         buffer = []
-        collected_parts = max_round = 0
+        collected_parts = 0
 
         fragments = self._transport.get_all_fragments()
 
@@ -61,7 +71,6 @@ class MessageManager:
             part_idx = msg["part_idx"]
             total_parts = msg["total_parts"]
             msg_round = msg["round"]
-            max_round = max(max_round, msg_round)
 
             buffer.append(msg["content"])
             logging.debug(f"Received part {part_idx + 1}/{total_parts} for round {msg_round}")
@@ -71,5 +80,5 @@ class MessageManager:
             f"Received total {collected_parts} parts from {active_nodes} "
             f"({collected_parts / active_nodes if active_nodes else 0:.2f} parts/node)"
         )
-        return buffer, max_round
+        return buffer
 

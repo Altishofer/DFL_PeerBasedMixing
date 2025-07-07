@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 
@@ -68,10 +69,10 @@ class Learner:
     async def _await_model_chunks(self):
         log_header(f"Awaiting Model Chunks from Peers ({ConfigStore.timeout_model_collection}s).")
         metrics().set(MetricField.STAGE, 4)
-        await self._message_manager.wait_until_all_acked(timeout=ConfigStore.timeout_model_collection)
+        await asyncio.create_task(self._message_manager.wait_until_all_acked(timeout=ConfigStore.timeout_model_collection))
 
     async def _aggregate_and_validate_models(self, aggregated_accuracy: float) -> float:
-        model_chunks, _ = self._message_manager.collect_models()
+        model_chunks = self._message_manager.collect_models()
         log_header(f"Aggregating {len(model_chunks)} Model Chunks.")
         metrics().set(MetricField.STAGE, 5)
         self._model_handler.aggregate(model_chunks)
