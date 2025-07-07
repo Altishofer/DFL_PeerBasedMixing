@@ -109,6 +109,10 @@ class SphinxRouter:
 
         for _ in range(path_length):
             candidates = [node for node in nodes if node not in path]
+
+            if not candidates:
+                return path
+
             current = secrets.choice(candidates)
             path.append(current)
 

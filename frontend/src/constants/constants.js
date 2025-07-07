@@ -80,4 +80,10 @@ export const METRIC_GROUPS = {
   ]
 };
 
+export const ALWAYS_ACTIVE_METRICS = [
+  METRIC_KEYS.TOTAL_SENT,
+  METRIC_KEYS.CURRENT_ROUND,
+  METRIC_KEYS.ACTIVE_PEERS
+];
+
 export const getDisplayName = key => METRIC_FIELDS[key] || null;

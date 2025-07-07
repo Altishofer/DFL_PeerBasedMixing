@@ -38,37 +38,22 @@ class MessageManager:
         return await self._transport.send_to_peers(msg)
 
     async def await_fragments(self, timeout: int):
-        try:
-            start_time = time.time()
-            received_all_surbs = False
-            received_all_expected_fragments = False
 
-            while True:
-                try:
-                    # if not received_all_surbs:
-                    #     received_all_surbs = asyncio.wait_for(
-                    #         self._transport.transport_all_acked(), timeout=1
-                    #     )
-                    if not received_all_expected_fragments:
-                        received_all_expected_fragments = asyncio.wait_for(
-                            self._transport.received_all_expected_fragments(), timeout=1
-                        )
-                except asyncio.TimeoutError:
-                    pass
+        all_surbs_received = all_fragments_received = False
+        start_time = time.time()
+        while True:
 
-                if received_all_surbs and received_all_expected_fragments:
-                    logging.info("All fragments and acknowledgments received.")
-                    break
+            if not all_surbs_received:
+                all_surbs_received = await self._transport.sphinx_router.router_all_acked()
 
-                elapsed_time = time.time() - start_time
-                if elapsed_time > timeout:
-                    logging.warning(
-                        f"Timeout reached after {timeout}s while waiting for fragments and acknowledgments.")
-                    break
+            if not all_fragments_received:
+                all_fragments_received = await self._transport.received_all_expected_fragments()
 
-                await asyncio.sleep(2)
-        except Exception as e:
-            logging.error(f"An error occurred while waiting for fragments: {e}")
+            if time.time() - start_time > timeout:
+                logging.warning("Timeout reached while waiting for fragments.")
+                break
+
+            await asyncio.sleep(5)
 
     @log_exceptions
     async def collect_models(self):
@@ -91,7 +76,7 @@ class MessageManager:
 
         active_nodes = self._transport.active_nodes()
         logging.info(
-            f"Received total {collected_parts} parts from {active_nodes} "
+            f"Received total {collected_parts} parts from {active_nodes} nodes."
             f"({collected_parts / active_nodes if active_nodes else 0:.2f} parts/node)"
         )
         return buffer

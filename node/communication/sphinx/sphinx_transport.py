@@ -219,6 +219,8 @@ class SphinxTransport:
 
     @log_exceptions
     async def generate_cover_traffic(self, nr_bytes):
+        if self._peer.active_peers() == 0:
+            return
         target_node = secrets.choice(self._peer.active_peers())
         content = secrets.token_bytes(nr_bytes)
         payload = PackageHelper.format_cover_package(content)
