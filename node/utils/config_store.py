@@ -18,6 +18,6 @@ class ConfigStore:
     join_nodes: List[int] = field(default_factory=lambda: [4])
     stream_mode: bool = False
     mix_enabled: bool = True
-    mix_lambda: float = 0.0001
+    mix_lambda: float = 0.001
     mix_shuffle: bool = True
     nr_cover_bytes: int = 100

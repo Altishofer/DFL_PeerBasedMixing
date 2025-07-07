@@ -48,7 +48,12 @@ class SphinxTransport:
 
         self._incoming_queue = asyncio.Queue()
         self._seen_hashes = set()
-        asyncio.create_task(self.resend_loop())
+        # asyncio.create_task(self.resend_loop())
+
+    @log_exceptions
+    def received_all_expected_fragments(self):
+        logging.info(f"Incoming queue size = {self._incoming_queue.qsize()}")
+        return self._incoming_queue.qsize() >= self.active_nodes() * 200
 
     @log_exceptions
     async def transport_all_acked(self):
@@ -178,6 +183,8 @@ class SphinxTransport:
         elif routing[0] == Surb_flag:
             metrics().increment(MetricField.SURB_RECEIVED)
             self.sphinx_router.decrypt_surb(delta, routing[2])
+        else:
+            logging.info(f"Unexpected routing flag: {routing[0]} from {routing[1]}")
 
     @log_exceptions
     async def generate_cover_traffic(self, nr_bytes):

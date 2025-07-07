@@ -41,6 +41,8 @@ class MessageManager:
                 while not await self._transport.transport_all_acked():
                     await asyncio.sleep(1)
                 logging.info("Early stopping, all SURBS received.")
+                while not self._transport.received_all_expected_fragments():
+                    await asyncio.sleep(1)
         except asyncio.TimeoutError:
             logging.warning(f"Timeout of {timeout}s was reached while waiting for SURBS.")
 
