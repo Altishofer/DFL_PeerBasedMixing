@@ -49,11 +49,18 @@ class SphinxTransport:
 
         self._incoming_queue = asyncio.Queue()
         self._seen_hashes = set()
-        # asyncio.create_task(self.resend_loop())
+        asyncio.create_task(self.resend_loop())
 
     @log_exceptions
     async def received_all_expected_fragments(self):
-        return self._incoming_queue.qsize() >= self.active_nodes() * 200
+        total_expected = self.active_nodes() * 200
+        if total_expected == 0:
+            logging.warning("No active nodes, cannot determine expected fragments.")
+            return True
+        received_packets = self._incoming_queue.qsize()
+        percentage_received = (received_packets / total_expected) * 100
+        logging.info(f"Received {percentage_received:.2f}% of packets")
+        return received_packets >= total_expected
 
     @log_exceptions
     async def transport_all_acked(self):
@@ -86,14 +93,14 @@ class SphinxTransport:
     async def send_to_peers(self, message):
         peers = list(self._peer.active_peers())
         for peer_id in peers:
-            send_message_task = self.create_send_message_task(message, peer_id, peers)
+            send_message_task = self.create_send_message_task(message, peer_id)
             update_metrics_task = self.increment_metric_task(MetricField.FRAGMENTS_SENT)
             await self._mixer.push_to_outbox(send_message_task, update_metrics_task)
         return len(peers)
 
-    def create_send_message_task(self, message, peer_id, peers):
+    def create_send_message_task(self, message, peer_id):
         async def send_message():
-            await self.generate_path_and_send(message, peer_id, peers)
+            await self.generate_path_and_send(message, peer_id, cover=False)
 
         return send_message
 
@@ -104,11 +111,12 @@ class SphinxTransport:
         return update_metrics
 
     @log_exceptions
-    async def generate_path_and_send(self, message, target_node: int, peers: list, serialize: bool = True):
+    async def generate_path_and_send(self, message, target_node: int, cover:bool, serialize: bool = True):
+        peers = list(self._peer.active_peers())
         payload = message
         if serialize:
             payload = PackageHelper.serialize_msg(message)
-        path, msg_bytes = self.sphinx_router.create_forward_msg(target_node, payload, peers)
+        path, msg_bytes = self.sphinx_router.create_forward_msg(target_node, payload, peers, cover)
         await self._peer.send_to_peer(path[0], msg_bytes)
 
     @log_exceptions
@@ -127,29 +135,35 @@ class SphinxTransport:
                     await self._mixer.push_to_outbox(send_message_task, update_metrics_task)
             if stale:
                 logging.warning(f"Resent {len(stale)} unacked fragments.")
-            await asyncio.sleep(ConfigStore.resend_time)
+            await asyncio.sleep(5)
 
     def create_resend_task(self, fragment):
         async def send_message():
             await self.generate_path_and_send(
                 fragment.payload,
                 fragment.target_node,
-                self._peer.active_peers(),
-                serialize=False
+                serialize=False,
+                cover=fragment.cover
             )
 
         return send_message
 
     async def __handle_payload(self, payload):
-        msg_hash = hashlib.sha256(payload).digest()
-        if msg_hash in self._seen_hashes:
-            logging.warning("Duplicate fragment dropped.")
-            return
-        self._seen_hashes.add(msg_hash)
-        
+
         msg = PackageHelper.deserialize_msg(payload)
+
         if msg["type"] == PackageType.MODEL_PART:
+
+            msg_hash = hashlib.sha256(payload).digest()
+            if msg_hash in self._seen_hashes:
+                logging.debug("Duplicate fragment dropped.")
+                metrics().increment(MetricField.RECEIVED_DUPLICATE_MSG)
+                return
+
+            self._seen_hashes.add(msg_hash)
+            metrics().increment(MetricField.FRAGMENTS_RECEIVED)
             await self._incoming_queue.put(msg)
+
         elif msg["type"] == PackageType.COVER:
             metrics().increment(MetricField.COVERS_RECEIVED)
             # logging.debug(f"Dropping cover package.")
@@ -160,7 +174,6 @@ class SphinxTransport:
     async def __unpack_payload(self, payload_bytes: bytes):
         nymtuple, payload = payload_bytes
         await self.__handle_payload(payload)
-        metrics().increment(MetricField.FRAGMENTS_RECEIVED)
         return nymtuple
 
     async def __send_surb(self, nymtuple):
@@ -219,9 +232,9 @@ class SphinxTransport:
 
     @log_exceptions
     async def generate_cover_traffic(self, nr_bytes):
-        if self._peer.active_peers() == 0:
+        if len(self._peer.active_peers()) == 0:
             return
         target_node = secrets.choice(self._peer.active_peers())
         content = secrets.token_bytes(nr_bytes)
         payload = PackageHelper.format_cover_package(content)
-        await self.generate_path_and_send(payload, target_node, self._peer.active_peers())
+        await self.generate_path_and_send(payload, target_node, cover=True)

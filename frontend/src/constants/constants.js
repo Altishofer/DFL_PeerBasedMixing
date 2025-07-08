@@ -25,7 +25,9 @@ export const METRIC_KEYS = {
   MEMORY_MB: 'memory_mb',
   ACTIVE_PEERS: 'active_peers',
   DELETED_CACHE_FOR_INACTIVE: 'deleted_cache_for_inactive',
-  ROUND_TIME: 'round_time'
+  ROUND_TIME: 'round_time',
+  UNACKED_MSG: 'unacked_msg',
+  RECEIVED_DUPLICATE_MSG: 'received_duplicate_msg'
 };
 
 export const METRIC_FIELDS = {
@@ -36,7 +38,7 @@ export const METRIC_FIELDS = {
   [METRIC_KEYS.FRAGMENTS_SENT]: 'Fragments Sent',
   [METRIC_KEYS.FRAGMENTS_RECEIVED]: 'Fragments Received',
   [METRIC_KEYS.RESENT]: 'Fragments Resent',
-  [METRIC_KEYS.FORWARDED]: 'Fragments Forwarded',
+  [METRIC_KEYS.FORWARDED]: 'Messages Forwarded',
   [METRIC_KEYS.SURB_REPLIED]: 'SURBs Replied',
   [METRIC_KEYS.SURB_RECEIVED]: 'SURBs Received',
   [METRIC_KEYS.ERRORS]: 'Errors',
@@ -47,7 +49,9 @@ export const METRIC_FIELDS = {
   [METRIC_KEYS.MEMORY_MB]: 'Memory (MB)',
   [METRIC_KEYS.ACTIVE_PEERS]: 'Active Peers',
   [METRIC_KEYS.DELETED_CACHE_FOR_INACTIVE]: 'Deleted Cache for Inactive Peers',
-  [METRIC_KEYS.ROUND_TIME]: 'Time per Round (s)'
+  [METRIC_KEYS.ROUND_TIME]: 'Time per Round (s)',
+  [METRIC_KEYS.UNACKED_MSG]: 'Unacknowledged Fragments',
+  [METRIC_KEYS.RECEIVED_DUPLICATE_MSG]: 'Received Duplicate Messages'
 };
 
 export const METRIC_GROUPS = {
@@ -55,12 +59,15 @@ export const METRIC_GROUPS = {
     METRIC_KEYS.TOTAL_SENT,
     METRIC_KEYS.TOTAL_RECEIVED,
     METRIC_KEYS.TOTAL_MBYTES_SENT,
-    METRIC_KEYS.TOTAL_MBYTES_RECEIVED
+    METRIC_KEYS.TOTAL_MBYTES_RECEIVED,
+    METRIC_KEYS.UNACKED_MSG,
+    METRIC_KEYS.RESENT,
+    METRIC_KEYS.RECEIVED_DUPLICATE_MSG
   ],
   'Model Exchange': [
     METRIC_KEYS.FRAGMENTS_SENT,
     METRIC_KEYS.FRAGMENTS_RECEIVED,
-    METRIC_KEYS.RESENT,
+
     METRIC_KEYS.ACTIVE_PEERS
   ],
   Mixnet: [
@@ -83,7 +90,10 @@ export const METRIC_GROUPS = {
 export const ALWAYS_ACTIVE_METRICS = [
   METRIC_KEYS.TOTAL_SENT,
   METRIC_KEYS.CURRENT_ROUND,
-  METRIC_KEYS.ACTIVE_PEERS
+  METRIC_KEYS.ACTIVE_PEERS,
+    METRIC_KEYS.RECEIVED_DUPLICATE_MSG,
+    METRIC_KEYS.UNACKED_MSG,
+    METRIC_KEYS.RESENT
 ];
 
 export const getDisplayName = key => METRIC_FIELDS[key] || null;

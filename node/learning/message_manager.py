@@ -38,22 +38,20 @@ class MessageManager:
         return await self._transport.send_to_peers(msg)
 
     async def await_fragments(self, timeout: int):
-
-        all_surbs_received = all_fragments_received = False
         start_time = time.time()
-        while True:
 
-            if not all_surbs_received:
-                all_surbs_received = await self._transport.sphinx_router.router_all_acked()
-
-            if not all_fragments_received:
-                all_fragments_received = await self._transport.received_all_expected_fragments()
-
-            if time.time() - start_time > timeout:
-                logging.warning("Timeout reached while waiting for fragments.")
-                break
-
+        while not await self._transport.received_all_expected_fragments() and time.time() - start_time < timeout:
             await asyncio.sleep(5)
+
+        while not await self._transport.sphinx_router.router_all_acked() and time.time() - start_time < timeout:
+            await asyncio.sleep(5)
+
+        if time.time() - start_time > timeout:
+            logging.warning(f"Timeout of {timeout} reached while waiting for fragments.")
+            return
+
+        logging.info(f"All fragments and SURBs received after {int(time.time() - start_time)}s, early stopping.")
+
 
     @log_exceptions
     async def collect_models(self):

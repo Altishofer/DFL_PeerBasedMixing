@@ -63,15 +63,15 @@ class Mixer:
         logging.info(f"N Cover Bytes: {self._config.nr_cover_bytes}")
 
     def __shuffle_outbox(self):
-        for i in reversed(range(1, len(self._outbox))):
-            j = secrets.randbelow(i + 1)  # cryptographically secure random index
-            self._outbox[i], self._outbox[j] = self._outbox[j], self._outbox[i]
+        # for i in reversed(range(1, len(self._outbox))):
+        #     j = secrets.randbelow(i + 1)  # cryptographically secure random index
+        #     self._outbox[i], self._outbox[j] = self._outbox[j], self._outbox[i]
         return self._outbox
 
     async def push_to_outbox(self, msg_coroutine : Awaitable, update_metrics: Callable):
         queue_obj = QueueObject(
             send_message=msg_coroutine,
-            update_metrics=update_metrics
+            update_metrics=update_metrics,
         )
         self._outbox.append(queue_obj)
 

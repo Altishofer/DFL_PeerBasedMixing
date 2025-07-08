@@ -40,14 +40,15 @@ class SphinxRouter:
         logging.warning(f"Deleted {n_deleted} fragments for node {target_node}.")
 
     @log_exceptions
-    def create_forward_msg(self, target_node, payload, active_peers):
+    def create_forward_msg(self, target_node, payload, active_peers, cover):
         path, nodes_routing, keys_nodes = self.build_forward_path(target_node, active_peers)
         _, nodes_routing_back, keys_nodes_back = self.build_surb_reply_path(target_node, active_peers)
 
         surbid, surbkeytuple, nymtuple = self.create_and_store_surb(nodes_routing_back, keys_nodes_back)
         header, delta = self.create_forward_packet(nodes_routing, keys_nodes, nymtuple, payload)
         msg_bytes = pack_message(self._params, (header, delta))
-        self.cache.new_fragment(surbid, surbkeytuple, target_node, payload)
+
+        self.cache.new_fragment(surbid, surbkeytuple, target_node, payload, cover)
         return path, msg_bytes
 
     @log_exceptions
@@ -104,7 +105,7 @@ class SphinxRouter:
         nodes = list(nodes)
         path = []
 
-        if (len(nodes) == 0):
+        if len(nodes) == 0:
             return path
 
         for _ in range(path_length):
