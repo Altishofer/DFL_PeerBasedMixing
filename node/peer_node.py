@@ -15,7 +15,7 @@ class PeerNode:
         }
 
         self._mixer = Mixer(node_config)
-        self._transport = SphinxTransport(node_config.node_id, node_config.port, peers, self._mixer)
+        self._transport = SphinxTransport(node_config.node_id, node_config.port, peers, self._mixer, node_config)
         self._learning = Learner(node_config, self._transport)
 
     async def start(self):

@@ -21,3 +21,4 @@ class ConfigStore:
     mix_lambda: float = 0.001
     mix_shuffle: bool = True
     nr_cover_bytes: int = 100
+    n_fragments_per_model: int = 200

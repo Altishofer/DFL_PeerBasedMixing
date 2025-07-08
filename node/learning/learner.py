@@ -18,7 +18,7 @@ class Learner:
         self._total_rounds = node_config.n_rounds
         self._current_round = 0
         self._model_handler = ModelHandler(self._node_id, self._total_peers)
-        self._message_manager = MessageManager(self._node_id, transport, self._model_handler)
+        self._message_manager = MessageManager(self._node_id, transport, self._model_handler, node_config)
         self._stream_based = node_config.stream_mode
 
     @log_exceptions

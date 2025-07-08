@@ -19,11 +19,12 @@ from utils.exception_decorator import log_exceptions
 from metrics.node_metrics import metrics, MetricField
 
 class SphinxTransport:
-    def __init__(self, node_id, port, peers, mixer):
+    def __init__(self, node_id, port, peers, mixer, node_config:ConfigStore):
         self._node_id = node_id
         self._port = port
         self._peers = peers
         self._mixer = mixer
+        self._node_config = node_config
 
         self._params = SphinxParams(
             header_len=192,
@@ -53,7 +54,7 @@ class SphinxTransport:
 
     @log_exceptions
     async def received_all_expected_fragments(self):
-        total_expected = self.active_nodes() * 200
+        total_expected = self.active_nodes() * self._node_config.n_fragments_per_model
         if total_expected == 0:
             logging.warning("No active nodes, cannot determine expected fragments.")
             return True
@@ -80,6 +81,10 @@ class SphinxTransport:
             except QueueEmpty:
                 break
         return fragments
+
+    def push_unexpected_to_queue(self, fragment):
+        self._incoming_queue.put_nowait(fragment)
+        logging.warning("Received unexpected fragment, pushing back to queue.")
 
     @log_exceptions
     async def start(self):

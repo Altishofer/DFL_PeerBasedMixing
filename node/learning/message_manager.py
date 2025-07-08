@@ -2,14 +2,16 @@ import asyncio
 import logging
 import time
 
+from utils.config_store import ConfigStore
 from utils.exception_decorator import log_exceptions
 from communication.packages import PackageHelper
 
 class MessageManager:
-    def __init__(self, node_id, transport, model_handler):
+    def __init__(self, node_id, transport, model_handler, node_config:ConfigStore):
         self._node_id = node_id
         self._transport = transport
         self._model_handler = model_handler
+        self._node_config = node_config
 
     @log_exceptions
     def chunks(self):
@@ -52,7 +54,6 @@ class MessageManager:
 
         logging.info(f"All fragments and SURBs received after {int(time.time() - start_time)}s, early stopping.")
 
-
     @log_exceptions
     async def collect_models(self):
         buffer = []
@@ -62,15 +63,16 @@ class MessageManager:
 
         for msg in fragments:
             collected_parts += 1
-
             logging.debug(f"Collected {collected_parts} model parts.")
 
             part_idx = msg["part_idx"]
             total_parts = msg["total_parts"]
-            msg_round = msg["round"]
 
-            buffer.append(msg["content"])
-            logging.debug(f"Received part {part_idx + 1}/{total_parts} for round {msg_round}")
+            if collected_parts > self._transport.active_nodes() * self._node_config.n_fragments_per_model:
+                self._transport.push_unexpected_to_queue(msg)
+            else:
+                buffer.append(msg["content"])
+                logging.debug(f"Received part {part_idx + 1}/{total_parts}.")
 
         active_nodes = self._transport.active_nodes()
         logging.info(
