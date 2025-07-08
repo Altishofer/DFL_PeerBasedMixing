@@ -29,7 +29,7 @@ class Mixer:
     def secure_exponential(q):
         u = int.from_bytes(secrets.token_bytes(7), "big") / 2**56
         if q == 0:
-            q = 0.0001
+            return 0
         return -math.log(1 - u) / (1/q)
     
     @log_exceptions
