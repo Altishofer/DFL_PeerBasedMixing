@@ -14,13 +14,13 @@ class PeerNode:
             for i in range(node_config.n_nodes)
         }
 
-        self._mixer = Mixer(node_config.mix_enabled, node_config.mix_lambda, node_config.mix_shuffle)
-        self._transport = SphinxTransport(node_config.node_id, node_config.port, peers, self._mixer)
+        self._mixer = Mixer(node_config)
+        self._transport = SphinxTransport(node_config.node_id, node_config.port, peers, self._mixer, node_config)
         self._learning = Learner(node_config, self._transport)
 
     async def start(self):
         await self._transport.start()
         await self._learning.run()
-        await asyncio.sleep(1000)
+        # await asyncio.sleep(1000)
         await self._transport.close_all_connections()
-        await asyncio.sleep(100)
+        await asyncio.sleep(90)

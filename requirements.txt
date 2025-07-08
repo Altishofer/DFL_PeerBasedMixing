@@ -18,3 +18,7 @@ uvicorn
 uvloop
 uvicorn[standard]
 sphinxmix
+notebook
+jupyter
+matplotlib
+pandas

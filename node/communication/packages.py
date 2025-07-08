@@ -16,7 +16,7 @@ class PackageHelper:
             "total_parts": n_chunks,
             "content": chunk
         }
-    
+
     @staticmethod
     def format_cover_package(content):
         return {

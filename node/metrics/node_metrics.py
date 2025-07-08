@@ -31,6 +31,19 @@ class MetricField(Enum):
     OUT_INTERVAL = "out_interval"
     SENDING_COVERS = "sending_covers"
     SENDING_MESSAGES = "sending_messages"
+    DELETED_CACHE_FOR_INACTIVE = "deleted_cache_for_inactive"
+    ROUND_TIME = "round_time"
+    UNACKED_MSG = "unacked_msg"
+    RECEIVED_DUPLICATE_MSG = "received_duplicate_msg"
+
+    STAGE = "stage"
+    """
+      Training: 1,
+      Broadcasting: 2
+      Validation: 3
+      Collection: 4
+      Aggregation: 5
+    """
 
 
 _metrics_instance = None
@@ -62,7 +75,14 @@ class Metrics:
         with self._data_lock:
             self._data[field] += amount
 
-    def set(self, field: MetricField, value):
+    def decrement(self, field: MetricField, amount: int = 1):
+        with self._data_lock:
+            if field in self._data:
+                self._data[field] -= amount
+                if self._data[field] < 0:
+                    self._data[field] = 0
+
+    def set(self, field: MetricField, value: int | str):
         with self._data_lock:
             self._data[field] = value
 

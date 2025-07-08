@@ -1,5 +1,3 @@
-import {MetricField} from "../components/Dashboard/MetricSelection";
-
 export const API_BASE_URL = 'http://localhost:8000';
 export const WS_BASE_URL = 'http://localhost:8000';
 
@@ -7,8 +5,6 @@ export const CHART_PALETTE = [
   '#3182CE', '#38A169', '#DD6B20', '#805AD5',
   '#E53E3E', '#D69E2E', '#319795', '#00B5D8'
 ];
-
-export const MAX_NODES = 10;
 
 export const METRIC_KEYS = {
   TOTAL_SENT: 'total_sent',
@@ -28,11 +24,10 @@ export const METRIC_KEYS = {
   CPU_TOTAL_NS: 'cpu_total_ns',
   MEMORY_MB: 'memory_mb',
   ACTIVE_PEERS: 'active_peers',
-  COVERS_SENT: 'covers_sent',
-  COVERS_RECEIVED: "covers_received",
-  OUT_INTERVAL: 'out_interval',
-  SENDING_COVERS: 'sending_covers',
-  SENDING_MESSAGES: 'sending_messages'
+  DELETED_CACHE_FOR_INACTIVE: 'deleted_cache_for_inactive',
+  ROUND_TIME: 'round_time',
+  UNACKED_MSG: 'unacked_msg',
+  RECEIVED_DUPLICATE_MSG: 'received_duplicate_msg'
 };
 
 export const METRIC_FIELDS = {
@@ -43,21 +38,20 @@ export const METRIC_FIELDS = {
   [METRIC_KEYS.FRAGMENTS_SENT]: 'Fragments Sent',
   [METRIC_KEYS.FRAGMENTS_RECEIVED]: 'Fragments Received',
   [METRIC_KEYS.RESENT]: 'Fragments Resent',
-  [METRIC_KEYS.FORWARDED]: 'Fragments Forwarded',
+  [METRIC_KEYS.FORWARDED]: 'Messages Forwarded',
   [METRIC_KEYS.SURB_REPLIED]: 'SURBs Replied',
   [METRIC_KEYS.SURB_RECEIVED]: 'SURBs Received',
   [METRIC_KEYS.ERRORS]: 'Errors',
   [METRIC_KEYS.CURRENT_ROUND]: 'Current Round',
   [METRIC_KEYS.ACCURACY]: 'Training Accuracy',
   [METRIC_KEYS.AGGREGATED_ACCURACY]: 'Aggregated Accuracy',
-  [METRIC_KEYS.CPU_TOTAL_NS]: 'CPU Total Ns',
+  [METRIC_KEYS.CPU_TOTAL_NS]: 'CPU Total (Ns)',
   [METRIC_KEYS.MEMORY_MB]: 'Memory (MB)',
   [METRIC_KEYS.ACTIVE_PEERS]: 'Active Peers',
-  [METRIC_KEYS.COVERS_SENT]: 'Covers Sent',
-  [METRIC_KEYS.COVERS_RECEIVED]: 'Covers Received',
-  [METRIC_KEYS.OUT_INTERVAL]: 'Outgoing Interval',
-  [METRIC_KEYS.SENDING_COVERS]: 'Sending Covers',
-  [METRIC_KEYS.SENDING_MESSAGES]: 'Sending Messages'
+  [METRIC_KEYS.DELETED_CACHE_FOR_INACTIVE]: 'Deleted Cache for Inactive Peers',
+  [METRIC_KEYS.ROUND_TIME]: 'Time per Round (s)',
+  [METRIC_KEYS.UNACKED_MSG]: 'Unacknowledged Fragments',
+  [METRIC_KEYS.RECEIVED_DUPLICATE_MSG]: 'Received Duplicate Messages'
 };
 
 export const METRIC_GROUPS = {
@@ -65,32 +59,41 @@ export const METRIC_GROUPS = {
     METRIC_KEYS.TOTAL_SENT,
     METRIC_KEYS.TOTAL_RECEIVED,
     METRIC_KEYS.TOTAL_MBYTES_SENT,
-    METRIC_KEYS.TOTAL_MBYTES_RECEIVED
+    METRIC_KEYS.TOTAL_MBYTES_RECEIVED,
+    METRIC_KEYS.UNACKED_MSG,
+    METRIC_KEYS.RESENT,
+    METRIC_KEYS.RECEIVED_DUPLICATE_MSG
   ],
   'Model Exchange': [
     METRIC_KEYS.FRAGMENTS_SENT,
     METRIC_KEYS.FRAGMENTS_RECEIVED,
-    METRIC_KEYS.RESENT,
+
     METRIC_KEYS.ACTIVE_PEERS
   ],
   Mixnet: [
-    METRIC_KEYS.FRAGMENTS_SENT,
-    METRIC_KEYS.COVERS_SENT,
-    METRIC_KEYS.COVERS_RECEIVED,
     METRIC_KEYS.FORWARDED,
     METRIC_KEYS.SURB_REPLIED,
-    METRIC_KEYS.SURB_RECEIVED,
-    METRIC_KEYS.SENDING_COVERS,
-    METRIC_KEYS.SENDING_FRAGMENTS,
-    METRIC_KEYS.MIX_DELAY,
-    METRIC_KEYS.OUT_INTERVAL,
+    METRIC_KEYS.SURB_RECEIVED
   ],
-  Errors: [METRIC_KEYS.ERRORS],
+  Miscellaneous: [
+      METRIC_KEYS.ERRORS,
+      METRIC_KEYS.DELETED_CACHE_FOR_INACTIVE
+  ],
   Learning: [
     METRIC_KEYS.ACCURACY,
     METRIC_KEYS.AGGREGATED_ACCURACY,
-    METRIC_KEYS.CURRENT_ROUND
+    METRIC_KEYS.CURRENT_ROUND,
+    METRIC_KEYS.ROUND_TIME
   ]
 };
+
+export const ALWAYS_ACTIVE_METRICS = [
+  METRIC_KEYS.TOTAL_SENT,
+  METRIC_KEYS.CURRENT_ROUND,
+  METRIC_KEYS.ACTIVE_PEERS,
+    METRIC_KEYS.RECEIVED_DUPLICATE_MSG,
+    METRIC_KEYS.UNACKED_MSG,
+    METRIC_KEYS.RESENT
+];
 
 export const getDisplayName = key => METRIC_FIELDS[key] || null;
