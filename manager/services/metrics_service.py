@@ -82,7 +82,7 @@ class MetricsService:
             config = ConfigStore()
 
             with open(path, mode="w", newline="") as file:
-                file.write("#" + str(asdict(config)))
+                file.write("#" + str(asdict(config)) + "\n")
 
                 writer = csv.writer(file)
                 writer.writerow(["timestamp", "field", "value", "node"])
