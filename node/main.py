@@ -18,9 +18,7 @@ def load_env(key):
 async def node_main():
 
     config = ConfigStore(
-        node_id=int(load_env("NODE_ID")),
-        n_nodes=int(load_env("N_NODES")),
-        n_rounds=int(load_env("N_ROUNDS")),
+        node_id=int(load_env("NODE_ID"))
     )
 
     setup_logging(config.node_id)

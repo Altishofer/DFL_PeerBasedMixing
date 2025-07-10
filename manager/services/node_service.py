@@ -4,7 +4,7 @@ from typing import List
 from manager.config import settings
 from manager.models.schemas import NodeStatus
 from manager.config import Settings
-from manager.models.schemas import NodeConfig
+from node.utils.config_store import ConfigStore
 from manager.utils.docker_utils import (
     get_docker_client,
     create_network,
@@ -22,18 +22,16 @@ class NodeService:
     def _start_nodes_sync(self) -> None:
         stop_all_nodes()
         create_network()
-        generate_keys(NodeConfig.n_nodes)
+        generate_keys(ConfigStore.n_nodes)
 
-        for i in range(NodeConfig.n_nodes):
+        for i in range(ConfigStore.n_nodes):
             name = f"node_{i}"
 
             self._client.containers.run(
                 settings.IMAGE_NAME,
                 name=name,
                 environment={
-                    "NODE_ID": i,
-                    "N_NODES": NodeConfig.n_nodes,
-                    "N_ROUNDS": NodeConfig.n_rounds,
+                    "NODE_ID": i
                 },
                 volumes={
                     Settings.SECRETS_PATH: {"bind": "/config/", "mode": "ro"},

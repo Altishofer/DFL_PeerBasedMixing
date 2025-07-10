@@ -27,7 +27,8 @@ export const METRIC_KEYS = {
   DELETED_CACHE_FOR_INACTIVE: 'deleted_cache_for_inactive',
   ROUND_TIME: 'round_time',
   UNACKED_MSG: 'unacked_msg',
-  RECEIVED_DUPLICATE_MSG: 'received_duplicate_msg'
+  RECEIVED_DUPLICATE_MSG: 'received_duplicate_msg',
+  CURRENT_STAGE: 'stage'
 };
 
 export const METRIC_FIELDS = {
@@ -51,7 +52,8 @@ export const METRIC_FIELDS = {
   [METRIC_KEYS.DELETED_CACHE_FOR_INACTIVE]: 'Deleted Cache for Inactive Peers',
   [METRIC_KEYS.ROUND_TIME]: 'Time per Round (s)',
   [METRIC_KEYS.UNACKED_MSG]: 'Unacknowledged Fragments',
-  [METRIC_KEYS.RECEIVED_DUPLICATE_MSG]: 'Received Duplicate Messages'
+  [METRIC_KEYS.RECEIVED_DUPLICATE_MSG]: 'Received Duplicate Messages',
+  [METRIC_KEYS.CURRENT_STAGE]: 'Current Stage'
 };
 
 export const METRIC_GROUPS = {
@@ -77,13 +79,14 @@ export const METRIC_GROUPS = {
   ],
   Miscellaneous: [
       METRIC_KEYS.ERRORS,
-      METRIC_KEYS.DELETED_CACHE_FOR_INACTIVE
+      METRIC_KEYS.DELETED_CACHE_FOR_INACTIVE,
   ],
   Learning: [
     METRIC_KEYS.ACCURACY,
     METRIC_KEYS.AGGREGATED_ACCURACY,
     METRIC_KEYS.CURRENT_ROUND,
-    METRIC_KEYS.ROUND_TIME
+    METRIC_KEYS.ROUND_TIME,
+    METRIC_KEYS.CURRENT_STAGE
   ]
 };
 

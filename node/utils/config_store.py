@@ -3,7 +3,7 @@ from typing import List
 
 @dataclass
 class ConfigStore:
-    max_hops: int = 2
+    max_hops: int = 6
     resend_time: int = 40
     push_metric_interval: int = 1
     timeout_model_collection: int = 60
@@ -18,7 +18,7 @@ class ConfigStore:
     join_nodes: List[int] = field(default_factory=lambda:list)
     stream_mode: bool = False
     mix_enabled: bool = True
-    mix_lambda: float = 0.5
+    mix_lambda: float = 0.01
     mix_shuffle: bool = True
     nr_cover_bytes: int = 100
     n_fragments_per_model: int = 200
