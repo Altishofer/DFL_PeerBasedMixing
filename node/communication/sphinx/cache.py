@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import List
 import logging
+import numpy as np
 
 from metrics.node_metrics import metrics, MetricField
 from utils.exception_decorator import log_exceptions
@@ -25,6 +26,7 @@ class Cache:
         self.cache = {}
         self.out_counter = 0
         self.in_counter = 0
+        self.rtts = []
 
     @log_exceptions
     def new_fragment(self, surb_id: bytes, surb_key_tuple: tuple, target_node: int, payload: bytes, cover: bool):
@@ -38,6 +40,10 @@ class Cache:
     @log_exceptions
     def received_surb(self, surb_id):
         self.set_acked(surb_id)
+        now = datetime.now(timezone.utc)
+        start = self.cache[surb_id].timestamp
+        self.rtts.append((now - start).total_seconds())
+        metrics().set(MetricField.AVG_RTT, np.mean(self.rtts))
         self.in_counter += 1
         return self.cache[surb_id].surb_key_tuble
 

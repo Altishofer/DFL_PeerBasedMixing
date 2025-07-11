@@ -28,7 +28,8 @@ export const METRIC_KEYS = {
   ROUND_TIME: 'round_time',
   UNACKED_MSG: 'unacked_msg',
   RECEIVED_DUPLICATE_MSG: 'received_duplicate_msg',
-  CURRENT_STAGE: 'stage'
+  CURRENT_STAGE: 'stage',
+  AVG_RTT: 'avg_rtt'
 };
 
 export const METRIC_FIELDS = {
@@ -53,7 +54,8 @@ export const METRIC_FIELDS = {
   [METRIC_KEYS.ROUND_TIME]: 'Time per Round (s)',
   [METRIC_KEYS.UNACKED_MSG]: 'Unacknowledged Fragments',
   [METRIC_KEYS.RECEIVED_DUPLICATE_MSG]: 'Received Duplicate Messages',
-  [METRIC_KEYS.CURRENT_STAGE]: 'Current Stage'
+  [METRIC_KEYS.CURRENT_STAGE]: 'Current Stage',
+  [METRIC_KEYS.AVG_RTT]: 'Average RTT'
 };
 
 export const METRIC_GROUPS = {
@@ -64,7 +66,8 @@ export const METRIC_GROUPS = {
     METRIC_KEYS.TOTAL_MBYTES_RECEIVED,
     METRIC_KEYS.UNACKED_MSG,
     METRIC_KEYS.RESENT,
-    METRIC_KEYS.RECEIVED_DUPLICATE_MSG
+    METRIC_KEYS.RECEIVED_DUPLICATE_MSG,
+    METRIC_KEYS.AVG_RTT
   ],
   'Model Exchange': [
     METRIC_KEYS.FRAGMENTS_SENT,

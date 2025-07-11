@@ -35,14 +35,14 @@ class MetricField(Enum):
     ROUND_TIME = "round_time"
     UNACKED_MSG = "unacked_msg"
     RECEIVED_DUPLICATE_MSG = "received_duplicate_msg"
+    AVG_RTT = "avg_rtt"
 
     STAGE = "stage"
     """
       Training: 1,
-      Broadcasting: 2
-      Validation: 3
-      Collection: 4
-      Aggregation: 5
+      Local Aggregation: 2
+      Broadcasting and Collection: 3
+      Global Aggregation: 4
     """
 
 
