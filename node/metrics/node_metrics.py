@@ -6,6 +6,8 @@ from typing import List, Dict, Any
 from datetime import datetime, timezone
 from enum import Enum
 from collections import deque
+import aiohttp
+import json
 
 from utils.config_store import ConfigStore
 
@@ -130,3 +132,16 @@ class Metrics:
                 logging.warning(f"Push failed: {response.status_code} - {response.text}")
         except requests.RequestException as e:
             logging.warning(f"Push exception: {e}")
+
+    async def wait_for_round(self, round_number: int):
+        async with aiohttp.ClientSession() as session, session.get(f"{self._controller_url}/metrics/sse") as response:
+            async for line in response.content:
+                try:
+                    data = json.loads(line.decode("utf-8").strip()[5:])
+                    if any(row["field"] == MetricField.CURRENT_ROUND.value and row["value"] == round_number for row in
+                           data):
+                        logging.info(f"Round {round_number} reached")
+                        return
+                except:
+                    logging.error(f"Error parsing SSE data")
+                    continue

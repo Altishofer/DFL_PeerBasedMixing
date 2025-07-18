@@ -12,3 +12,4 @@ manager/metrics
 *.msgpack
 metrics/
 *.csv
+*.png
