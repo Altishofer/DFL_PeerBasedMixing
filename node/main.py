@@ -25,11 +25,11 @@ async def node_main():
     init_metrics(controller_url="http://host.docker.internal:8000", host_name=f"node_{config.node_id}")
 
     if config.node_id in config.join_nodes:
-        join_round = 2
+        join_round = 5
         logging.info(f"Node waiting to join in round {join_round}")
         await metrics().wait_for_round(join_round)
     if config.node_id in config.exit_nodes:
-        config.n_rounds = 3
+        config.n_rounds = 5
         logging.info(f"Node exits after Round {config.n_rounds}")
 
     node = PeerNode(config)
