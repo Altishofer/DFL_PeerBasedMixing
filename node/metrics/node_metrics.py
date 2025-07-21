@@ -1,11 +1,14 @@
-import time
-import requests
+import json
 import logging
-from threading import Lock, Thread
-from typing import List, Dict, Any
+import time
+from collections import deque
 from datetime import datetime, timezone
 from enum import Enum
-from collections import deque
+from threading import Lock, Thread
+from typing import List, Dict, Any
+
+import aiohttp
+import requests
 
 from utils.config_store import ConfigStore
 
@@ -48,11 +51,13 @@ class MetricField(Enum):
 
 _metrics_instance = None
 
+
 def init_metrics(controller_url: str, host_name: str):
     global _metrics_instance
     if _metrics_instance is None:
         _metrics_instance = Metrics(controller_url, host_name)
     return _metrics_instance
+
 
 def metrics():
     if _metrics_instance is None:
@@ -130,3 +135,21 @@ class Metrics:
                 logging.warning(f"Push failed: {response.status_code} - {response.text}")
         except requests.RequestException as e:
             logging.warning(f"Push exception: {e}")
+
+    async def wait_for_round(self, round_number: int):
+        async with aiohttp.ClientSession() as session, session.get(f"{self._controller_url}/metrics/sse") as response:
+            async for line in response.content:
+                try:
+                    if not line:
+                        continue
+                    decoded_line = line.decode("utf-8").strip()
+                    if not decoded_line.startswith("data:"):
+                        continue
+                    data = json.loads(decoded_line[5:])
+                    if any(row.get("field") == MetricField.CURRENT_ROUND.value and int(
+                            row.get("value", 0)) >= round_number for row in data):
+                        logging.info(f"Round {round_number} reached")
+                        return
+                except Exception as e:
+                    logging.warning(f"Error processing line: {line}. Exception: {e}")
+                    continue

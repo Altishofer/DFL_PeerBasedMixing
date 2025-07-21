@@ -156,7 +156,7 @@ class ModelHandler:
         targets = dataset.targets.detach().clone()
         indices_by_class = {int(c): (targets == c).nonzero(as_tuple=True)[0] for c in range(10)}
 
-        logging.info(f"Using a Dirichlet distribution with alpha = {ConfigStore.dirichlet_alpha}")
+        logging.info(f"Dirichlet alpha = {ConfigStore.dirichlet_alpha}")
         alpha = torch.full((total_peers,), float(ConfigStore.dirichlet_alpha), dtype=torch.float32)
         dirichlet = torch.distributions.Dirichlet(alpha)
 
