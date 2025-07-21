@@ -12,8 +12,8 @@ class ConfigStore:
     dirichlet_alpha: float = 10.0
     port: int = 8000
     node_id: int = 0
-    n_nodes: int = 4
-    n_rounds: int = 10
+    n_nodes: int = 5
+    n_rounds: int = 1
     exit_nodes: List[int] = field(default_factory=lambda:[])
     join_nodes: List[int] = field(default_factory=lambda:[])
     stream_mode: bool = False
@@ -21,5 +21,5 @@ class ConfigStore:
     mix_lambda: float = 0.001
     mix_shuffle: bool = True
     nr_cover_bytes: int = 100
-    n_fragments_per_model: int = 200
+    n_fragments_per_model: int = 10000
     pause_training: bool = False
