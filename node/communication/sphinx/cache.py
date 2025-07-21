@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List
 import logging
 import numpy as np
+from utils.config_store import ConfigStore
 
 from metrics.node_metrics import metrics, MetricField
 from utils.exception_decorator import log_exceptions
@@ -42,7 +43,10 @@ class Cache:
         self.set_acked(surb_id)
         now = datetime.now(timezone.utc)
         start = self.cache[surb_id].timestamp
-        self.rtts.append((now - start).total_seconds())
+        rtt = (now - start).total_seconds()
+        if (ConfigStore.resend_time > rtt):
+            self.rtts.append(rtt)
+            metrics().set(MetricField.LAST_RTT, rtt)
         metrics().set(MetricField.AVG_RTT, np.mean(self.rtts))
         self.in_counter += 1
         return self.cache[surb_id].surb_key_tuble

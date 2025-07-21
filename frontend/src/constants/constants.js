@@ -29,7 +29,13 @@ export const METRIC_KEYS = {
   UNACKED_MSG: 'unacked_msg',
   RECEIVED_DUPLICATE_MSG: 'received_duplicate_msg',
   CURRENT_STAGE: 'stage',
-  AVG_RTT: 'avg_rtt'
+  AVG_RTT: 'avg_rtt',
+  LAST_RTT: 'last_rtt',
+  COVERS_SENT: 'covers_sent',
+  COVERS_RECEIVED: 'covers_received',
+  SENDING_COVERS: 'sending_covers',
+  SENDING_MESSAGES: 'sending_messages',
+  QUEUE_INTERVAL: 'out_interval'
 };
 
 export const METRIC_FIELDS = {
@@ -55,7 +61,14 @@ export const METRIC_FIELDS = {
   [METRIC_KEYS.UNACKED_MSG]: 'Unacknowledged Fragments',
   [METRIC_KEYS.RECEIVED_DUPLICATE_MSG]: 'Received Duplicate Messages',
   [METRIC_KEYS.CURRENT_STAGE]: 'Current Stage',
-  [METRIC_KEYS.AVG_RTT]: 'Average RTT'
+  [METRIC_KEYS.AVG_RTT]: 'Average RTT',
+  [METRIC_KEYS.LAST_RTT]: 'Last RTT',
+  [METRIC_KEYS.COVERS_SENT] : 'Covers Sent',
+  [METRIC_KEYS.COVERS_RECEIVED] : 'Covers Received',
+  [METRIC_KEYS.SENDING_COVERS] : 'Sending Covers',
+  [METRIC_KEYS.SENDING_MESSAGES] : 'Sending Messages',
+  [METRIC_KEYS.QUEUED_PACKAGES] : 'Queued Packages',
+  [METRIC_KEYS.QUEUE_INTERVAL] : 'Queue Interval',
 };
 
 export const METRIC_GROUPS = {
@@ -67,7 +80,8 @@ export const METRIC_GROUPS = {
     METRIC_KEYS.UNACKED_MSG,
     METRIC_KEYS.RESENT,
     METRIC_KEYS.RECEIVED_DUPLICATE_MSG,
-    METRIC_KEYS.AVG_RTT
+    METRIC_KEYS.AVG_RTT,
+    METRIC_KEYS.LAST_RTT
   ],
   'Model Exchange': [
     METRIC_KEYS.FRAGMENTS_SENT,
@@ -78,7 +92,13 @@ export const METRIC_GROUPS = {
   Mixnet: [
     METRIC_KEYS.FORWARDED,
     METRIC_KEYS.SURB_REPLIED,
-    METRIC_KEYS.SURB_RECEIVED
+    METRIC_KEYS.SURB_RECEIVED,
+    METRIC_KEYS.COVERS_SENT,
+    METRIC_KEYS.COVERS_RECEIVED,
+    METRIC_KEYS.SENDING_COVERS,
+    METRIC_KEYS.SENDING_MESSAGES,
+    METRIC_KEYS.QUEUED_PACKAGES,
+    METRIC_KEYS.QUEUE_INTERVAL
   ],
   Miscellaneous: [
       METRIC_KEYS.ERRORS,

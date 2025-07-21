@@ -3,7 +3,7 @@ from typing import List
 
 @dataclass
 class ConfigStore:
-    max_hops: int = 6
+    max_hops: int = 1
     resend_time: int = 40
     push_metric_interval: int = 1
     timeout_model_collection: int = 60
@@ -22,3 +22,4 @@ class ConfigStore:
     mix_shuffle: bool = True
     nr_cover_bytes: int = 100
     n_fragments_per_model: int = 200
+    pause_training: bool = False

@@ -36,6 +36,8 @@ class MetricField(Enum):
     UNACKED_MSG = "unacked_msg"
     RECEIVED_DUPLICATE_MSG = "received_duplicate_msg"
     AVG_RTT = "avg_rtt"
+    LAST_RTT = "last_rtt"
+    QUEUED_PACKAGES = "queued_packages"
 
     STAGE = "stage"
     """

@@ -28,10 +28,10 @@ class Mixer:
     def secure_exponential(q):
         u = int.from_bytes(secrets.token_bytes(7), "big") / 2**56
         if q == 0:
-            return 0
+            return 0.001
         sleep_time = -math.log(1 - u) / (1/q)
         # logging.warning(f"Secure exponential sleep time: {sleep_time} seconds, max_rate = {1 / sleep_time}")
-        return min(sleep_time, 0.01)
+        return min(sleep_time, 0.001)
 
     @log_exceptions
     async def __outbox_loop(self):
@@ -63,10 +63,9 @@ class Mixer:
         logging.info(f"N Cover Bytes: {self._config.nr_cover_bytes}")
 
     def __shuffle_outbox(self):
-        # for i in reversed(range(1, len(self._outbox))):
-        #     j = secrets.randbelow(i + 1)  # cryptographically secure random index
-        #     self._outbox[i], self._outbox[j] = self._outbox[j], self._outbox[i]
-        return self._outbox
+        for i in reversed(range(1, len(self._outbox))):
+            j = secrets.randbelow(i + 1)  # cryptographically secure random index
+            self._outbox[i], self._outbox[j] = self._outbox[j], self._outbox[i]
 
     async def push_to_outbox(self, msg_coroutine : Awaitable, update_metrics: Callable):
         queue_obj = QueueObject(
@@ -77,6 +76,8 @@ class Mixer:
 
         if self._config.mix_shuffle:
             self.__shuffle_outbox()
+
+        metrics().set(MetricField.QUEUED_PACKAGES, len(self._outbox))
 
     def queue_is_empty(self):
         return len(self._outbox) == 0

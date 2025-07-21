@@ -31,9 +31,10 @@ class Learner:
             metrics().set(MetricField.CURRENT_ROUND, self._current_round)
 
             self._log_round_start()
-            await self._train_model()
-            await self._validate_local_model(aggregated_accuracy)
-            await self._broadcast_model_updates()
+            if (not ConfigStore.pause_training):
+                await self._train_model()
+                await self._validate_local_model(aggregated_accuracy)
+                await self._broadcast_model_updates()
 
             await self._await_model_chunks()
             aggregated_accuracy = await self._aggregate_and_validate_models(aggregated_accuracy)
