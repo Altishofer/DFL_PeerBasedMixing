@@ -27,6 +27,7 @@ class Learner:
         start_time = time.time()
 
         while self._current_round < self._total_rounds:
+
             self._current_round += 1
             metrics().set(MetricField.CURRENT_ROUND, self._current_round)
 
@@ -37,6 +38,7 @@ class Learner:
                 await self._broadcast_model_updates()
 
             await self._await_model_chunks()
+
             aggregated_accuracy = await self._aggregate_and_validate_models(aggregated_accuracy)
 
             self._log_round_end(start_time)

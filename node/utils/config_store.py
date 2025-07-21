@@ -13,9 +13,9 @@ class ConfigStore:
     port: int = 8000
     node_id: int = 0
     n_nodes: int = 4
-    n_rounds: int = 1
-    exit_nodes: List[int] = field(default_factory=lambda:list)
-    join_nodes: List[int] = field(default_factory=lambda:list)
+    n_rounds: int = 10
+    exit_nodes: List[int] = field(default_factory=lambda:[])
+    join_nodes: List[int] = field(default_factory=lambda:[])
     stream_mode: bool = False
     mix_enabled: bool = True
     mix_lambda: float = 0.001

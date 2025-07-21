@@ -76,7 +76,7 @@ pip install -r requirements.txt
 ### 4. Start the FastAPI backend
 
 ```bash
-uvicorn manager.app:app --reload --host 0.0.0.0 --port 8000
+uvicorn manager.app:app --host 0.0.0.0 --port 8000
 ```
 
 Backend runs at [http://localhost:8000](http://localhost:8000).
