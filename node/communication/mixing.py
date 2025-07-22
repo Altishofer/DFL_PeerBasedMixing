@@ -36,22 +36,23 @@ class Mixer:
     @log_exceptions
     async def __outbox_loop(self):
         while True:
-            interval = 0
-            if self._config.mix_enabled:
-                interval = Mixer.secure_exponential(self._config.mix_lambda)
-            await asyncio.sleep(interval)
-            metrics().set(MetricField.OUT_INTERVAL, interval)
+            interval = Mixer.secure_exponential(self._config.mix_lambda) if self._config.mix_enabled else 0
+            start = asyncio.get_event_loop().time()
+
             if not self.queue_is_empty():
                 queue_obj = self._outbox.pop()
                 await queue_obj.send_message()
                 queue_obj.update_metrics()
                 self.__udpdate_message_metric(sending_covers=False)
             elif self.queue_is_empty() and self._config.mix_enabled:
-                if self._cover_generator != None:
+                if self._cover_generator is not None:
                     await self._cover_generator(nr_bytes=self._config.nr_cover_bytes)
                     self.__udpdate_message_metric(sending_covers=True)
                 else:
                     logging.warning("No cover generator specified in mixer")
+
+            elapsed = asyncio.get_event_loop().time() - start
+            await asyncio.sleep(max(0, interval - elapsed))
 
     async def start(self, cover_generator: Callable):
         self._outbox_loop = asyncio.create_task(self.__outbox_loop())
