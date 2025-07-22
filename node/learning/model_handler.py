@@ -24,10 +24,6 @@ warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 class ModelHandler:
 
-    ConfigStore.batch_size = 64
-    ConfigStore.dirichlet_alpha = 10
-    ConfigStore.n_batches_per_round = 5
-
     def __init__(self, node_id, total_peers):
         self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self._model = FedCNN().to(self._device)
