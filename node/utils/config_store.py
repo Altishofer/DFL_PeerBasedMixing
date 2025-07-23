@@ -5,11 +5,11 @@ from typing import List
 @dataclass
 class ConfigStore:
     max_hops: int = 2
-    resend_time: int = 40
+    resend_time: int = 60
     push_metric_interval: int = 1
     timeout_model_collection: int = 120
     batch_size: int = 64
-    n_batches_per_round: int = 150  # training batches depends on nodes (total 10k samples with batch size of 64) 157 validation batches
+    n_batches_per_round: int = 2000  # train batches depend on n of nodes, min of param or available batches is taken
     dirichlet_alpha: float = 10.0
     port: int = 8000
     node_id: int = 0

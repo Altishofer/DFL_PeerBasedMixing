@@ -80,7 +80,6 @@ class ModelHandler:
         flat = np.zeros_like(local, dtype=np.float32)
         counter = np.zeros_like(local, dtype=np.int32)
 
-        # add local model
         flat += local
         counter += 1
 
@@ -104,12 +103,20 @@ class ModelHandler:
             f"Avg fragments per part: {hits_per_part.mean():.2f}" if hits_per_part.size else "Avg fragments per part: 0.00")
 
     def _flatten_state_dict(self):
-        return (parameters_to_vector(self._model.parameters())
-                .detach().cpu().numpy().astype(np.float32))
+        flat_tensors = []
+        for tensor in self._model.state_dict().values():
+            flat_tensors.append(tensor.detach().cpu().view(-1).to(torch.float32))
+        return torch.cat(flat_tensors).numpy()
 
     def _unflatten_state_dict(self, flat):
-        vector_to_parameters(torch.from_numpy(flat)
-                             .to(self._device), self._model.parameters())
+        flat = torch.from_numpy(flat)
+        new_state = {}
+        offset = 0
+        for key, tensor in self._model.state_dict().items():
+            numel = tensor.numel()
+            new_state[key] = flat[offset:offset + numel].view(tensor.shape).type_as(tensor)
+            offset += numel
+        self._model.load_state_dict(new_state)
         return self._model.state_dict()
 
     @log_exceptions
