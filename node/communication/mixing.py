@@ -1,35 +1,35 @@
-import math
-import secrets
 import asyncio
 import logging
-import time
-
-from utils.logging_config import log_header
-from utils.config_store import ConfigStore
-from utils.exception_decorator import log_exceptions
-from metrics.node_metrics import metrics, MetricField
+import math
+import secrets
 from dataclasses import dataclass
 from typing import Awaitable, Callable
+
+from metrics.node_metrics import metrics, MetricField
+from utils.config_store import ConfigStore
+from utils.exception_decorator import log_exceptions
+from utils.logging_config import log_header
+
 
 @dataclass
 class QueueObject:
     send_message: Awaitable
     update_metrics: Callable
 
+
 class Mixer:
-    def __init__(self, node_config:ConfigStore):
+    def __init__(self, node_config: ConfigStore):
         self._outbox = []
         self._cover_generator = None
         self._outbox_loop = None
         self._config = node_config
 
     # inverse transform sampling of exponential distribution
-    @staticmethod
-    def secure_exponential(q):
-        u = int.from_bytes(secrets.token_bytes(7), "big") / 2**56
-        if q == 0:
+    def secure_exponential(self):
+        u = int.from_bytes(secrets.token_bytes(7), "big") / 2 ** 56
+        if self._config.mix_lambda == 0:
             return 0
-        sleep_time = -math.log(1 - u) / (1/q)
+        sleep_time = -math.log(1 - u) * self._config.mix_lambda
         # logging.warning(f"Secure exponential sleep time: {sleep_time} seconds, max_rate = {1 / sleep_time}")
         return min(sleep_time, 0.01)
 
@@ -38,7 +38,7 @@ class Mixer:
         while True:
             interval = 0
             if self._config.mix_enabled:
-                interval = Mixer.secure_exponential(self._config.mix_lambda)
+                interval = self.secure_exponential()
             await asyncio.sleep(interval)
             metrics().set(MetricField.OUT_INTERVAL, interval)
             if not self.queue_is_empty():
@@ -68,7 +68,7 @@ class Mixer:
         #     self._outbox[i], self._outbox[j] = self._outbox[j], self._outbox[i]
         return self._outbox
 
-    async def push_to_outbox(self, msg_coroutine : Awaitable, update_metrics: Callable):
+    async def push_to_outbox(self, msg_coroutine: Awaitable, update_metrics: Callable):
         queue_obj = QueueObject(
             send_message=msg_coroutine,
             update_metrics=update_metrics,
@@ -86,4 +86,3 @@ class Mixer:
             metrics().increment(MetricField.COVERS_SENT)
         metrics().set(MetricField.SENDING_COVERS, 1 if sending_covers else 0)
         metrics().set(MetricField.SENDING_MESSAGES, 0 if sending_covers else 1)
-

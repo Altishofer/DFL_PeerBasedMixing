@@ -81,6 +81,9 @@ class SphinxRouter:
     @log_exceptions
     def decrypt_surb(self, delta: bytes, surb_id):
         key = self.cache.received_surb(surb_id)
+        if key is None:
+            logging.debug(f"Received SURB {surb_id} not found in cache.")
+            return None
         msg = receive_surb(self._params, key, delta)
         return msg
 

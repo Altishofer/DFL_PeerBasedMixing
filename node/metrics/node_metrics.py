@@ -39,6 +39,7 @@ class MetricField(Enum):
     UNACKED_MSG = "unacked_msg"
     RECEIVED_DUPLICATE_MSG = "received_duplicate_msg"
     AVG_RTT = "avg_rtt"
+    AVG_MSG_PER_SECOND = "avg_msg_per_second"
 
     STAGE = "stage"
     """
@@ -72,6 +73,7 @@ class Metrics:
         self._change_log: deque = deque()
         self._controller_url = controller_url
         self._host = host_name
+        self._start_time = time.time()
 
         if controller_url:
             Thread(target=self._push_loop, daemon=True).start()
@@ -87,7 +89,7 @@ class Metrics:
                 if self._data[field] < 0:
                     self._data[field] = 0
 
-    def set(self, field: MetricField, value: int | str):
+    def set(self, field: MetricField, value: int | str | float):
         with self._data_lock:
             self._data[field] = value
 
@@ -112,10 +114,15 @@ class Metrics:
 
     def _push_loop(self):
         while True:
-            interval = ConfigStore.push_metric_interval
+            self.set_message_frequency()
             self._flush_metrics()
             self._push_metrics()
-            time.sleep(interval)
+            time.sleep(ConfigStore.push_metric_interval)
+
+    def set_message_frequency(self):
+        elapsed_time = time.time() - self._start_time
+        frequency = self._data[MetricField.TOTAL_MSG_SENT] / elapsed_time
+        self.set(MetricField.AVG_MSG_PER_SECOND, frequency)
 
     def _push_metrics(self):
         try:

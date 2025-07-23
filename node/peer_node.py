@@ -1,13 +1,13 @@
 import asyncio
 
-from communication.sphinx.sphinx_transport import SphinxTransport
 from communication.mixing import Mixer
+from communication.sphinx.sphinx_transport import SphinxTransport
 from learning.learner import Learner
 from utils.config_store import ConfigStore
 
 
 class PeerNode:
-    def __init__(self, node_config : ConfigStore):
+    def __init__(self, node_config: ConfigStore):
         self._node_id = node_config.node_id
         peers = {
             i: (f"node_{i}", node_config.port)
