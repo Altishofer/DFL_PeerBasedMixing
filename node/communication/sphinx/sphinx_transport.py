@@ -101,7 +101,7 @@ class SphinxTransport:
         for peer_id in peers:
             send_message_task = self.create_send_message_task(message, peer_id)
             update_metrics_task = self.increment_metric_task(MetricField.FRAGMENTS_SENT)
-            await self._mixer.push_to_outbox(send_message_task, update_metrics_task)
+            await self._mixer.queue_item(send_message_task, update_metrics_task)
         return len(peers)
 
     def create_send_message_task(self, message, peer_id):
@@ -138,7 +138,7 @@ class SphinxTransport:
                 else:
                     send_message_task = self.create_resend_task(fragment)
                     update_metrics_task = self.increment_metric_task(MetricField.RESENT)
-                    await self._mixer.push_to_outbox(send_message_task, update_metrics_task)
+                    await self._mixer.queue_item(send_message_task, update_metrics_task)
             if stale:
                 logging.warning(f"Resent {len(stale)} unacked fragments.")
             await asyncio.sleep(5)
@@ -208,14 +208,14 @@ class SphinxTransport:
         if routing[0] == Relay_flag:
             send_message_task = self.create_forward_task(routing[1], header, delta)
             update_metrics_task = self.increment_metric_task(MetricField.FORWARDED)
-            await self._mixer.push_to_outbox(send_message_task, update_metrics_task)
+            await self._mixer.queue_item(send_message_task, update_metrics_task)
 
         elif routing[0] == Dest_flag:
             _, msg = receive_forward(self._params, mac_key, delta)
             nymtuple = await self.__unpack_payload(msg)
             send_message_task = self.create_surb_reply_task(nymtuple)
             update_metrics_task = self.increment_metric_task(MetricField.SURB_REPLIED)
-            await self._mixer.push_to_outbox(send_message_task, update_metrics_task)
+            await self._mixer.queue_item(send_message_task, update_metrics_task)
 
         elif routing[0] == Surb_flag:
             metrics().increment(MetricField.SURB_RECEIVED)
@@ -237,10 +237,10 @@ class SphinxTransport:
         return send_message
 
     @log_exceptions
-    async def generate_cover_traffic(self, nr_bytes):
+    async def generate_cover_traffic(self):
         if len(self._peer.active_peers()) == 0:
             return
         target_node = secrets.choice(self._peer.active_peers())
-        content = secrets.token_bytes(nr_bytes)
+        content = secrets.token_bytes(ConfigStore.nr_cover_bytes)
         payload = PackageHelper.format_cover_package(content)
         await self.generate_path_and_send(payload, target_node, cover=True)
