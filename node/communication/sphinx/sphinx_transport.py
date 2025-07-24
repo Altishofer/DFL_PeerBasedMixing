@@ -25,6 +25,7 @@ class SphinxTransport:
         self._peers = peers
         self._mixer = mixer
         self._node_config = node_config
+        self.n_fragments_per_model = None # will be set dynamically once number is determined
 
         self._params = SphinxParams(
             header_len=192,
@@ -54,7 +55,7 @@ class SphinxTransport:
 
     @log_exceptions
     async def received_all_expected_fragments(self):
-        total_expected = self.active_nodes() * self._node_config.n_fragments_per_model
+        total_expected = self.active_nodes() * self.n_fragments_per_model
         if total_expected == 0:
             logging.warning("No active nodes, cannot determine expected fragments.")
             return True

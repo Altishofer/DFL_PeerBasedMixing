@@ -35,21 +35,24 @@ class Cache:
         fragment = Fragment(surb_id, surb_key_tuple, target_node, payload, now, False, cover)
         self.cache[surb_id] = fragment
         self.out_counter += 1
-        if not self.cache[surb_id].cover:
+        if surb_id in self.cache and not self.cache[surb_id].cover:
             metrics().increment(MetricField.UNACKED_MSG)
 
     @log_exceptions
     def received_surb(self, surb_id):
         self.set_acked(surb_id)
+        entry = self.cache.get(surb_id)
+        if entry is None:
+            return None
         now = datetime.now(timezone.utc)
-        start = self.cache[surb_id].timestamp
+        start = entry.timestamp
         rtt = (now - start).total_seconds()
         if (ConfigStore.resend_time > rtt):
             self.rtts.append(rtt)
             metrics().set(MetricField.LAST_RTT, rtt)
         metrics().set(MetricField.AVG_RTT, np.mean(self.rtts))
         self.in_counter += 1
-        return self.cache[surb_id].surb_key_tuble
+        return entry.surb_key_tuble
 
     @log_exceptions
     def delete_cache_for_node(self, target_node):
@@ -70,7 +73,7 @@ class Cache:
     def set_acked(self, surb_id: bytes):
         if surb_id in self.cache:
             self.cache[surb_id].acked = True
-        if not self.cache[surb_id].cover:
+        if surb_id in self.cache and not self.cache[surb_id].cover:
             metrics().decrement(MetricField.UNACKED_MSG)
 
     @log_exceptions

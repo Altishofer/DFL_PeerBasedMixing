@@ -1,12 +1,11 @@
-import asyncio
 import logging
 import time
 
 from learning.message_manager import MessageManager
 from learning.model_handler import ModelHandler
 from metrics.node_metrics import metrics, MetricField
-from utils.logging_config import log_exceptions, log_header
 from utils.config_store import ConfigStore
+from utils.logging_config import log_exceptions, log_header
 
 
 class Learner:
@@ -27,7 +26,6 @@ class Learner:
         start_time = time.time()
 
         while self._current_round < self._total_rounds:
-
             self._current_round += 1
             metrics().set(MetricField.CURRENT_ROUND, self._current_round)
 

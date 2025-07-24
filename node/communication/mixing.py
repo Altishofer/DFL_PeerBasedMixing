@@ -1,23 +1,24 @@
-import math
-import secrets
 import asyncio
 import logging
-import time
-
-from utils.logging_config import log_header
-from utils.config_store import ConfigStore
-from utils.exception_decorator import log_exceptions
-from metrics.node_metrics import metrics, MetricField
+import math
+import secrets
 from dataclasses import dataclass
 from typing import Awaitable, Callable
+
+from metrics.node_metrics import metrics, MetricField
+from utils.config_store import ConfigStore
+from utils.exception_decorator import log_exceptions
+from utils.logging_config import log_header
+
 
 @dataclass
 class QueueObject:
     send_message: Awaitable
     update_metrics: Callable
 
+
 class Mixer:
-    def __init__(self, node_config:ConfigStore):
+    def __init__(self, node_config: ConfigStore):
         self._outbox = []
         self._cover_generator = None
         self._outbox_loop = None
@@ -86,4 +87,3 @@ class Mixer:
             metrics().increment(MetricField.COVERS_SENT)
         metrics().set(MetricField.SENDING_COVERS, 1 if sending_covers else 0)
         metrics().set(MetricField.SENDING_MESSAGES, 0 if sending_covers else 1)
-

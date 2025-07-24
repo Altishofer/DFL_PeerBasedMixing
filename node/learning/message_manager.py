@@ -2,12 +2,14 @@ import asyncio
 import logging
 import time
 
+from communication.sphinx.sphinx_transport import SphinxTransport
+from learning.model_handler import ModelHandler
 from utils.config_store import ConfigStore
 from utils.exception_decorator import log_exceptions
 from communication.packages import PackageHelper
 
 class MessageManager:
-    def __init__(self, node_id, transport, model_handler, node_config:ConfigStore):
+    def __init__(self, node_id, transport: SphinxTransport, model_handler: ModelHandler, node_config:ConfigStore):
         self._node_id = node_id
         self._transport = transport
         self._model_handler = model_handler
@@ -30,6 +32,7 @@ class MessageManager:
     @log_exceptions
     async def send_model_updates(self, current_round):
         chunks, n_chunks = self.chunks()
+        self._transport.n_fragments_per_model = n_chunks
         n_peers = 0
         for i in range(n_chunks):
             n_peers = await self.send_model_chunk(current_round, i, chunks[i], n_chunks)
@@ -68,7 +71,7 @@ class MessageManager:
             part_idx = msg["part_idx"]
             total_parts = msg["total_parts"]
 
-            if collected_parts > self._transport.active_nodes() * self._node_config.n_fragments_per_model:
+            if collected_parts > self._transport.active_nodes() * self._transport.n_fragments_per_model:
                 self._transport.push_unexpected_to_queue(msg)
             else:
                 buffer.append(msg["content"])
