@@ -35,7 +35,8 @@ export const METRIC_KEYS = {
   COVERS_RECEIVED: 'covers_received',
   SENDING_COVERS: 'sending_covers',
   SENDING_MESSAGES: 'sending_messages',
-  QUEUE_INTERVAL: 'out_interval'
+  QUEUE_INTERVAL: 'out_interval',
+  QUEUED_PACKAGES: 'queued_packages'
 };
 
 export const METRIC_FIELDS = {
@@ -98,7 +99,7 @@ export const METRIC_GROUPS = {
     METRIC_KEYS.SENDING_COVERS,
     METRIC_KEYS.SENDING_MESSAGES,
     METRIC_KEYS.QUEUED_PACKAGES,
-    METRIC_KEYS.QUEUE_INTERVAL
+    METRIC_KEYS.QUEUE_INTERVAL,
   ],
   Miscellaneous: [
       METRIC_KEYS.ERRORS,

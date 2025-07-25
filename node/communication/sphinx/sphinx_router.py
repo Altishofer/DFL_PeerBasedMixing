@@ -88,6 +88,8 @@ class SphinxRouter:
     def _build_path_to(self, start, target, active_peers):
         intermediates = [nid for nid in active_peers if nid not in [start, target]]
         hops = SphinxRouter.secure_random_path(intermediates, self._max_hops)
+        if (not ConfigStore.mix_enabled):
+            hops = []
         return hops + [target]
 
     def process_incoming(self, data: bytes):
