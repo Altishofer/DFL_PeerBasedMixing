@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { toast} from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import NodeStatus from './NodeStatus';
@@ -13,7 +13,7 @@ import {
   WS_BASE_URL, API_BASE_URL, CHART_PALETTE, METRIC_KEYS, getDisplayName, ALWAYS_ACTIVE_METRICS
 } from '../../constants/constants';
 import '../../App.css';
-import {createSSEService} from "../../services/SseService";
+import { createSSEService } from '../../services/SseService';
 
 const Dashboard = () => {
   const [nodeStatus, setNodeStatus] = useState([]);
@@ -34,57 +34,40 @@ const Dashboard = () => {
     return Array.from(nodes).sort();
   }, [metrics, nodeStatus]);
 
-  const manageNodes = useCallback(async (endpoint, data, errorMessage) => {
+  const toggleMetric = useCallback(field => {
+    setSelectedMetrics(prev =>
+      prev.includes(field) ? prev.filter(m => m !== field) : [...prev, field]
+    );
+  }, []);
+
+  const handleStartNodes = useCallback(async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      setError('');
-      const response = await axios.post(`${API_BASE_URL}${endpoint}`, data);
-      await fetchNodeStatus();
-      return response.data;
-    } catch (err) {
-      setError(errorMessage);
-      toast.error(errorMessage);
-      throw err;
+      await axios.post(`${API_BASE_URL}/nodes/start`);
+      toast.success('Nodes started');
+      setWsTrigger(t => t + 1);
+    } catch (e) {
+      toast.error('Failed to start nodes');
     } finally {
       setIsLoading(false);
     }
-  }, [fetchNodeStatus]);
+  }, []);
 
-  const resetDashboard = useCallback(() => {
-    axios.get(`${WS_BASE_URL}/metrics/clear`);
-    setNodeStatus([]);
-    setMetrics([]);
-    setSelectedMetrics([]);
-    setIsLoading(false);
-    setError('');
-    setNodeUptimes({});
-    setWsTrigger(prev => prev + 1);
-    fetchNodeStatus();
-    setSelectedMetrics(ALWAYS_ACTIVE_METRICS);
-  }, [fetchNodeStatus]);
-
-  const startNodes = useCallback(async () => {
-    resetDashboard();
-    await manageNodes(`/nodes/start`, 'Failed to start nodes');
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    await fetchNodeStatus();
-  }, [manageNodes, resetDashboard, fetchNodeStatus]);
-
-  const stopNodes = useCallback(async () => {
-    await manageNodes('/nodes/stop', {}, 'Failed to stop nodes');
-    resetDashboard();
-  }, [manageNodes, resetDashboard]);
-
-  const toggleMetric = (field) => {
-    setSelectedMetrics(prev =>
-      prev.includes(field)
-        ? prev.filter(m => m !== field)
-        : [...prev, field]
-    );
-  };
+  const handleStopNodes = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await axios.post(`${API_BASE_URL}/nodes/stop`);
+      toast.success('Nodes stopped');
+      setWsTrigger(t => t + 1);
+    } catch (e) {
+      toast.error('Failed to stop nodes');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const handleMessage = (data) => {
+    const handleMessage = data => {
       const newMetrics = Array.isArray(data) ? data : data?.data;
       if (Array.isArray(newMetrics)) {
         setMetrics(prev => [...prev, ...newMetrics]);
@@ -94,24 +77,12 @@ const Dashboard = () => {
     wsService.initialize(`${WS_BASE_URL}/metrics/sse`, handleMessage);
 
     const statusInterval = setInterval(fetchNodeStatus, 3000);
-    const uptimeInterval = setInterval(() => {
-      setNodeUptimes(prev => {
-        const updated = {};
-        Object.entries(prev).forEach(([name, { startTime, isRunning }]) => {
-          if (isRunning && startTime) {
-            updated[name] = { ...prev[name], elapsedMs: Date.now() - startTime };
-          }
-        });
-        return { ...prev, ...updated };
-      });
-    }, 1000);
 
     return () => {
       clearInterval(statusInterval);
-      clearInterval(uptimeInterval);
       wsService.disconnect();
     };
-  }, [fetchNodeStatus, wsTrigger]);
+  }, [fetchNodeStatus, wsService, wsTrigger]);
 
   const currentRoundByNode = useMemo(() => {
     const latest = {};
@@ -126,28 +97,25 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
-
       <header className="dashboard-header">
         <h1>Peer Based Mixing</h1>
         <div className="header-buttons">
           <button
             className="action-button start-button"
-            onClick={startNodes}
+            onClick={handleStartNodes}
             disabled={isLoading}
           >
             Start
           </button>
           <button
             className="action-button stop-button"
-            onClick={stopNodes}
+            onClick={handleStopNodes}
             disabled={isLoading}
           >
             Stop
           </button>
         </div>
       </header>
-
-
 
       <div className="dashboard-content">
         <NodeStatus
@@ -160,17 +128,15 @@ const Dashboard = () => {
         />
 
         <div className="metrics-grid">
-          <div className="metric-selection-container">
-            <MetricSelection
-              selectedMetrics={selectedMetrics}
-              metricKeys={METRIC_KEYS}
-              getDisplayName={getDisplayName}
-              onToggleMetric={toggleMetric}
-            />
-          </div>
+          <MetricSelection
+            selectedMetrics={selectedMetrics}
+            metricKeys={METRIC_KEYS}
+            getDisplayName={getDisplayName}
+            onToggleMetric={toggleMetric}
+          />
           <div className="metric-charts-container">
             {selectedMetrics.length === 0 ? (
-              <div className="no-metrics-selected"><p>Select metrics to display charts</p></div>
+              <div className="no-metrics-selected">Select metrics to display charts</div>
             ) : (
               <div className="metric-charts-grid">
                 {selectedMetrics.map(metricKey => (
@@ -190,17 +156,17 @@ const Dashboard = () => {
       </div>
 
       {error && <div className="status-message error">{error}</div>}
-      {isLoading && <div className="overlay-loading"><div className="spinner" /><div>Loading...</div></div>}
+      {isLoading && (
+        <div className="overlay-loading">
+          <div className="spinner" />
+          <div>Loading...</div>
+        </div>
+      )}
 
       <footer className="dashboard-footer">
         <div className="footer-content">
           <div className="footer-title">
-            <a href="https://github.com/Altishofer/DFL_PeerBasedMixing">Peer-Based Mixing for DFL v0.1</a>
-          </div>
-          <div className="footer-authors">
-            <a href="https://github.com/Altishofer">Sandrin Hunkeler</a>
-            <span className="separator">·</span>
-            <a href="https://github.com/Ringdinglinn">Linn Spitz</a>
+            <a href="https://github.com/Altishofer/DFL_PeerBasedMixing">Peer Based Mixing for DFL v0.1</a>
           </div>
         </div>
       </footer>

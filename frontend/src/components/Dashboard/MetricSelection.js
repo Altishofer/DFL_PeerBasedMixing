@@ -1,5 +1,5 @@
 import React from 'react';
-import { METRIC_GROUPS } from '../../constants/constants';
+import { METRIC_GROUPS, METRIC_UNITS } from '../../constants/constants';
 
 export default function MetricSelection({ selectedMetrics, metricKeys, getDisplayName, onToggleMetric }) {
   const metricKeysArray = Array.isArray(metricKeys) ? metricKeys : Object.values(metricKeys);
@@ -13,7 +13,7 @@ export default function MetricSelection({ selectedMetrics, metricKeys, getDispla
   })();
 
   return (
-    <div className="metric-toggle-columns">
+    <div className="metric-selection-container">
       {Object.entries(groupedMetrics).map(([groupName, group]) => {
         const sorted = group
           .filter((k) => metricKeysArray.includes(k))
@@ -22,19 +22,21 @@ export default function MetricSelection({ selectedMetrics, metricKeys, getDispla
 
         return (
           <div key={groupName} className="metric-group">
-            <div className="metric-group-label">{groupName}</div>
-            <div className="metric-toggle-container">
-              {sorted.map((key) => (
-                <button
-                  key={key}
-                  className={`metric-toggle ${selectedMetrics.includes(key) ? 'active' : ''}`}
-                  onClick={() => onToggleMetric(key)}
-                >
-                  {getDisplayName(key)}
-                  {selectedMetrics.includes(key) && <span className="toggle-indicator">✓</span>}
-                </button>
-              ))}
-            </div>
+            <h3 className="metric-group-label">{groupName}</h3>
+            <table className="metric-table">
+              <tbody>
+                {sorted.map((key) => (
+                  <tr
+                    key={key}
+                    className={`metric-row ${selectedMetrics.includes(key) ? 'active' : ''}`}
+                    onClick={() => onToggleMetric(key)}
+                  >
+                    <td className="metric-name">{getDisplayName(key)}</td>
+                    <td className="metric-unit">{METRIC_UNITS[key] || ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         );
       })}
