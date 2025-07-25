@@ -18,7 +18,6 @@ class Learner:
         self._current_round = 0
         self._model_handler = ModelHandler(self._node_id, self._total_peers)
         self._message_manager = MessageManager(self._node_id, transport, self._model_handler, node_config)
-        self._stream_based = node_config.stream_mode
 
     @log_exceptions
     async def run(self):
@@ -46,7 +45,6 @@ class Learner:
 
     def _log_round_start(self):
         log_header(f"ROUND {self._current_round}")
-        logging.info(f"Stream Mode: {self._stream_based}")
 
     async def _train_model(self):
         log_header("Start Training")
@@ -63,8 +61,7 @@ class Learner:
 
     async def _broadcast_model_updates(self):
         logging.info("Broadcasting Model Updates")
-        if not self._stream_based:
-            await self._message_manager.send_model_updates(self._current_round)
+        await self._message_manager.send_model_updates(self._current_round)
 
     async def _await_model_chunks(self):
         log_header(f"Awaiting Model Chunks from Peers ({ConfigStore.timeout_model_collection}s).")

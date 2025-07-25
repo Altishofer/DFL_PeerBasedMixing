@@ -4,6 +4,13 @@ import math
 import secrets
 from dataclasses import dataclass
 from typing import Awaitable, Callable
+from scipy.stats import truncnorm
+
+from metrics.node_metrics import metrics, MetricField
+from utils.config_store import ConfigStore
+from utils.exception_decorator import log_exceptions
+from utils.logging_config import log_header
+
 
 from metrics.node_metrics import metrics, MetricField
 from utils.config_store import ConfigStore
@@ -54,30 +61,47 @@ class Mixer:
         z = math.sqrt(-2.0 * math.log(u1)) * math.cos(2 * math.pi * u2)
 
         return math.exp(mu_log + sigma_log * z)
+    
+    @staticmethod
+    def secure_truncated_normal(mu=0.005, sigma=0.002, a=0.0, b=0.1):
+        # Generate secure uniform random number in [0,1)
+        u = secrets.SystemRandom().random()
+        
+        lower, upper = (a - mu) / sigma, (b - mu) / sigma
+        
+        return truncnorm.ppf(u, lower, upper, loc=mu, scale=sigma)
 
     @log_exceptions
     async def __outbox_loop(self):
         while True:
-            self.__update_outbox()
+            if ConfigStore.mix_enabled:
+                self.__update_outbox()
 
-            interval = Mixer.secure_lognormal(ConfigStore.mix_mu, ConfigStore.mix_std) if ConfigStore.mix_enabled else 0
-            start = asyncio.get_event_loop().time()
+                interval = Mixer.secure_truncated_normal(ConfigStore.mix_mu, ConfigStore.mix_std, 0, 0.1)
+                metrics().set(MetricField.OUT_INTERVAL, interval)
+                start = asyncio.get_event_loop().time()
 
-            for _ in range(ConfigStore.mix_outbox_size):
                 queue_obj = self._outbox.pop()
                 await queue_obj.send_message()
                 queue_obj.update_metrics()
 
-            elapsed = asyncio.get_event_loop().time() - start
-            await asyncio.sleep(max(0, interval - elapsed))
+                elapsed = asyncio.get_event_loop().time() - start
+                await asyncio.sleep(max(0, interval - elapsed))
+            elif not self.queue_is_empty():
+                queue_obj = self._queue.pop(0)
+
+                await asyncio.sleep(0.01)
 
     async def start(self, cover_generator: Callable):
-        self._outbox_loop = asyncio.create_task(self.__outbox_loop())
-        self._cover_generator = cover_generator
-        log_header("Peer-Based Mixer")
-        logging.info(f"Enabled: {ConfigStore.mix_enabled}")
-        logging.info(f"Shuffle: {ConfigStore.mix_shuffle}")
-        logging.info(f"N Cover Bytes: {ConfigStore.nr_cover_bytes}")
+        if (ConfigStore.mix_enabled):
+            self._outbox_loop = asyncio.create_task(self.__outbox_loop())
+            self._cover_generator = cover_generator
+            log_header("Peer-Based Mixer")
+            logging.info(f"Enabled: {ConfigStore.mix_enabled}")
+            logging.info(f"Shuffle: {ConfigStore.mix_shuffle}")
+            logging.info(f"N Cover Bytes: {ConfigStore.nr_cover_bytes}")
+        else:
+            logging.info(f"Mixer disabled")
 
     def __update_outbox(self): 
         if (not self.outbox_is_empty()):
@@ -89,7 +113,8 @@ class Mixer:
             else:
                 self._outbox.append(self.__create_cover_item())
 
-        self.__shuffle_outbox()
+        if (ConfigStore.mix_shuffle):
+            self.__shuffle_outbox()
 
     def __shuffle_outbox(self):
         n = len(self._outbox)
@@ -116,9 +141,12 @@ class Mixer:
             )
         )
 
-        self._queue.append(queue_obj)
-
-        metrics().set(MetricField.QUEUED_PACKAGES, len(self._outbox))
+        if (ConfigStore.mix_enabled):
+            self._queue.append(queue_obj)
+            metrics().set(MetricField.QUEUED_PACKAGES, len(self._outbox))
+        else:
+            await queue_obj.send_message()
+            queue_obj.update_metrics()
 
     def outbox_is_empty(self):
         return len(self._outbox) == 0

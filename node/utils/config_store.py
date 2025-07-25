@@ -17,12 +17,10 @@ class ConfigStore:
     n_rounds: int = 10
     exit_nodes: List[int] = field(default_factory=lambda:[])
     join_nodes: List[int] = field(default_factory=lambda:[])
-    stream_mode: bool = False
     mix_enabled: bool = True
-    # mix_lambda: float = 0.001
-    mix_mu: float = 0.01
-    mix_std: float = 0.01
+    mix_mu: float = 0.005
+    mix_std: float = 0.002
     mix_shuffle: bool = True
-    mix_outbox_size: int = 20
+    mix_outbox_size: int = 10
     nr_cover_bytes: int = 100
     pause_training: bool = False
