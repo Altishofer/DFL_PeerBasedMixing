@@ -29,10 +29,10 @@ class Learner:
             metrics().set(MetricField.CURRENT_ROUND, self._current_round)
 
             self._log_round_start()
-            if (not ConfigStore.pause_training):
+            if not ConfigStore.pause_training:
                 await self._train_model()
-                await self._validate_local_model(aggregated_accuracy)
                 await self._broadcast_model_updates()
+                await self._validate_local_model(aggregated_accuracy)
 
             await self._await_model_chunks()
 
@@ -60,7 +60,7 @@ class Learner:
         metrics().set(MetricField.TRAINING_ACCURACY, accuracy)
 
     async def _broadcast_model_updates(self):
-        logging.info("Broadcasting Model Updates")
+        log_header("Broadcasting Model Updates")
         await self._message_manager.send_model_updates(self._current_round)
 
     async def _await_model_chunks(self):
