@@ -41,14 +41,9 @@ class SphinxRouter:
         metrics().increment(MetricField.DELETED_CACHE_FOR_INACTIVE, n_deleted)
         if n_deleted > 0:
             logging.info(f"Deleted {n_deleted} fragments for node {target_node}.")
-        logging.warning(f"Deleted {n_deleted} fragments for node {target_node}.")
 
     @log_exceptions
     async def create_forward_msg(self, target_node, payload, active_peers, cover):
-        return await asyncio.to_thread(self._create_forward_msg_sync, target_node, payload, active_peers, cover)
-
-    @log_exceptions
-    def _create_forward_msg_sync(self, target_node, payload, active_peers, cover):
         path, nodes_routing, keys_nodes = self.build_forward_path(target_node, active_peers)
         _, nodes_routing_back, keys_nodes_back = self.build_surb_reply_path(target_node, active_peers)
 
@@ -104,7 +99,7 @@ class SphinxRouter:
             hops = []
         return hops + [target]
 
-    def process_incoming(self, data: bytes):
+    async def process_incoming(self, data: bytes):
         param_dict = {(self._params.max_len, self._params.m): self._params}
         _, (header, delta) = unpack_message(param_dict, data)
         x = self._key_store.get_x(self._node_id)

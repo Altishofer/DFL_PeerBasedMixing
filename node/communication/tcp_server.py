@@ -69,7 +69,7 @@ class TcpServer:
         try:
             while True:
                 data = await reader.readexactly(self.packet_size)
-                asyncio.create_task(self.message_handler(data, peer_id))
+                await self.message_handler(data, peer_id)
         except asyncio.IncompleteReadError:
             logging.error(f"Incomplete read error for node {peer_id}.")
             await self.remove_peer(peer_id)

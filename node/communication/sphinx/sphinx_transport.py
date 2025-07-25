@@ -194,7 +194,7 @@ class SphinxTransport:
         metrics().increment(MetricField.TOTAL_MBYTES_RECEIVED, len(data) / 1048576)
         metrics().increment(MetricField.TOTAL_MSG_RECEIVED)
         try:
-            unpacked = await asyncio.to_thread(self.sphinx_router.process_incoming, data)
+            unpacked = await self.sphinx_router.process_incoming(data)
         except Exception as e:
             logging.warning(f"Failed to unpack incoming data: {e} from {peer_id}")
             return
