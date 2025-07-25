@@ -1,46 +1,47 @@
 @import url("https://fonts.googleapis.com/css2?family=SF+Pro+Text:wght@400;500;600;700&display=swap");
 
 :root {
-    --color-primary: #0a84ff;
-    --color-primary-dark: #0066cc;
-    --color-primary-light: #66b3ff;
+    --color-primary: #808080;
+    --color-primary-dark: #404040;
+    --color-primary-light: #c0c0c0;
 
-    --color-secondary: #5ac8fa;
-    --color-secondary-dark: #007ea7;
-    --color-secondary-light: #a3d8f4;
+    --color-secondary: #a0a0a0;
+    --color-secondary-dark: #606060;
+    --color-secondary-light: #e0e0e0;
 
-    --color-tertiary: #1c1c1e;
+    --color-tertiary: #202020;
 
-    --color-success: #28b463;
-    --color-warning: #f39c12;
-    --color-danger: #c0392b;
-    --color-info: #3498db;
+ --color-success: #277138;
+  --color-warning: #ffc107;
+  --color-danger: #b52d39;
+  --color-info: #17a2b8;
 
-    --color-bg: #f4f4f4;
-    --color-surface: #ffffff;
-    --color-surface-dark: #ececec;
-    --color-surface-darker: #d6d6d6;
+    --color-bg: #ffffff;
+    --color-surface: #fbfbfb;
+    --color-surface-dark: #f0f0f0;
+    --color-surface-darker: #d8d8d8;
 
-    --color-text: #1e1e1e;
-    --color-text-secondary: #4b4b4b;
-    --color-text-muted: #7d7d7d;
+    --color-text: #000000;
+    --color-text-secondary: #404040;
+    --color-text-muted: #808080;
     --color-text-light: #ffffff;
 
     --color-black: #000000;
 
-    --color-border: #d1d1d1;
-    --color-border-dark: #b3b3b3;
-    --color-border-light: #eaeaea;
+    --color-border: #c0c0c0;
+    --color-border-dark: #909090;
+    --color-border-light: #e8e8e8;
 
-    --color-chart-1: #2d89ef;
-    --color-chart-2: #1b998b;
-    --color-chart-3: #6c757d;
-    --color-chart-4: #a93226;
-    --color-chart-5: #d4ac0d;
-    --color-chart-6: #2c3e50;
-    --color-chart-7: #16a085;
-    --color-chart-8: #95a5a6;
+    --color-chart-1: #333333;
+    --color-chart-2: #666666;
+    --color-chart-3: #999999;
+    --color-chart-4: #cccccc;
+    --color-chart-5: #4a4a4a;
+    --color-chart-6: #7d7d7d;
+    --color-chart-7: #b0b0b0;
+    --color-chart-8: #e3e3e3;
 
+    /* Remaining non-color variables unchanged */
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
     --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.15);
@@ -63,6 +64,7 @@
     --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-normal: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 
 
 body {
@@ -150,14 +152,17 @@ body {
 }
 
 .control-panel,
-.metric-selection-container,
-.metric-charts-container,
 .dashboard-card {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
     padding: var(--spacing-sm);
+}
+
+.metric-selection-container,
+.metric-charts-container {
+    background: var(--color-bg);
 }
 
 .control-panel {
@@ -243,32 +248,6 @@ body {
     cursor: not-allowed;
 }
 
-.metric-toggle-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.metric-toggle {
-    padding: 0.45rem 0.9rem;
-    font-size: 0.85rem;
-    font-weight: 500;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.metric-toggle:hover {
-    background: var(--color-surface-dark);
-}
-
-.metric-toggle.active {
-    background: var(--color-primary);
-    color: var(--color-text-light);
-    border-color: var(--color-primary);
-}
 
 .metric-charts-grid {
     display: grid;
@@ -375,42 +354,7 @@ td.status-unknown {
     overflow: hidden;
 }
 
-.tab-list {
-    display: flex;
-    margin: 0;
-    background: var(--color-surface-dark);
-    border-bottom: 1px solid var(--color-border);
-}
 
-.tab {
-    padding: 1rem 1.5rem;
-    cursor: pointer;
-    text-align: center;
-    transition: color var(--transition-fast), background var(--transition-fast);
-    border-bottom: 3px solid transparent;
-    color: var(--color-text-muted);
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.tab:hover {
-    color: var(--color-primary);
-    background: rgba(74, 107, 255, 0.05);
-}
-
-.tab--selected {
-    color: var(--color-primary);
-    border-bottom-color: var(--color-primary);
-    background: var(--color-surface);
-}
-
-.tab-panel {
-    padding: 1.5rem;
-    background: var(--color-surface);
-    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-}
 
 .panel-grid,
 .metrics-grid {
@@ -520,10 +464,13 @@ td.status-unknown {
     background: var(--color-surface);
     padding: var(--spacing-sm);
     overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
 }
 
 .metric-group-label {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     font-weight: 600;
     margin-bottom: 0;
     color: var(--color-primary-dark);
@@ -539,7 +486,6 @@ td.status-unknown {
 .metric-table td {
     padding: 0.75rem;
     text-align: left;
-    border-bottom: 1px solid var(--color-border);
     white-space: normal;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -571,7 +517,7 @@ td.status-unknown {
 }
 
 .metric-row.active {
-    background: var(--color-secondary-light);
+    background: var(--color-chart-4);
     color: var(--color-text-light);
 }
 
