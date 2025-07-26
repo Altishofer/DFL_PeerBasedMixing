@@ -49,7 +49,7 @@ class TcpServer:
             logging.debug(f"Cannot send message to peer {peer_id}: not connected or inactive.")
             return
         try:
-            await asyncio.wait_for(self.connections[peer_id].send(message), timeout=1.0)
+            await asyncio.wait_for(self.connections[peer_id].send(message), timeout=0.1)
         except (ConnectionResetError, BrokenPipeError, OSError, asyncio.TimeoutError) as e:
             await self.connections[peer_id].close()
             logging.warning(f"Send failed to peer {peer_id}: {e}")
@@ -70,7 +70,7 @@ class TcpServer:
             while True:
                 data = await reader.readexactly(self.packet_size)
                 await self.message_handler(data, peer_id)
-        except asyncio.exceptions.IncompleteReadError:
+        except asyncio.IncompleteReadError:
             logging.error(f"Incomplete read error for node {peer_id}.")
             await self.remove_peer(peer_id)
 

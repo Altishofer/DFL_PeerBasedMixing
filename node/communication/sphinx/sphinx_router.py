@@ -1,6 +1,8 @@
+import asyncio
 import random
 import logging
 import secrets
+import time
 
 from sphinxmix.SphinxClient import (
     create_forward_message, PFdecode,
@@ -37,10 +39,11 @@ class SphinxRouter:
     def remove_cache_for_disconnected(self, target_node):
         n_deleted = self.cache.delete_cache_for_node(target_node)
         metrics().increment(MetricField.DELETED_CACHE_FOR_INACTIVE, n_deleted)
-        logging.warning(f"Deleted {n_deleted} fragments for node {target_node}.")
+        if n_deleted > 0:
+            logging.info(f"Deleted {n_deleted} fragments for node {target_node}.")
 
     @log_exceptions
-    def create_forward_msg(self, target_node, payload, active_peers, cover):
+    async def create_forward_msg(self, target_node, payload, active_peers, cover):
         path, nodes_routing, keys_nodes = self.build_forward_path(target_node, active_peers)
         _, nodes_routing_back, keys_nodes_back = self.build_surb_reply_path(target_node, active_peers)
 
@@ -48,7 +51,8 @@ class SphinxRouter:
         header, delta = self.create_forward_packet(nodes_routing, keys_nodes, nymtuple, payload)
         msg_bytes = pack_message(self._params, (header, delta))
 
-        self.cache.new_fragment(surbid, surbkeytuple, target_node, payload, cover)
+        if not cover:
+            self.cache.new_fragment(surbid, surbkeytuple, target_node, payload, cover)
         return path, msg_bytes
 
     @log_exceptions
@@ -95,7 +99,7 @@ class SphinxRouter:
             hops = []
         return hops + [target]
 
-    def process_incoming(self, data: bytes):
+    async def process_incoming(self, data: bytes):
         param_dict = {(self._params.max_len, self._params.m): self._params}
         _, (header, delta) = unpack_message(param_dict, data)
         x = self._key_store.get_x(self._node_id)

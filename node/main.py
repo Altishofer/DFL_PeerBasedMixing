@@ -16,6 +16,10 @@ def load_env(key):
 
 
 async def node_main():
+    # loop = asyncio.get_running_loop()
+    # loop.set_debug(True)
+    # loop.slow_callback_duration = 0.01
+
     config = ConfigStore(
         node_id=int(load_env("NODE_ID"))
     )

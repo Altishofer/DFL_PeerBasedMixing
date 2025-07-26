@@ -15,11 +15,10 @@ class ConfigStore:
     node_id: int = 0
     n_nodes: int = 6
     n_rounds: int = 10
-    exit_nodes: List[int] = field(default_factory=lambda:[])
+    exit_nodes: List[int] = field(default_factory=lambda:[0])
     join_nodes: List[int] = field(default_factory=lambda:[])
     mix_enabled: bool = True
-    mix_lambda: float = 0.001
-    mix_mu: float = 0.02
+    mix_mu: float = 0.005
     mix_std: float = 0.001
     mix_shuffle: bool = True
     mix_outbox_size: int = 10

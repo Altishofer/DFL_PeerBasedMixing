@@ -47,7 +47,7 @@ class Cache:
         now = datetime.now(timezone.utc)
         start = entry.timestamp
         rtt = (now - start).total_seconds()
-        if (ConfigStore.resend_time > rtt):
+        if ConfigStore.resend_time > rtt:
             self.rtts.append(rtt)
             metrics().set(MetricField.LAST_RTT, rtt)
         metrics().set(MetricField.AVG_RTT, np.mean(self.rtts))

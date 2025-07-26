@@ -40,7 +40,7 @@ class Connection:
 
         try:
             self._writer.write(message)
-            await asyncio.wait_for(self._writer.drain(), timeout=1)
+            # await asyncio.wait_for(self._writer.drain(), timeout=0.1)
         except (asyncio.TimeoutError, ConnectionResetError, BrokenPipeError, OSError) as e:
             logging.error(f"Exception sending to peer {self._peer_id}. Marking as inactive.")
             await self.close()
