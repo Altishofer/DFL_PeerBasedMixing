@@ -74,23 +74,20 @@ class Mixer:
     @log_exceptions
     async def __outbox_loop(self):
         while True:
-            if ConfigStore.mix_enabled:
-                self.__update_outbox()
+            self.__update_outbox()
 
-                interval = Mixer.secure_truncated_normal(ConfigStore.mix_mu, ConfigStore.mix_std, 0, 0.1)
-                metrics().set(MetricField.OUT_INTERVAL, interval)
-                start = asyncio.get_event_loop().time()
+            interval = Mixer.secure_truncated_normal(ConfigStore.mix_mu, ConfigStore.mix_std, 0, 0.3)
+            metrics().set(MetricField.OUT_INTERVAL, interval)
+            start = asyncio.get_event_loop().time()
 
-                queue_obj = self._outbox.pop()
-                await queue_obj.send_message()
-                queue_obj.update_metrics()
+            queue_obj = self._outbox.pop()
+            await queue_obj.send_message()
+            queue_obj.update_metrics()
 
-                elapsed = asyncio.get_event_loop().time() - start
-                await asyncio.sleep(max(0, interval - elapsed))
-            elif not self.queue_is_empty():
-                queue_obj = self._queue.pop(0)
-
-                await asyncio.sleep(0.01)
+            elapsed = asyncio.get_event_loop().time() - start
+            metrics().set(MetricField.SENDING_TIME, elapsed)
+            await asyncio.sleep(max(0, interval - elapsed))
+            metrics().set(MetricField.TOTAL_OUT_INTERVAL, asyncio.get_event_loop().time() - start)
 
     async def start(self, cover_generator: Callable):
         if (ConfigStore.mix_enabled):
@@ -109,6 +106,8 @@ class Mixer:
 
         for _ in range(ConfigStore.mix_outbox_size):
             if (not self.queue_is_empty()):
+                # idx = secrets.randbelow(len(self._queue))
+                # self._outbox.append(self._queue.pop(idx))
                 self._outbox.append(self._queue.pop(0))
             else:
                 self._outbox.append(self.__create_cover_item())

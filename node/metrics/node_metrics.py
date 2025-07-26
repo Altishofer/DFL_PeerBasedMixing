@@ -42,6 +42,8 @@ class MetricField(Enum):
     AVG_MSG_PER_SECOND = "avg_msg_per_second"
     LAST_RTT = "last_rtt"
     QUEUED_PACKAGES = "queued_packages"
+    SENDING_TIME = "sending_time"
+    TOTAL_OUT_INTERVAL = "total_out_interval"
 
     STAGE = "stage"
     """
@@ -75,12 +77,14 @@ class Metrics:
         self._change_log: deque = deque()
         self._controller_url = controller_url
         self._host = host_name
-        self._start_time = time.time()
+        self._start_time = 0
 
         if controller_url:
             Thread(target=self._push_loop, daemon=True).start()
 
     def increment(self, field: MetricField, amount: int = 1):
+        if (field == MetricField.TOTAL_MSG_SENT and self._start_time == 0):
+            self._start_time = time.time()
         with self._data_lock:
             self._data[field] += amount
 

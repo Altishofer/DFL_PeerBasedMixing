@@ -5,7 +5,7 @@ from typing import List
 @dataclass
 class ConfigStore:
     max_hops: int = 2
-    resend_time: int = 60
+    resend_time: int = 90
     push_metric_interval: int = 1
     timeout_model_collection: int = 120
     batch_size: int = 64
@@ -18,8 +18,9 @@ class ConfigStore:
     exit_nodes: List[int] = field(default_factory=lambda:[])
     join_nodes: List[int] = field(default_factory=lambda:[])
     mix_enabled: bool = True
-    mix_mu: float = 0.005
-    mix_std: float = 0.002
+    mix_lambda: float = 0.001
+    mix_mu: float = 0.02
+    mix_std: float = 0.001
     mix_shuffle: bool = True
     mix_outbox_size: int = 10
     nr_cover_bytes: int = 100
