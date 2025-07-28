@@ -99,14 +99,16 @@ class SphinxTransport:
     async def send_to_peers(self, message):
         peers = list(self._peer.active_peers())
         for peer_id in peers:
-            send_message_task = self.create_send_message_task(message, peer_id)
+            path, msg_bytes = await self.generate_path(message, peer_id, False)
             update_metrics_task = self.increment_metric_task(MetricField.FRAGMENTS_SENT)
-            await self._mixer.queue_item(send_message_task, update_metrics_task)
+            send_msg_task = self.create_send_message_task(path, msg_bytes)
+            await asyncio.sleep(0.0)
+            await self._mixer.queue_item(send_msg_task, update_metrics_task)
         return len(peers)
 
-    def create_send_message_task(self, message, peer_id):
+    def create_send_message_task(self, path, msg_bytes):
         async def send_message():
-            await self.generate_path_and_send(message, peer_id, cover=False)
+            await self.send(path, msg_bytes)
 
         return send_message
 
@@ -115,16 +117,23 @@ class SphinxTransport:
             metrics().increment(metric_field)
 
         return update_metrics
-
-    @log_exceptions
-    async def generate_path_and_send(self, message, target_node: int, cover: bool, serialize: bool = True):
+    
+    async def generate_path(self, message, target_node: int, cover: bool, serialize: bool = True):
         peers = list(self._peer.active_peers())
         payload = message
         if serialize:
             payload = PackageHelper.serialize_msg(message)
         path, msg_bytes = await self.sphinx_router.create_forward_msg(target_node, payload, peers, cover)
-        await self._peer.send_to_peer(path[0], msg_bytes)
+        return path, msg_bytes
 
+    async def generate_path_and_send(self, message, target_node: int, cover: bool, serialize: bool = True):
+        path, msg_bytes = await self.generate_path(message, target_node, cover, serialize)
+        await self.send(path, msg_bytes)
+
+    @log_exceptions
+    async def send(self, path, msg_bytes):
+        await self._peer.send_to_peer(path[0], msg_bytes)
+        
     @log_exceptions
     async def receive(self) -> bytes:
         return await self._incoming_queue.get()
