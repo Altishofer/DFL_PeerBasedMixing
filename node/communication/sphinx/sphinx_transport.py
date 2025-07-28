@@ -110,7 +110,7 @@ class SphinxTransport:
             path, msg_bytes = await self.generate_path(message, peer_id, False)
             update_metrics_task = self.increment_metric_task(MetricField.FRAGMENTS_SENT)
             send_msg_task = self.create_send_message_task(path, msg_bytes)
-            await asyncio.sleep(0.0)
+            await asyncio.sleep(ConfigStore.mix_mu)
             await self._mixer.queue_item(send_msg_task, update_metrics_task)
         return len(peers)
 
@@ -261,7 +261,7 @@ class SphinxTransport:
     
     async def _generate_cover_traffic_loop(self):
         while True:
-            if len(self._cover_stash) < 10 * ConfigStore.mix_outbox_size and len(self._peer.active_peers()) != 0:
+            if len(self._cover_stash) < ConfigStore.max_cover_cache and len(self._peer.active_peers()) != 0:
                 cover = await self.generate_and_send_cover()
                 self._cover_stash.append(cover)
             await asyncio.sleep(ConfigStore.mix_mu)

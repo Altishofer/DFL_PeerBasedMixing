@@ -28,7 +28,7 @@ def setup_logging(node_id):
     root = logging.getLogger()
     root.handlers = []
     root.addHandler(handler)
-    root.setLevel(logging.DEBUG)
+    root.setLevel(logging.INFO)
 
 def log_header(title):
     l = 30 - len(title) // 2

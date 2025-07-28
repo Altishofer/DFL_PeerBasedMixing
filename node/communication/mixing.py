@@ -29,6 +29,7 @@ class Mixer:
         self._queue = []
         self._cover_generator = cover_generator
         self._outbox_loop = None
+        self._next_send = None
 
     # inverse transform sampling of exponential distribution
     @staticmethod
@@ -72,22 +73,20 @@ class Mixer:
 
     @log_exceptions
     async def __outbox_loop(self):
+        self._next_send = asyncio.get_event_loop().time()
         while True:
             self.__update_outbox()
 
-            interval = Mixer.secure_truncated_normal(ConfigStore.mix_mu, ConfigStore.mix_std, 0, 0.3)
-            metrics().set(MetricField.OUT_INTERVAL, interval)
-            start = asyncio.get_event_loop().time()
-
             queue_obj = self._outbox.pop()
-            logging.debug(f"queue obj: {queue_obj}")
             await queue_obj.send_message()
             queue_obj.update_metrics()
 
-            elapsed = asyncio.get_event_loop().time() - start
-            metrics().set(MetricField.SENDING_TIME, elapsed)
-            await asyncio.sleep(max(0, interval - elapsed))
-            metrics().set(MetricField.TOTAL_OUT_INTERVAL, asyncio.get_event_loop().time() - start)
+            now = asyncio.get_event_loop().time()
+            interval = Mixer.secure_truncated_normal(ConfigStore.mix_mu, ConfigStore.mix_std)
+            self._next_send += interval
+            sleep_time = max(0, self._next_send - now)
+            metrics().set(MetricField.OUT_INTERVAL, sleep_time)
+            await asyncio.sleep(sleep_time)
 
     async def start(self):
         if ConfigStore.mix_enabled:
