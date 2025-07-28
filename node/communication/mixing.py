@@ -24,11 +24,12 @@ class QueueObject:
 
 
 class Mixer:
-    def __init__(self):
+    def __init__(self, cover_generator):
         self._outbox = []
         self._queue = []
-        self._cover_generator = None
+        self._cover_generator = cover_generator
         self._outbox_loop = None
+        self._next_send = None
 
     # inverse transform sampling of exponential distribution
     @staticmethod
@@ -72,29 +73,24 @@ class Mixer:
 
     @log_exceptions
     async def __outbox_loop(self):
+        self._next_send = asyncio.get_event_loop().time()
         while True:
-            if ConfigStore.mix_enabled:
-                self.__update_outbox()
+            self.__update_outbox()
 
-                interval = Mixer.secure_truncated_normal(ConfigStore.mix_mu, ConfigStore.mix_std, 0, 0.1)
-                metrics().set(MetricField.OUT_INTERVAL, interval)
-                start = asyncio.get_event_loop().time()
+            queue_obj = self._outbox.pop()
+            await queue_obj.send_message()
+            queue_obj.update_metrics()
 
-                queue_obj = self._outbox.pop()
-                await queue_obj.send_message()
-                queue_obj.update_metrics()
+            now = asyncio.get_event_loop().time()
+            interval = Mixer.secure_truncated_normal(ConfigStore.mix_mu, ConfigStore.mix_std)
+            self._next_send += interval
+            sleep_time = max(0, self._next_send - now)
+            metrics().set(MetricField.OUT_INTERVAL, sleep_time)
+            await asyncio.sleep(sleep_time)
 
-                elapsed = asyncio.get_event_loop().time() - start
-                await asyncio.sleep(max(0, interval - elapsed))
-            elif not self.queue_is_empty():
-                queue_obj = self._queue.pop(0)
-
-                await asyncio.sleep(0.01)
-
-    async def start(self, cover_generator: Callable):
+    async def start(self):
         if ConfigStore.mix_enabled:
             self._outbox_loop = asyncio.create_task(self.__outbox_loop())
-            self._cover_generator = cover_generator
             log_header("Peer-Based Mixer")
             logging.info(f"Enabled: {ConfigStore.mix_enabled}")
             logging.info(f"Shuffle: {ConfigStore.mix_shuffle}")
@@ -124,11 +120,11 @@ class Mixer:
             self._outbox[i] = tmp
 
     def __create_cover_item(self):
-        cover = QueueObject(
-            send_message=self._cover_generator,
+        queue_obj = QueueObject(
+            send_message=self.__create_cover_task,
             update_metrics=lambda: self.__update_message_metric(True),
         )
-        return cover
+        return queue_obj
 
     async def queue_item(self, msg_coroutine: Awaitable, update_metrics: Callable):
         queue_obj = QueueObject(
@@ -141,10 +137,12 @@ class Mixer:
 
         if ConfigStore.mix_enabled:
             self._queue.append(queue_obj)
-            metrics().set(MetricField.QUEUED_PACKAGES, len(self._outbox))
+            metrics().set(MetricField.QUEUED_PACKAGES, len(self._queue))
         else:
+            start = asyncio.get_event_loop().time()
             await queue_obj.send_message()
             queue_obj.update_metrics()
+            metrics().set(MetricField.SENDING_TIME, asyncio.get_event_loop().time() - start)
 
     def outbox_is_empty(self):
         return len(self._outbox) == 0
@@ -157,3 +155,7 @@ class Mixer:
             metrics().increment(MetricField.COVERS_SENT)
         metrics().set(MetricField.SENDING_COVERS, 1 if sending_covers else 0)
         metrics().set(MetricField.SENDING_MESSAGES, 0 if sending_covers else 1)
+
+    async def __create_cover_task(self):
+        cover = await self._cover_generator()
+        await cover()

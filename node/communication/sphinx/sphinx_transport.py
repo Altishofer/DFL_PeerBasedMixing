@@ -16,14 +16,18 @@ from communication.tcp_server import TcpServer
 from metrics.node_metrics import metrics, MetricField
 from utils.config_store import ConfigStore
 from utils.exception_decorator import log_exceptions
+from communication.mixing import Mixer
 
 
 class SphinxTransport:
-    def __init__(self, node_id, port, peers, mixer, node_config: ConfigStore):
+    def __init__(self, node_id, port, peers, node_config: ConfigStore):
         self._node_id = node_id
         self._port = port
         self._peers = peers
-        self._mixer = mixer
+        if ConfigStore.cache_covers:
+            self._mixer = Mixer(self.handle_cover_traffic)
+        else:
+            self._mixer = Mixer(self.generate_and_send_cover)
         self._node_config = node_config
         self.n_fragments_per_model = None  # will be set dynamically once number is determined
 
@@ -52,6 +56,7 @@ class SphinxTransport:
         self._incoming_queue = asyncio.Queue()
         self._seen_hashes = set()
         asyncio.create_task(self.resend_loop())
+        self._cover_stash = []
 
     @log_exceptions
     async def received_all_expected_fragments(self):
@@ -92,7 +97,10 @@ class SphinxTransport:
         asyncio.create_task(self._peer.start())
         await asyncio.sleep(5)
         await self._peer.connect_peers()
-        await self._mixer.start(self.generate_cover_traffic)
+        if ConfigStore.cache_covers:
+            asyncio.create_task(self._generate_cover_traffic_loop())
+        await asyncio.sleep(5)
+        await self._mixer.start()
         await asyncio.sleep(10)
 
     @log_exceptions
@@ -102,7 +110,7 @@ class SphinxTransport:
             path, msg_bytes = await self.generate_path(message, peer_id, False)
             update_metrics_task = self.increment_metric_task(MetricField.FRAGMENTS_SENT)
             send_msg_task = self.create_send_message_task(path, msg_bytes)
-            await asyncio.sleep(0.0)
+            await asyncio.sleep(ConfigStore.mix_mu)
             await self._mixer.queue_item(send_msg_task, update_metrics_task)
         return len(peers)
 
@@ -145,26 +153,15 @@ class SphinxTransport:
                 if not self._peer.is_active(fragment.target_node):
                     self.sphinx_router.remove_cache_for_disconnected(fragment.target_node)
                 else:
-                    send_message_task = self.create_resend_task(fragment)
+                    path, msg_bytes = await self.generate_path(fragment.payload, fragment.target_node, serialize=False, cover=fragment.cover)
+                    send_message_task = self.create_send_message_task(path, msg_bytes)
                     update_metrics_task = self.increment_metric_task(MetricField.RESENT)
                     await self._mixer.queue_item(send_message_task, update_metrics_task)
             if stale:
                 logging.warning(f"Resent {len(stale)} unacked fragments.")
             await asyncio.sleep(5)
 
-    def create_resend_task(self, fragment):
-        async def send_message():
-            await self.generate_path_and_send(
-                fragment.payload,
-                fragment.target_node,
-                serialize=False,
-                cover=fragment.cover
-            )
-
-        return send_message
-
     async def __handle_payload(self, payload):
-
         msg = PackageHelper.deserialize_msg(payload)
         is_cover = msg["type"] == PackageType.COVER
 
@@ -217,7 +214,8 @@ class SphinxTransport:
     @log_exceptions
     async def __handle_routing_decision(self, routing, header, delta, mac_key):
         if routing[0] == Relay_flag:
-            send_message_task = self.create_forward_task(routing[1], header, delta)
+            msg = pack_message(self._params, (header, delta))
+            send_message_task = self.create_forward_task(routing[1], msg)
             update_metrics_task = self.increment_metric_task(MetricField.FORWARDED)
             await self._mixer.queue_item(send_message_task, update_metrics_task)
 
@@ -235,9 +233,8 @@ class SphinxTransport:
         else:
             logging.info(f"Unexpected routing flag: {routing[0]} from {routing[1]}")
 
-    def create_forward_task(self, routing, header, delta):
+    def create_forward_task(self, routing, msg):
         async def send_message():
-            msg = pack_message(self._params, (header, delta))
             await self._peer.send_to_peer(routing, msg)
 
         return send_message
@@ -255,4 +252,22 @@ class SphinxTransport:
         target_node = secrets.choice(self._peer.active_peers())
         content = secrets.token_bytes(ConfigStore.nr_cover_bytes)
         payload = PackageHelper.format_cover_package(content)
-        await self.generate_path_and_send(payload, target_node, cover=True)
+        path, msg_bytes = await self.generate_path(payload, target_node, cover=True)
+        return path, msg_bytes
+    
+    async def generate_and_send_cover(self):
+        path, msg_bytes = await self.generate_cover_traffic()
+        return self.create_send_message_task(path, msg_bytes)
+    
+    async def _generate_cover_traffic_loop(self):
+        while True:
+            if len(self._cover_stash) < ConfigStore.max_cover_cache and len(self._peer.active_peers()) != 0:
+                cover = await self.generate_and_send_cover()
+                self._cover_stash.append(cover)
+            await asyncio.sleep(ConfigStore.mix_mu)
+
+    async def handle_cover_traffic(self):
+        if len(self._cover_stash) > 0:
+            return self._cover_stash.pop()
+        else:
+            return await self.generate_and_send_cover()

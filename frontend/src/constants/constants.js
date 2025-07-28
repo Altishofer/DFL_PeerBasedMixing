@@ -37,7 +37,9 @@ export const METRIC_KEYS = {
     SENDING_COVERS: 'sending_covers',
     SENDING_MESSAGES: 'sending_messages',
     QUEUE_INTERVAL: 'out_interval',
-  QUEUED_PACKAGES: 'queued_packages'
+    QUEUED_PACKAGES: 'queued_packages',
+    SENDING_TIME: 'sending_time',
+    TOTAL_OUT_INTERVAL: 'total_out_interval'
 };
 
 export const METRIC_FIELDS = {
@@ -72,6 +74,8 @@ export const METRIC_FIELDS = {
     [METRIC_KEYS.SENDING_MESSAGES]: 'Sending Msgs',
     [METRIC_KEYS.QUEUED_PACKAGES]: 'Queued Pkgs',
     [METRIC_KEYS.QUEUE_INTERVAL]: 'Queue Intvl',
+    [METRIC_KEYS.SENDING_TIME]: 'Sending Time',
+    [METRIC_KEYS.TOTAL_OUT_INTERVAL]: 'Total Outbox Intvl'
 };
 
 export const METRIC_UNITS = {
@@ -106,6 +110,8 @@ export const METRIC_UNITS = {
     [METRIC_KEYS.SENDING_MESSAGES]: 'msgs',
     [METRIC_KEYS.QUEUED_PACKAGES]: 'pkgs',
     [METRIC_KEYS.QUEUE_INTERVAL]: 's',
+    [METRIC_KEYS.SENDING_TIME]: 's',
+    [METRIC_KEYS.TOTAL_OUT_INTERVAL]: 's'
 };
 
 export const METRIC_GROUPS = {
@@ -136,6 +142,8 @@ export const METRIC_GROUPS = {
         METRIC_KEYS.SENDING_MESSAGES,
         METRIC_KEYS.QUEUED_PACKAGES,
         METRIC_KEYS.QUEUE_INTERVAL,
+        METRIC_KEYS.SENDING_TIME,
+        METRIC_KEYS.TOTAL_OUT_INTERVAL
     ],
     Miscellaneous: [
         METRIC_KEYS.ERRORS,
