@@ -94,7 +94,8 @@ class SphinxTransport:
         asyncio.create_task(self._peer.start())
         await asyncio.sleep(5)
         await self._peer.connect_peers()
-        asyncio.create_task(self._generate_cover_traffic_loop())
+        if ConfigStore.cache_covers:
+            asyncio.create_task(self._generate_cover_traffic_loop())
         await asyncio.sleep(5)
         await self._mixer.start()
         await asyncio.sleep(10)
@@ -274,9 +275,6 @@ class SphinxTransport:
         if len(self._cover_stash) > 0:
             send_cover = self._cover_stash.pop()
         else:
-            logging.debug(f"out of covers, peers: {len(self._peer.active_peers())}")
             path, msg_bytes = await self.generate_cover_traffic()
-            logging.debug(f"new cover: {path, msg_bytes}")
             send_cover = self.create_send_message_task(path, msg_bytes)
-        logging.debug(f"sending cover: {send_cover}")
         await send_cover()
