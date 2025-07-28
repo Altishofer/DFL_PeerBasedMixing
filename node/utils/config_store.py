@@ -24,4 +24,4 @@ class ConfigStore:
     mix_outbox_size: int = 10
     nr_cover_bytes: int = 100
     pause_training: bool = False
-    cache_covers: bool = False
+    cache_covers: bool = True

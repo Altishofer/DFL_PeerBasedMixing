@@ -24,7 +24,10 @@ class SphinxTransport:
         self._node_id = node_id
         self._port = port
         self._peers = peers
-        self._mixer = Mixer(self.send_cover_traffic)
+        if ConfigStore.cache_covers:
+            self._mixer = Mixer(self.handle_cover_traffic)
+        else:
+            self._mixer = Mixer(self.generate_and_send_cover)
         self._node_config = node_config
         self.n_fragments_per_model = None  # will be set dynamically once number is determined
 
@@ -263,18 +266,19 @@ class SphinxTransport:
         path, msg_bytes = await self.generate_path(payload, target_node, cover=True)
         return path, msg_bytes
     
+    async def generate_and_send_cover(self):
+        path, msg_bytes = await self.generate_cover_traffic()
+        return self.create_send_message_task(path, msg_bytes)
+    
     async def _generate_cover_traffic_loop(self):
         while True:
             if len(self._cover_stash) < 10 * ConfigStore.mix_outbox_size and len(self._peer.active_peers()) != 0:
-                path, msg_bytes = await self.generate_cover_traffic()
-                cover = self.create_send_message_task(path, msg_bytes)
+                cover = await self.generate_and_send_cover()
                 self._cover_stash.append(cover)
             await asyncio.sleep(ConfigStore.mix_mu)
 
-    async def send_cover_traffic(self):
+    async def handle_cover_traffic(self):
         if len(self._cover_stash) > 0:
-            send_cover = self._cover_stash.pop()
+            return self._cover_stash.pop()
         else:
-            path, msg_bytes = await self.generate_cover_traffic()
-            send_cover = self.create_send_message_task(path, msg_bytes)
-        await send_cover()
+            return await self.generate_and_send_cover()

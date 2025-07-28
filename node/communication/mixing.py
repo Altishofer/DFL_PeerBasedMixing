@@ -158,4 +158,5 @@ class Mixer:
         metrics().set(MetricField.SENDING_MESSAGES, 0 if sending_covers else 1)
 
     async def __create_cover_task(self):
-        await self._cover_generator() 
+        cover = await self._cover_generator()
+        await cover()
