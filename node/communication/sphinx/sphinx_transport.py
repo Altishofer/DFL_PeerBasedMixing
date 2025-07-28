@@ -153,26 +153,15 @@ class SphinxTransport:
                 if not self._peer.is_active(fragment.target_node):
                     self.sphinx_router.remove_cache_for_disconnected(fragment.target_node)
                 else:
-                    send_message_task = self.create_resend_task(fragment)
+                    path, msg_bytes = await self.generate_path(fragment.payload, fragment.target_node, serialize=False, cover=fragment.cover)
+                    send_message_task = self.create_send_message_task(path, msg_bytes)
                     update_metrics_task = self.increment_metric_task(MetricField.RESENT)
                     await self._mixer.queue_item(send_message_task, update_metrics_task)
             if stale:
                 logging.warning(f"Resent {len(stale)} unacked fragments.")
             await asyncio.sleep(5)
 
-    def create_resend_task(self, fragment):
-        async def send_message():
-            await self.generate_path_and_send(
-                fragment.payload,
-                fragment.target_node,
-                serialize=False,
-                cover=fragment.cover
-            )
-
-        return send_message
-
     async def __handle_payload(self, payload):
-
         msg = PackageHelper.deserialize_msg(payload)
         is_cover = msg["type"] == PackageType.COVER
 
@@ -225,7 +214,8 @@ class SphinxTransport:
     @log_exceptions
     async def __handle_routing_decision(self, routing, header, delta, mac_key):
         if routing[0] == Relay_flag:
-            send_message_task = self.create_forward_task(routing[1], header, delta)
+            msg = pack_message(self._params, (header, delta))
+            send_message_task = self.create_forward_task(routing[1], msg)
             update_metrics_task = self.increment_metric_task(MetricField.FORWARDED)
             await self._mixer.queue_item(send_message_task, update_metrics_task)
 
@@ -243,9 +233,8 @@ class SphinxTransport:
         else:
             logging.info(f"Unexpected routing flag: {routing[0]} from {routing[1]}")
 
-    def create_forward_task(self, routing, header, delta):
+    def create_forward_task(self, routing, msg):
         async def send_message():
-            msg = pack_message(self._params, (header, delta))
             await self._peer.send_to_peer(routing, msg)
 
         return send_message
