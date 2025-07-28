@@ -107,16 +107,16 @@ class SphinxTransport:
     async def send_to_peers(self, message):
         peers = list(self._peer.active_peers())
         for peer_id in peers:
-            path, msg_bytes = await self.generate_path(message, peer_id, False)
+            path, msg_bytes, timestamp_callback = await self.generate_path(message, peer_id, cover=False)
             update_metrics_task = self.increment_metric_task(MetricField.FRAGMENTS_SENT)
-            send_msg_task = self.create_send_message_task(path, msg_bytes)
+            send_msg_task = self.create_send_message_task(path, msg_bytes, timestamp_callback)
             await asyncio.sleep(ConfigStore.mix_mu)
             await self._mixer.queue_item(send_msg_task, update_metrics_task)
         return len(peers)
 
-    def create_send_message_task(self, path, msg_bytes):
+    def create_send_message_task(self, path, msg_bytes, timestamp_callback):
         async def send_message():
-            await self.send(path, msg_bytes)
+            await self.send(path, msg_bytes, timestamp_callback)
 
         return send_message
 
@@ -131,15 +131,17 @@ class SphinxTransport:
         payload = message
         if serialize:
             payload = PackageHelper.serialize_msg(message)
-        path, msg_bytes = await self.sphinx_router.create_forward_msg(target_node, payload, peers, cover)
-        return path, msg_bytes
+        path, msg_bytes, timestamp_callback = await self.sphinx_router.create_forward_msg(target_node, payload, peers, cover)
+        return path, msg_bytes, timestamp_callback
 
     async def generate_path_and_send(self, message, target_node: int, cover: bool, serialize: bool = True):
-        path, msg_bytes = await self.generate_path(message, target_node, cover, serialize)
-        await self.send(path, msg_bytes)
+        path, msg_bytes, timestamp_callback = await self.generate_path(message, target_node, cover, serialize)
+        await self.send(path, msg_bytes, timestamp_callback)
 
     @log_exceptions
-    async def send(self, path, msg_bytes):
+    async def send(self, path, msg_bytes, timestamp_callback):
+        if timestamp_callback != None:
+            timestamp_callback()
         await self._peer.send_to_peer(path[0], msg_bytes)
 
     @log_exceptions
@@ -153,8 +155,8 @@ class SphinxTransport:
                 if not self._peer.is_active(fragment.target_node):
                     self.sphinx_router.remove_cache_for_disconnected(fragment.target_node)
                 else:
-                    path, msg_bytes = await self.generate_path(fragment.payload, fragment.target_node, serialize=False, cover=fragment.cover)
-                    send_message_task = self.create_send_message_task(path, msg_bytes)
+                    path, msg_bytes, timestamp_callback = await self.generate_path(fragment.payload, fragment.target_node, serialize=False, cover=fragment.cover)
+                    send_message_task = self.create_send_message_task(path, msg_bytes, timestamp_callback)
                     update_metrics_task = self.increment_metric_task(MetricField.RESENT)
                     await self._mixer.queue_item(send_message_task, update_metrics_task)
             if stale:
@@ -252,12 +254,12 @@ class SphinxTransport:
         target_node = secrets.choice(self._peer.active_peers())
         content = secrets.token_bytes(ConfigStore.nr_cover_bytes)
         payload = PackageHelper.format_cover_package(content)
-        path, msg_bytes = await self.generate_path(payload, target_node, cover=True)
-        return path, msg_bytes
+        path, msg_bytes, timestamp_callback = await self.generate_path(payload, target_node, cover=True)
+        return path, msg_bytes, timestamp_callback
     
     async def generate_and_send_cover(self):
-        path, msg_bytes = await self.generate_cover_traffic()
-        return self.create_send_message_task(path, msg_bytes)
+        path, msg_bytes, timestamp_callback = await self.generate_cover_traffic()
+        return self.create_send_message_task(path, msg_bytes, timestamp_callback)
     
     async def _generate_cover_traffic_loop(self):
         while True:

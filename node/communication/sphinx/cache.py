@@ -39,6 +39,10 @@ class Cache:
             metrics().increment(MetricField.UNACKED_MSG)
 
     @log_exceptions
+    def set_fragment_timestamp(self, surb_id):
+        self.cache[surb_id].timestamp = datetime.now(timezone.utc)
+
+    @log_exceptions
     def received_surb(self, surb_id):
         self.set_acked(surb_id)
         entry = self.cache.get(surb_id)

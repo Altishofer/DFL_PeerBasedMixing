@@ -22,7 +22,6 @@ class QueueObject:
     send_message: Awaitable
     update_metrics: Callable
 
-
 class Mixer:
     def __init__(self, cover_generator):
         self._outbox = []
@@ -78,6 +77,7 @@ class Mixer:
             self.__update_outbox()
 
             queue_obj = self._outbox.pop()
+            logging.debug(f"queue obj: {queue_obj}")
             await queue_obj.send_message()
             queue_obj.update_metrics()
 
@@ -131,7 +131,7 @@ class Mixer:
             send_message=msg_coroutine,
             update_metrics=lambda: (
                 update_metrics(),
-                self.__update_message_metric(False)
+                self.__update_message_metric(False),
             )
         )
 
@@ -158,4 +158,5 @@ class Mixer:
 
     async def __create_cover_task(self):
         cover = await self._cover_generator()
+        logging.debug(f"cover: {cover}")
         await cover()

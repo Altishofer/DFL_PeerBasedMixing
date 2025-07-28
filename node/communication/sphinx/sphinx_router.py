@@ -53,7 +53,10 @@ class SphinxRouter:
 
         if not cover:
             self.cache.new_fragment(surbid, surbkeytuple, target_node, payload, cover)
-        return path, msg_bytes
+            timestamp_callback = lambda surbid=surbid: self.cache.set_fragment_timestamp(surbid)
+            return path, msg_bytes, timestamp_callback
+        else:
+            return path, msg_bytes, None
 
     @log_exceptions
     def create_surb_reply(self, nymtuple):
