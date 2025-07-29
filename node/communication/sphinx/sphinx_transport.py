@@ -77,6 +77,7 @@ class SphinxTransport:
         return len(self._peer.active_peers())
 
     async def close_all_connections(self):
+        self._mixer.stop()
         await self._peer.close_all_connections()
 
     def get_all_fragments(self):

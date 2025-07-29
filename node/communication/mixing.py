@@ -29,6 +29,7 @@ class Mixer:
         self._cover_generator = cover_generator
         self._outbox_loop = None
         self._next_send = None
+        self._running = False
 
     # inverse transform sampling of exponential distribution
     @staticmethod
@@ -73,23 +74,28 @@ class Mixer:
     @log_exceptions
     async def __outbox_loop(self):
         self._next_send = asyncio.get_event_loop().time()
-        while True:
-            self.__update_outbox()
+        try:
+            while self._running:
+                self.__update_outbox()
 
-            queue_obj = self._outbox.pop()
-            logging.debug(f"queue obj: {queue_obj}")
-            await queue_obj.send_message()
-            queue_obj.update_metrics()
+                queue_obj = self._outbox.pop()
+                await queue_obj.send_message()
+                queue_obj.update_metrics()
 
-            now = asyncio.get_event_loop().time()
-            interval = Mixer.secure_truncated_normal(ConfigStore.mix_mu, ConfigStore.mix_std)
-            self._next_send += interval
-            sleep_time = max(0, self._next_send - now)
-            metrics().set(MetricField.OUT_INTERVAL, sleep_time)
-            await asyncio.sleep(sleep_time)
+                now = asyncio.get_event_loop().time()
+                interval = Mixer.secure_truncated_normal(ConfigStore.mix_mu, ConfigStore.mix_std)
+                self._next_send += interval
+                sleep_time = max(0, self._next_send - now)
+                metrics().set(MetricField.OUT_INTERVAL, sleep_time)
+                await asyncio.sleep(sleep_time)
+        except Exception:
+            logging.exception("Exception in __outbox_loop")
+        finally:
+            logging.info("Outbox loop exited")
 
     async def start(self):
         if ConfigStore.mix_enabled:
+            self._running = True
             self._outbox_loop = asyncio.create_task(self.__outbox_loop())
             log_header("Peer-Based Mixer")
             logging.info(f"Enabled: {ConfigStore.mix_enabled}")
@@ -97,6 +103,13 @@ class Mixer:
             logging.info(f"N Cover Bytes: {ConfigStore.nr_cover_bytes}")
         else:
             logging.info(f"Mixer disabled")
+
+    async def stop(self):
+        self._running = False
+        try:
+            await self._outbox_loop
+        except asyncio.CancelledError:
+            logging.warning("Outbox loop was forcibly cancelled.")
 
     def __update_outbox(self):
         if not self.outbox_is_empty():
@@ -158,5 +171,4 @@ class Mixer:
 
     async def __create_cover_task(self):
         cover = await self._cover_generator()
-        logging.debug(f"cover: {cover}")
         await cover()
