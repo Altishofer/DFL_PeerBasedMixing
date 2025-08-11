@@ -1,4 +1,5 @@
 import logging
+import sys
 import time
 
 from learning.message_manager import MessageManager
@@ -18,6 +19,7 @@ class Learner:
         self._current_round = 0
         self._model_handler = ModelHandler(self._node_id, self._total_peers)
         self._message_manager = MessageManager(self._node_id, transport, self._model_handler, node_config)
+        self.node_config = node_config
 
     @log_exceptions
     async def run(self):
@@ -64,6 +66,9 @@ class Learner:
         await self._message_manager.send_model_updates(self._current_round)
 
     async def _await_model_chunks(self):
+        # Only used for experiments with exit nodes
+        if self._node_id in self.node_config.exit_nodes and self._current_round >= self._total_rounds:
+            sys.exit()
         log_header(f"Awaiting Model Chunks from Peers ({ConfigStore.timeout_model_collection}s).")
         metrics().set(MetricField.STAGE, 3)
         await self._message_manager.await_fragments(timeout=ConfigStore.timeout_model_collection)

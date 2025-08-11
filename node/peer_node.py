@@ -14,7 +14,6 @@ class PeerNode:
             for i in range(node_config.n_nodes)
         }
 
-
         self._transport = SphinxTransport(node_config.node_id, node_config.port, peers, node_config)
         self._learning = Learner(node_config, self._transport)
 

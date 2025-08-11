@@ -13,3 +13,6 @@ manager/metrics
 metrics/
 *.csv
 *.png
+*.jpg
+*.jpeg
+*.pdf

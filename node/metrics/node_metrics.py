@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import time
@@ -47,10 +48,11 @@ class MetricField(Enum):
 
     STAGE = "stage"
     """
+      Bootstrapping: 0,
       Training: 1,
-      Local Aggregation: 2
-      Broadcasting and Collection: 3
-      Global Aggregation: 4
+      Local Evaluation: 2
+      Broadcasting, Forwarding & Collection: 3
+      Global Evalutation: 4
     """
 
 
@@ -150,19 +152,31 @@ class Metrics:
             logging.warning(f"Push exception: {e}")
 
     async def wait_for_round(self, round_number: int):
-        async with aiohttp.ClientSession() as session, session.get(f"{self._controller_url}/metrics/sse") as response:
-            async for line in response.content:
-                try:
-                    if not line:
+        async with aiohttp.ClientSession(read_bufsize=1024 * 1024) as session:
+            async with session.get(f"{self._controller_url}/metrics/sse") as response:
+                while True:
+                    try:
+                        async for line in response.content:
+                            try:
+                                if not line:
+                                    continue
+                                decoded_line = line.decode("utf-8").strip()
+                                if not decoded_line.strip() or not decoded_line.startswith("data: "):
+                                    continue
+                                json_part = decoded_line.split("data: ", 1)[1]
+                                data = json.loads(json_part)
+                                for row in data:
+                                    if row.get("field") == MetricField.CURRENT_ROUND.value:
+                                        logging.debug(f"Received round: {row.get('value')}")
+                                        if int(row.get("value", 0)) >= round_number:
+                                            logging.info(f"Awaited round reached: {round_number}")
+                                            return
+                            except Exception as e:
+                                logging.warning(f"Error processing line: {line}. Exception: {e}")
+                                continue
+                    except asyncio.TimeoutError:
+                        logging.warning("Timeout while waiting for round metrics.")
                         continue
-                    decoded_line = line.decode("utf-8").strip()
-                    if not decoded_line.startswith("data:"):
+                    except ValueError as e:
+                        logging.warning(f"ValueError while processing SSE data: {e}")
                         continue
-                    data = json.loads(decoded_line[5:])
-                    if any(row.get("field") == MetricField.CURRENT_ROUND.value and int(
-                            row.get("value", 0)) >= round_number for row in data):
-                        logging.info(f"Round {round_number} reached")
-                        return
-                except Exception as e:
-                    logging.warning(f"Error processing line: {line}. Exception: {e}")
-                    continue
