@@ -4,8 +4,8 @@ from typing import List
 
 @dataclass
 class ConfigStore:
-    max_hops: int = 2
-    resend_time: int = 60
+    max_hops: int = 4
+    resend_time: int = 120
     push_metric_interval: int = 1
     timeout_model_collection: int = 120
     batch_size: int = 64

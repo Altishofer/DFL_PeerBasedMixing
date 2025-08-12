@@ -48,9 +48,7 @@ class MetricField(Enum):
     STAGE = "stage"
     """
       Training: 1,
-      Local Aggregation: 2
-      Broadcasting and Collection: 3
-      Global Aggregation: 4
+      Broadcasting and Collection: 2
     """
 
 

@@ -54,7 +54,7 @@ class MetricsService:
                     MetricPoint(
                         timestamp=timestamp,
                         field="cpu_total_ns",
-                        value=stats["cpu_stats"]["cpu_usage"]["total_usage"] / 10e9,
+                        value=stats["cpu_stats"]["cpu_usage"]["total_usage"] / 1e9,
                         node=container.name
                     )
                 )

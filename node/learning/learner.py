@@ -54,7 +54,7 @@ class Learner:
 
     async def _validate_local_model(self, aggregated_accuracy: float):
         log_header("Local Model Validation Accuracy")
-        metrics().set(MetricField.STAGE, 2)
+        # metrics().set(MetricField.STAGE, 2)
         accuracy = await self._model_handler.evaluate()
         logging.info(f"Acc. {aggregated_accuracy:.2f} ➜ {accuracy:.2f} | Δ: {accuracy - aggregated_accuracy:+.2f}")
         metrics().set(MetricField.TRAINING_ACCURACY, accuracy)
@@ -65,7 +65,7 @@ class Learner:
 
     async def _await_model_chunks(self):
         log_header(f"Awaiting Model Chunks from Peers ({ConfigStore.timeout_model_collection}s).")
-        metrics().set(MetricField.STAGE, 3)
+        metrics().set(MetricField.STAGE, 2)
         await self._message_manager.await_fragments(timeout=ConfigStore.timeout_model_collection)
         # await asyncio.sleep(60)
 
@@ -75,7 +75,7 @@ class Learner:
         self._model_handler.aggregate(model_chunks)
 
         log_header("Aggregated Model Validation Accuracy")
-        metrics().set(MetricField.STAGE, 4)
+        # metrics().set(MetricField.STAGE, 4)
         accuracy = await self._model_handler.evaluate()
         metrics().set(MetricField.STAGE, 0)
         logging.info(f"Acc. {aggregated_accuracy:.2f} ➜ {accuracy:.2f} | Δ: {accuracy - aggregated_accuracy:+.2f}")
