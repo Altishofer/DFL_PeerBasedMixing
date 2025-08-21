@@ -102,6 +102,8 @@ Frontend runs at [http://localhost:3000](http://localhost:3000).
 DFL_PeerBasedMixing/
 ├── node/        # Dockerized node logic
 ├── manager/     # FastAPI backend for node control
+├── experiments/ # Jupyter Notebooks and figures
+├── metrics/     # Automatically recorded time-series
 └── frontend/    # React frontend interface
 ```
 
