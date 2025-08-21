@@ -19,8 +19,6 @@ frontend.
 - [Project Structure](#project-structure)
 - [Useful Commands](#useful-commands)
 - [Main Technologies Used](#main-technologies-used)
-- [To Do](#to-do)
-- [Notes](#notes)
 
 ---
 
