@@ -1,10 +1,9 @@
 import asyncio
 import logging
-import traceback
 
 from communication.connection import Connection
-from utils.exception_decorator import log_exceptions
 from metrics.node_metrics import metrics, MetricField
+from utils.exception_decorator import log_exceptions
 from utils.logging_config import log_header
 
 
@@ -17,7 +16,6 @@ class TcpServer:
         self.packet_size = packet_size
         self._server = None
         self.connections = {}
-        # asyncio.create_task(self._reconnect_loop())
 
     @log_exceptions
     async def start(self):
@@ -88,12 +86,6 @@ class TcpServer:
     async def remove_peer(self, peer_id: int):
         if peer_id not in self.connections: return
         await self.connections[peer_id].close()
-
-    async def _reconnect_loop(self):
-        while True:
-            for pid in self.peers.keys():
-                await self.add_peer(pid)
-            await asyncio.sleep(5)
 
     async def close_all_connections(self):
         for peer_id in list(self.connections.keys()):

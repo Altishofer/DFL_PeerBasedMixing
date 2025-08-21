@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useMemo, useCallback, useRef} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import axios from 'axios';
 import {toast} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -10,7 +10,12 @@ import MetricSelection from './MetricSelection';
 import useNodeStatus from '../../hooks/useNodeStatus';
 import {buildChartData} from '../../utils/chartUtils';
 import {
-    WS_BASE_URL, API_BASE_URL, CHART_PALETTE, METRIC_KEYS, getDisplayName, ALWAYS_ACTIVE_METRICS
+    ALWAYS_ACTIVE_METRICS,
+    API_BASE_URL,
+    CHART_PALETTE,
+    getDisplayName,
+    METRIC_KEYS,
+    WS_BASE_URL
 } from '../../constants/constants';
 import '../../App.css';
 import {createSSEService} from '../../services/SseService';

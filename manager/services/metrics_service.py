@@ -1,16 +1,18 @@
 import asyncio
+import csv
 import datetime
 import logging
-import csv
+from dataclasses import asdict
 from typing import List, Any
+
 from manager.config import settings
+from manager.models.schemas import MetricPoint
 from manager.services.cache_service import cache_service
 from manager.utils.docker_utils import get_docker_client
-from manager.models.schemas import MetricPoint
 from node.utils.config_store import ConfigStore
-from dataclasses import dataclass, field, asdict, fields
 
 logger = logging.getLogger(__name__)
+
 
 class MetricsService:
     def __init__(self):
@@ -107,5 +109,6 @@ class MetricsService:
 
     async def get_all_metrics(self) -> list[Any]:
         return list(self._write_queue._queue)
+
 
 metrics_service = MetricsService()

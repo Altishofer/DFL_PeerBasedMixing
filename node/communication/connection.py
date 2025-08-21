@@ -1,11 +1,9 @@
 import asyncio
 import logging
 
-from retry import retry
 from metrics.node_metrics import metrics, MetricField
-
-
 from utils.exception_decorator import log_exceptions
+
 
 class Connection:
     def __init__(self, host: str, port: int, reader, writer, peer_id: int):
@@ -31,16 +29,13 @@ class Connection:
                 await asyncio.sleep(2)
         return cls(host, port, None, None, peer_id)
 
-    # @retry(tries=3, delay=2)
     async def send(self, message: bytes):
-        # logging.info(f"Sending message to peer {self._peer_id}")
         if not self.is_active:
             logging.debug(f"No connection to peer {self._peer_id}")
             return
 
         try:
             self._writer.write(message)
-            # await asyncio.wait_for(self._writer.drain(), timeout=0.1)
         except (asyncio.TimeoutError, ConnectionResetError, BrokenPipeError, OSError) as e:
             logging.error(f"Exception sending to peer {self._peer_id}. Marking as inactive.")
             await self.close()
@@ -48,7 +43,6 @@ class Connection:
 
         metrics().increment(MetricField.TOTAL_MSG_SENT)
         metrics().increment(MetricField.TOTAL_MBYTES_SENT, len(message) / 1048576)
-        # logging.info(f"Message sent to peer {self._peer_id}")
 
     @log_exceptions
     async def close(self):
@@ -65,4 +59,5 @@ class Connection:
 
     @property
     def is_active(self):
-        return not(self._writer is None or self._writer.transport is None or self._writer.transport.is_closing()) and self._is_active
+        return not (
+                    self._writer is None or self._writer.transport is None or self._writer.transport.is_closing()) and self._is_active

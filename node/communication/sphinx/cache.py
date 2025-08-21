@@ -1,12 +1,12 @@
-import random
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import List
-import logging
+
 import numpy as np
-from utils.config_store import ConfigStore
 
 from metrics.node_metrics import metrics, MetricField
+from utils.config_store import ConfigStore
 from utils.exception_decorator import log_exceptions
 
 
@@ -85,12 +85,12 @@ class Cache:
         self.clear_acked_cache()
 
         cutoff = datetime.now(timezone.utc) - timedelta(seconds=seconds)
-        to_resend = [fragment for fragment in self.cache.values() if fragment.timestamp < cutoff and not fragment.acked and not fragment.cover]
+        to_resend = [fragment for fragment in self.cache.values() if
+                     fragment.timestamp < cutoff and not fragment.acked and not fragment.cover]
 
         for fragment in to_resend:
             self.set_acked(fragment.surb_id)  # mark as acked to prevent resending
 
-        # logging.info(f"{self.in_counter=}, {self.out_counter=}, {len(to_resend)=}, {len(self.cache)=}")
         return to_resend
 
     @log_exceptions

@@ -9,7 +9,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.exceptions import ConvergenceWarning
-from torch.nn.utils import parameters_to_vector, vector_to_parameters
 from torchvision import datasets, transforms
 
 from learning.fed_cnn import FedCNN

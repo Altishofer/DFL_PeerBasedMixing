@@ -1,16 +1,17 @@
 import asyncio
-import json
 from typing import List
+
+from manager.config import Settings
 from manager.config import settings
 from manager.models.schemas import NodeStatus
-from manager.config import Settings
-from node.utils.config_store import ConfigStore
 from manager.utils.docker_utils import (
     get_docker_client,
     create_network,
     generate_keys,
     stop_all_nodes
 )
+from node.utils.config_store import ConfigStore
+
 
 class NodeService:
     def __init__(self):
@@ -65,5 +66,6 @@ class NodeService:
                 ))
 
         return status
+
 
 node_service = NodeService()

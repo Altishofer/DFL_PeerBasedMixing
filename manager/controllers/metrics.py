@@ -1,27 +1,29 @@
+import asyncio
 import json
 import logging
 from typing import List, Set
 
-
-import asyncio
 from fastapi import APIRouter, WebSocket, HTTPException
 from fastapi import Request
 from sse_starlette import EventSourceResponse
 
-from manager.services.metrics_service import metrics_service
 from manager.models.schemas import MetricPoint
 from manager.services.cache_service import cache_service
+from manager.services.metrics_service import metrics_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/metrics")
 
+
 @router.on_event("startup")
 async def start_background_broadcast():
     asyncio.create_task(broadcast_loop())
 
+
 active_connections: Set[WebSocket] = set()
 broadcast_lock = asyncio.Lock()
+
 
 @router.get("/sse")
 async def metrics_sse(request: Request):
@@ -37,6 +39,7 @@ async def metrics_sse(request: Request):
                 data = [m.model_dump() for m in latest_cache]
                 yield {"data": json.dumps(data)}
             await asyncio.sleep(0.0001)
+
     return EventSourceResponse(event_generator())
 
 
@@ -81,4 +84,3 @@ async def push_metrics(new_metrics: List[MetricPoint]):
         return new_metrics
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to store metrics")
-

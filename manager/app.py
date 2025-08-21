@@ -1,10 +1,13 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.inmemory import InMemoryBackend
+
 from manager.controllers import nodes, metrics
 from manager.services.metrics_service import metrics_service
-from fastapi_cache.backends.inmemory import InMemoryBackend
-from fastapi_cache import FastAPICache
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -13,8 +16,8 @@ async def lifespan(app: FastAPI):
     yield
     await metrics_service.stop_collecting()
 
-app = FastAPI(lifespan=lifespan)
 
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,6 +29,7 @@ app.add_middleware(
 
 app.include_router(nodes.router)
 app.include_router(metrics.router)
+
 
 @app.get("/health")
 async def health_check():

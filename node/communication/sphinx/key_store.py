@@ -2,7 +2,6 @@ import pickle
 
 from petlib.bn import Bn
 from petlib.ec import EcGroup, EcPt
-
 from sphinxmix.SphinxClient import (
     pki_entry
 )
@@ -53,4 +52,3 @@ class KeyStore:
         if node_id in self._pkiPub:
             return self._pkiPriv[node_id].y
         return None
-

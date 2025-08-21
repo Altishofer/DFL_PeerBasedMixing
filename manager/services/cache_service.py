@@ -1,7 +1,9 @@
-from collections import deque
 import asyncio
+from collections import deque
 from typing import Deque
+
 from manager.models.schemas import MetricPoint
+
 
 class CacheService:
     def __init__(self):
@@ -25,5 +27,6 @@ class CacheService:
     async def clear_cache(self) -> None:
         async with self._lock:
             self._metrics_cache.clear()
+
 
 cache_service = CacheService()

@@ -72,7 +72,6 @@ class Learner:
         log_header(f"Awaiting Model Chunks from Peers ({ConfigStore.timeout_model_collection}s).")
         metrics().set(MetricField.STAGE, 3)
         await self._message_manager.await_fragments(timeout=ConfigStore.timeout_model_collection)
-        # await asyncio.sleep(60)
 
     async def _aggregate_and_validate_models(self, aggregated_accuracy: float) -> float:
         model_chunks = await self._message_manager.collect_models()

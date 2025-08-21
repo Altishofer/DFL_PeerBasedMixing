@@ -1,8 +1,5 @@
-import asyncio
-import random
 import logging
 import secrets
-import time
 
 from sphinxmix.SphinxClient import (
     create_forward_message, PFdecode,
@@ -109,8 +106,7 @@ class SphinxRouter:
         _, info, (header, delta), mac_key = sphinx_process(self._params, x, header, delta)
         routing = PFdecode(self._params, info)
         return routing, header, delta, mac_key
-    
-    # secure random path that cannot revisit nodes or edges
+
     @staticmethod
     def secure_random_path(nodes, max_path_length):
         path_length = secrets.randbelow(min(max_path_length, len(nodes)) + 1)
@@ -130,5 +126,3 @@ class SphinxRouter:
             path.append(current)
 
         return path
-
-

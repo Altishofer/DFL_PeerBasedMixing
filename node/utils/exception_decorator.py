@@ -1,6 +1,7 @@
+import asyncio
 import functools
 import logging
-import asyncio
+
 from metrics.node_metrics import metrics, MetricField
 
 

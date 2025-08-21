@@ -1,6 +1,5 @@
 import asyncio
 
-from communication.mixing import Mixer
 from communication.sphinx.sphinx_transport import SphinxTransport
 from learning.learner import Learner
 from utils.config_store import ConfigStore
@@ -20,6 +19,5 @@ class PeerNode:
     async def start(self):
         await self._transport.start()
         await self._learning.run()
-        # await asyncio.sleep(1000)
         await self._transport.close_all_connections()
         await asyncio.sleep(90)

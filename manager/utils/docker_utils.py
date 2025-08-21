@@ -1,16 +1,20 @@
 import os
 import pickle
+
 import docker
 from sphinxmix.SphinxParams import SphinxParams
+
 from manager.config import settings
 
 _client = None
+
 
 def get_docker_client():
     global _client
     if _client is None:
         _client = docker.from_env()
     return _client
+
 
 def generate_keys(n: int):
     params = SphinxParams()
@@ -30,6 +34,7 @@ def generate_keys(n: int):
     with open("./secrets/pki_pub.pkl", "wb") as f:
         pickle.dump(pkiPub_raw, f)
 
+
 def create_network():
     client = get_docker_client()
     try:
@@ -45,6 +50,7 @@ def create_network():
             driver="bridge",
             ipam=ipam_config
         )
+
 
 def stop_all_nodes():
     client = get_docker_client()

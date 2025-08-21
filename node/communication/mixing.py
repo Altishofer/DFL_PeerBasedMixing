@@ -4,12 +4,8 @@ import math
 import secrets
 from dataclasses import dataclass
 from typing import Awaitable, Callable
-from scipy.stats import truncnorm
 
-from metrics.node_metrics import metrics, MetricField
-from utils.config_store import ConfigStore
-from utils.exception_decorator import log_exceptions
-from utils.logging_config import log_header
+from scipy.stats import truncnorm
 
 from metrics.node_metrics import metrics, MetricField
 from utils.config_store import ConfigStore
@@ -21,6 +17,7 @@ from utils.logging_config import log_header
 class QueueObject:
     send_message: Awaitable
     update_metrics: Callable
+
 
 class Mixer:
     def __init__(self, cover_generator):
@@ -38,7 +35,6 @@ class Mixer:
         if q == 0:
             return 0.001
         sleep_time = -math.log(1 - u) / (1 / q)
-        # logging.warning(f"Secure exponential sleep time: {sleep_time} seconds, max_rate = {1 / sleep_time}")
         return min(sleep_time, 0.001)
 
     @staticmethod

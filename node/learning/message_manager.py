@@ -2,14 +2,15 @@ import asyncio
 import logging
 import time
 
+from communication.packages import PackageHelper
 from communication.sphinx.sphinx_transport import SphinxTransport
 from learning.model_handler import ModelHandler
 from utils.config_store import ConfigStore
 from utils.exception_decorator import log_exceptions
-from communication.packages import PackageHelper
+
 
 class MessageManager:
-    def __init__(self, node_id, transport: SphinxTransport, model_handler: ModelHandler, node_config:ConfigStore):
+    def __init__(self, node_id, transport: SphinxTransport, model_handler: ModelHandler, node_config: ConfigStore):
         self._node_id = node_id
         self._transport = transport
         self._model_handler = model_handler
@@ -83,4 +84,3 @@ class MessageManager:
             f"({collected_parts / active_nodes if active_nodes else 0:.2f} parts/node)"
         )
         return buffer
-

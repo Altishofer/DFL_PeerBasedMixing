@@ -10,13 +10,13 @@ from sphinxmix.SphinxClient import (
 )
 from sphinxmix.SphinxParams import SphinxParams
 
+from communication.mixing import Mixer
 from communication.packages import PackageHelper, PackageType
 from communication.sphinx.sphinx_router import SphinxRouter
 from communication.tcp_server import TcpServer
 from metrics.node_metrics import metrics, MetricField
 from utils.config_store import ConfigStore
 from utils.exception_decorator import log_exceptions
-from communication.mixing import Mixer
 
 
 class SphinxTransport:
@@ -77,7 +77,7 @@ class SphinxTransport:
         return len(self._peer.active_peers())
 
     async def close_all_connections(self):
-        self._mixer.stop()
+        await self._mixer.stop()
         await self._peer.close_all_connections()
 
     def get_all_fragments(self):
@@ -126,13 +126,14 @@ class SphinxTransport:
             metrics().increment(metric_field)
 
         return update_metrics
-    
+
     async def generate_path(self, message, target_node: int, cover: bool, serialize: bool = True):
         peers = list(self._peer.active_peers())
         payload = message
         if serialize:
             payload = PackageHelper.serialize_msg(message)
-        path, msg_bytes, timestamp_callback = await self.sphinx_router.create_forward_msg(target_node, payload, peers, cover)
+        path, msg_bytes, timestamp_callback = await self.sphinx_router.create_forward_msg(target_node, payload, peers,
+                                                                                          cover)
         return path, msg_bytes, timestamp_callback
 
     async def generate_path_and_send(self, message, target_node: int, cover: bool, serialize: bool = True):
@@ -144,7 +145,7 @@ class SphinxTransport:
         if timestamp_callback != None:
             timestamp_callback()
         await self._peer.send_to_peer(path[0], msg_bytes)
-        
+
     @log_exceptions
     async def receive(self) -> bytes:
         return await self._incoming_queue.get()
@@ -156,7 +157,10 @@ class SphinxTransport:
                 if not self._peer.is_active(fragment.target_node):
                     self.sphinx_router.remove_cache_for_disconnected(fragment.target_node)
                 else:
-                    path, msg_bytes, timestamp_callback = await self.generate_path(fragment.payload, fragment.target_node, serialize=False, cover=fragment.cover)
+                    path, msg_bytes, timestamp_callback = await self.generate_path(fragment.payload,
+                                                                                   fragment.target_node,
+                                                                                   serialize=False,
+                                                                                   cover=fragment.cover)
                     send_message_task = self.create_send_message_task(path, msg_bytes, timestamp_callback)
                     update_metrics_task = self.increment_metric_task(MetricField.RESENT)
                     await self._mixer.queue_item(send_message_task, update_metrics_task)
@@ -183,7 +187,6 @@ class SphinxTransport:
 
         else:
             metrics().increment(MetricField.COVERS_RECEIVED)
-            # logging.debug(f"Dropping cover package.")
 
         return is_cover
 
@@ -195,7 +198,6 @@ class SphinxTransport:
 
     async def __send_surb(self, nymtuple):
         msg_bytes, first_hop = self.sphinx_router.create_surb_reply(nymtuple)
-        # logging.debug("Sent SURB-based reply.")
         await self._peer.send_to_peer(first_hop, msg_bytes)
 
     @log_exceptions
@@ -257,11 +259,11 @@ class SphinxTransport:
         payload = PackageHelper.format_cover_package(content)
         path, msg_bytes, timestamp_callback = await self.generate_path(payload, target_node, cover=True)
         return path, msg_bytes, timestamp_callback
-    
+
     async def generate_and_send_cover(self):
         path, msg_bytes, timestamp_callback = await self.generate_cover_traffic()
         return self.create_send_message_task(path, msg_bytes, timestamp_callback)
-    
+
     async def _generate_cover_traffic_loop(self):
         while True:
             if len(self._cover_stash) < ConfigStore.max_cover_cache and len(self._peer.active_peers()) != 0:

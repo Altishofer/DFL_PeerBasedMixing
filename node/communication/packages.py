@@ -2,9 +2,11 @@ import pickle
 import zlib
 from enum import Enum
 
+
 class PackageType(Enum):
     MODEL_PART = 1
     COVER = 2
+
 
 class PackageHelper:
     @staticmethod
@@ -23,7 +25,7 @@ class PackageHelper:
             "type": PackageType.COVER,
             "content": content
         }
-    
+
     @staticmethod
     def serialize_msg(msg) -> bytes:
         return zlib.compress(pickle.dumps(msg))
